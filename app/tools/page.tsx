@@ -60,9 +60,9 @@ export default function ToolsHubPage() {
     {
       title: 'Project Estimator & RFQ Builder',
       slug: 'project-estimator',
-      tag: 'Effort & Timeline Sizing',
-      time: '4 Mins',
-      desc: 'Calculate indicative T-shirt sizing and development timelines for custom software applications and VAPT penetration testing scopes.',
+      tag: 'Project Scoping & RFQ',
+      time: '3–15 Mins',
+      desc: 'Turn business requirements into a structured scope, complexity score, resource and timeline estimate, indicative investment, and versioned RFQ for RTI review.',
       icon: Calculator,
       badgeColor: 'bg-purple-50 text-purple-600',
     },
