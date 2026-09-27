@@ -107,3 +107,49 @@ test('Project Estimator: internal resource rates are not exposed by public boots
   assert.doesNotMatch(bootstrapSegment, /internal_day_rate/);
   assert.doesNotMatch(bootstrapSegment, /trace_json/);
 });
+
+
+test('Project Estimator: conditional questions are enforced on client and server', () => {
+  const page = read('app/tools/project-estimator/page.tsx');
+  const repository = read('lib/project-estimator/repository.ts');
+  const migration = read('migrations/0003_project_estimator_rfq.sql');
+  assert.match(page, /conditionalMatch/);
+  assert.match(repository, /questionConditionsMatch/);
+  assert.match(repository, /visibleQuestions/);
+  assert.match(migration, /estimator_question_conditions/);
+  assert.match(migration, /cond-dev-cloud-provider/);
+});
+
+test('Project Estimator: production pricing seed does not fabricate commercial values', () => {
+  const migration = read('migrations/0003_project_estimator_rfq.sql');
+  const repository = read('lib/project-estimator/repository.ts');
+  const page = read('app/tools/project-estimator/page.tsx');
+  assert.match(migration, /Commercial values are intentionally not seeded/);
+  assert.match(repository, /priceConfigured/);
+  assert.match(page, /Commercial Review Required/);
+  assert.doesNotMatch(migration, /35000000|90000000|150000000|500000000/);
+});
+
+test('Project Estimator: RFQ attachment handling is private, validated and fail-closed in production', () => {
+  const attachments = read('lib/project-estimator/attachments.ts');
+  const route = read('app/api/v1/project-estimator/rfq/[id]/attachments/route.ts');
+  assert.match(attachments, /RTI_UPLOAD_DIR/);
+  assert.match(attachments, /outside the public web root/);
+  assert.match(attachments, /fileMagicMatches/);
+  assert.match(attachments, /createHash\('sha256'\)/);
+  assert.match(attachments, /RTI_MALWARE_SCAN_URL/);
+  assert.match(attachments, /NODE_ENV === 'production'/);
+  assert.match(attachments, /RTI_FILE_UPLOADS_ENABLED/);
+  assert.match(route, /verifyRfqAccess/);
+  assert.match(route, /enforceRateLimit/);
+});
+
+test('Project Estimator: save and continue restores latest RFQ without localStorage', () => {
+  const page = read('app/tools/project-estimator/page.tsx');
+  const repository = read('lib/project-estimator/repository.ts');
+  assert.match(page, /#resume=/);
+  assert.match(page, /history\.replaceState/);
+  assert.doesNotMatch(page, /localStorage/);
+  assert.match(repository, /latestRfq/);
+  assert.match(repository, /secure_token_hash/);
+});
