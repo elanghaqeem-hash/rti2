@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createRfqDraft } from '@/lib/project-estimator/repository';
+import { createRfqDraft, verifyEstimatorSessionAccess } from '@/lib/project-estimator/repository';
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/security/request-protection';
 
 export const runtime = 'nodejs';
@@ -12,7 +12,9 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null) as any;
   const sessionId = typeof body?.sessionId === 'string' ? body.sessionId.trim() : '';
   const estimateId = typeof body?.estimateId === 'string' ? body.estimateId.trim() : '';
-  if (!sessionId || !estimateId) return NextResponse.json({ success: false, error: 'Session and estimate are required.' }, { status: 400, headers });
+  const resumeToken = typeof body?.resumeToken === 'string' ? body.resumeToken.trim() : '';
+  if (!sessionId || !estimateId || !resumeToken) return NextResponse.json({ success: false, error: 'Session, estimate and access token are required.' }, { status: 400, headers });
+  if (!verifyEstimatorSessionAccess(sessionId, resumeToken)) return NextResponse.json({ success: false, error: 'Estimator draft access denied.' }, { status: 403, headers });
 
   try {
     const rfq = await createRfqDraft({ sessionId, estimateId, useAi: body?.useAi === true });
