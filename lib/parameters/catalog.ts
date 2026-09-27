@@ -323,6 +323,17 @@ export const PARAMETER_GROUPS: ParameterGroupDefinition[] = [
     ],
   },
   {
+    key: 'cyber_quick.answer_scale',
+    label: 'Cyber Quick Check - Jawaban',
+    description: 'Pilihan jawaban Cyber Quick Check. Value dipakai scoring dan dikunci.',
+    logicBound: true,
+    options: [
+      option('yes', 'Yes / Full', 10),
+      option('partial', 'Partial', 20),
+      option('no', 'No / Unsure', 30),
+    ],
+  },
+  {
     key: 'training.categories',
     label: 'Training - Kategori',
     description: 'Filter kategori training.',
