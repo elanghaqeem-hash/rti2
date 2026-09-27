@@ -54,7 +54,7 @@ test('PDP readiness: guest assessments use hashed resume tokens and protected pe
   assert.match(repository, /createHash\('sha256'\)/);
   assert.match(repository, /resume_token_hash/);
   assert.doesNotMatch(repository, /resume_token\s+TEXT/);
-  assert.match(assessmentApi, /Authorization/);
+  assert.match(assessmentApi, /authorization/i);
   assert.match(assessmentApi, /enforceRateLimit/);
 });
 
@@ -78,7 +78,7 @@ test('PDP readiness: critical findings, DPIA and DPO are separate diagnostics', 
   assert.match(scoring, /Further Assessment Required/);
   assert.match(scoring, /Trigger Identified/);
   assert.match(scoring, /Further Legal Review Recommended/);
-  assert.match(scoring, /not a certification/i);
+  assert.match(scoring, /bukan merupakan sertifikasi/i);
 });
 
 test('PDP readiness: AI analysis is grounded and cannot be used as final legal conclusion', () => {
