@@ -36,9 +36,13 @@ type PdfReportInput = {
   mode: string;
   overallScore: number | null;
   readinessLevel: string | null;
+  requirementScore: number | null;
+  controlScore: number | null;
   evidenceScore: number | null;
   governanceScore: number | null;
   auditScore: number | null;
+  stage1Score: number | null;
+  stage2Score: number | null;
   gatesCompleted: number | null;
   gatesTotal: number;
   gaps: Array<Record<string, unknown>>;
@@ -62,9 +66,13 @@ export function buildIsoReadinessPdf(input: PdfReportInput): Buffer {
   push('EXECUTIVE SUMMARY');
   push(`Overall readiness: ${input.overallScore == null ? 'Not calculated' : input.overallScore.toFixed(1) + '%'}`);
   push(`Readiness level: ${input.readinessLevel || 'Not calculated'}`);
+  push(`Requirement readiness: ${input.requirementScore == null ? 'Not calculated' : input.requirementScore.toFixed(1) + '%'}`);
+  push(`Control readiness: ${input.controlScore == null ? 'Not calculated' : input.controlScore.toFixed(1) + '%'}`);
   push(`Evidence readiness: ${input.evidenceScore == null ? 'Not calculated' : input.evidenceScore.toFixed(1) + '%'}`);
   push(`Governance readiness: ${input.governanceScore == null ? 'Not calculated' : input.governanceScore.toFixed(1) + '%'}`);
   push(`Audit readiness: ${input.auditScore == null ? 'Not calculated' : input.auditScore.toFixed(1) + '%'}`);
+  push(`Stage 1 Preparation Indicator: ${input.stage1Score == null ? 'Not calculated' : input.stage1Score.toFixed(1) + '%'}`);
+  push(`Stage 2 Preparation Indicator: ${input.stage2Score == null ? 'Not calculated' : input.stage2Score.toFixed(1) + '%'}`);
   push(`Certification readiness gates: ${input.gatesCompleted ?? 0}/${input.gatesTotal}`);
   push('');
   push('PRIORITY GAPS');
