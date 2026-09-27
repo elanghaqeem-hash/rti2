@@ -29,7 +29,7 @@
 - **Framework:** Next.js 15 (App Router) + TypeScript (Strict)
 - **Styling:** Tailwind CSS + Custom Design Tokens (`--navy-900`, `--gold-500`, `--gold-grad`, etc.)
 - **Icons & Motion:** Lucide React + Framer Motion (respects `prefers-reduced-motion`)
-- **AI Assistant:** Website-grounded API route with automatic multi-provider failover: Anthropic primary, then OpenAI, Gemini, Groq, and OpenRouter, with local deterministic RAG as the final continuity fallback
+- **AI Assistant:** Website-grounded API route with automatic multi-provider failover across Anthropic, OpenAI, Gemini, Groq, OpenRouter, DeepSeek, Mistral AI, and xAI Grok, with local deterministic RAG as the final continuity fallback
 - **Privacy & Compliance:** Granular cookie consent & explicit opt-in forms compliant with **UU No. 27/2022 (UU PDP)**
 - **Security:** OWASP ASVS-aligned security headers, anti-SSRF protection on diagnostic tools, RFC 9116 `security.txt`
 
@@ -63,20 +63,23 @@ http://localhost:3000
 6. **ISO 27001 Readiness (`/tools/iso27001-readiness`):** Clauses 4–10 & Annex A readiness checklist.
 7. **UU PDP Readiness (`/tools/pdp-readiness`):** Data inventory, DPO, DPIA, and incident response readiness.
 8. **Admin Lead Dashboard (`/admin/leads`):** Lead scoring, pipeline statuses, and CSV export.
-9. **Risetin AI Assistant:** Slide-over assistant connected to `/api/chat`, website knowledge-base grounding, safety guardrails, automatic primary + 4-provider AI failover, and direct WhatsApp / Cal.com handoff.
+9. **Risetin AI Assistant:** Slide-over assistant connected to `/api/chat`, website knowledge-base grounding, safety guardrails, configurable 8-provider AI failover, and direct WhatsApp / Cal.com handoff.
 
 ### Risetin Assistant AI configuration
 
 Configure the provider secrets in the deployment environment, not in client-side code or committed files:
 
 ```bash
-AI_PROVIDER_ORDER=anthropic,openai,gemini,groq,openrouter
+AI_PROVIDER_ORDER=anthropic,openai,gemini,groq,openrouter,deepseek,mistral,xai
 
 ANTHROPIC_API_KEY=...
 OPENAI_API_KEY=...
 GEMINI_API_KEY=...
 GROQ_API_KEY=...
 OPENROUTER_API_KEY=...
+DEEPSEEK_API_KEY=...
+MISTRAL_API_KEY=...
+XAI_API_KEY=...
 ```
 
 Only configured providers are attempted. If the primary provider fails or times out, the server automatically moves to the next configured provider. If all external providers are unavailable, the assistant uses the local website knowledge-base fallback instead of fabricating an AI response.
@@ -98,7 +101,7 @@ npm test
 The protected control plane is available at `/admin` and manages:
 
 - Website CMS fields used by the homepage hero and public contact/footer.
-- AI provider priority, model selection, enable/disable state, and API keys.
+- AI provider priority, model selection, enable/disable state, and API keys for Anthropic, OpenAI, Gemini, Groq, OpenRouter, DeepSeek, Mistral AI, and xAI Grok.
 - SMTP server configuration and sender identity.
 - Link to the existing operational lead dashboard at `/admin/leads`.
 
