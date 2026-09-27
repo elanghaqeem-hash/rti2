@@ -57,9 +57,40 @@ function money(value: number) {
   }).format(value);
 }
 
-function questionVisible(question: EstimatorQuestion, mode: 'quick' | 'detailed', serviceId: string) {
+function conditionalMatch(question: EstimatorQuestion, answers: Record<string, unknown>) {
+  return question.conditions.every((condition) => {
+    const actual = answers[condition.sourceKey];
+    const compare = condition.compareValue ?? '';
+    if (condition.operator === 'truthy') return Boolean(actual);
+    if (condition.operator === 'falsy') return !actual;
+    if (condition.operator === 'not_equals') return String(actual) !== compare;
+    if (condition.operator === 'includes') {
+      return Array.isArray(actual)
+        ? actual.map(String).includes(compare)
+        : String(actual ?? '').includes(compare);
+    }
+    if (['gt','gte','lt','lte'].includes(condition.operator)) {
+      const left = Number(actual);
+      const right = Number(compare);
+      if (!Number.isFinite(left) || !Number.isFinite(right)) return false;
+      if (condition.operator === 'gt') return left > right;
+      if (condition.operator === 'gte') return left >= right;
+      if (condition.operator === 'lt') return left < right;
+      return left <= right;
+    }
+    return String(actual) === compare;
+  });
+}
+
+function questionVisible(
+  question: EstimatorQuestion,
+  mode: 'quick' | 'detailed',
+  serviceId: string,
+  answers: Record<string, unknown>,
+) {
   if (question.serviceId && question.serviceId !== serviceId) return false;
-  return mode === 'detailed' ? question.detailedMode : question.quickMode;
+  if (mode === 'quick' ? !question.quickMode : !question.detailedMode) return false;
+  return conditionalMatch(question, answers);
 }
 
 export default function ProjectEstimatorPage() {
@@ -159,8 +190,8 @@ export default function ProjectEstimatorPage() {
 
   const selectedService = bootstrap?.services.find((service) => service.id === serviceId);
   const questions = useMemo(
-    () => (bootstrap?.questions || []).filter((question) => questionVisible(question, mode, serviceId)),
-    [bootstrap, mode, serviceId],
+    () => (bootstrap?.questions || []).filter((question) => questionVisible(question, mode, serviceId, answers)),
+    [bootstrap, mode, serviceId, answers],
   );
 
   const groupedServices = useMemo(() => {
