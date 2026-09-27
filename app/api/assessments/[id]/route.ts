@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getIsoAssessment, patchIsoAssessment } from '@/lib/iso27001/repository';
+import { deleteIsoAssessment, getIsoAssessment, patchIsoAssessment } from '@/lib/iso27001/repository';
 
 export const runtime = 'nodejs';
 
@@ -60,6 +60,25 @@ export async function PATCH(
   } catch (error) {
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Update failed.' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+}
+
+
+export async function DELETE(
+  req: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await context.params;
+    return NextResponse.json(
+      { success: true, result: deleteIsoAssessment(id, token(req)) },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : 'Assessment deletion failed.' },
       { status: 400, headers: { 'Cache-Control': 'no-store' } },
     );
   }
