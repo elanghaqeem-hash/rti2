@@ -3,6 +3,7 @@ import { getDatabase } from '@/lib/server/database';
 import { generateAiWithFailover } from '@/lib/ai/provider-router';
 import { calculateLeadScore, type Lead } from '@/lib/scoring/leads';
 import { createPersistentLead } from '@/lib/data/lead-repository';
+import { sendRfqNotifications } from '@/lib/project-estimator/notifications';
 import type {
   EstimatorBootstrap,
   EstimatorQuestion,
@@ -890,12 +891,13 @@ export async function submitRfq(rfqId: string) {
   const context = db.prepare(
     `SELECT es.id AS session_id, es.project_name, es.organization_id,
             o.name AS company, o.industry, c.name, c.title, c.email, c.whatsapp,
-            pe.price_min, pe.price_max
+            pe.price_min, pe.price_max, s.name AS service_name
      FROM rfqs r
      JOIN estimator_sessions es ON es.id=r.session_id
      JOIN organizations o ON o.id=es.organization_id
      JOIN contacts c ON c.id=es.contact_id
      JOIN project_estimates pe ON pe.id=r.estimate_id
+     JOIN services s ON s.id=pe.service_id
      WHERE r.id=?`,
   ).get(rfqId) as any;
 
@@ -946,5 +948,12 @@ export async function submitRfq(rfqId: string) {
   }
 
   audit('rfq', rfqId, 'submit', { leadId, opportunityId }, 'customer');
+  await sendRfqNotifications({
+    rfqNumber: rfq.rfqNumber,
+    projectName: context.project_name,
+    company: context.company,
+    service: context.service_name,
+    customerEmail: context.email,
+  });
   return getRfq(rfqId);
 }
