@@ -3,6 +3,7 @@ import { hasNistAssessmentAccess } from '@/lib/nist/access';
 import {
   getNistAssessment,
   getStoredNistResult,
+  recordNistGeneratedReport,
   writeNistAudit,
 } from '@/lib/nist/repository';
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/security/request-protection';
@@ -50,6 +51,7 @@ export async function GET(
     const filename =
       `RTI-NIST-Cyber-Quick-Check-${safeFilename(assessment.organization.companyName)}-${id.slice(0, 8)}.pdf`;
 
+    recordNistGeneratedReport(id, assessment.respondent.email);
     writeNistAudit({
       actor: assessment.respondent.email,
       action: 'report.downloaded',
