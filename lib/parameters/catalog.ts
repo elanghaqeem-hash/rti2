@@ -336,7 +336,8 @@ export const PARAMETER_GROUPS: ParameterGroupDefinition[] = [
   {
     key: 'training.categories',
     label: 'Training - Kategori',
-    description: 'Filter kategori training.',
+    description: 'Filter kategori training. Value terhubung ke course catalog.',
+    logicBound: true,
     options: [
       option('ALL', 'All Programs', 0),
       option('Cybersecurity Awareness', 'Cybersecurity Awareness', 10),
