@@ -10,6 +10,7 @@ import {
   updateOpportunityStage,
   updatePricingParameter,
   upsertEstimatorRule,
+  upsertQuestionCondition,
   upsertQuestionOption,
   upsertResourceRole,
   upsertServiceCategory,
@@ -127,6 +128,16 @@ export async function PATCH(req: Request) {
         quickMode: body.question?.quickMode === true,
         detailedMode: body.question?.detailedMode !== false,
         active: body.question?.active !== false,
+        actor: auth.sub,
+      });
+    } else if (action === 'question_condition') {
+      upsertQuestionCondition({
+        id: body.condition?.id ? String(body.condition.id) : undefined,
+        questionId: String(body.condition?.questionId || ''),
+        sourceQuestionKey: String(body.condition?.sourceQuestionKey || ''),
+        operator: String(body.condition?.operator || 'equals'),
+        compareValue: body.condition?.compareValue == null ? undefined : String(body.condition.compareValue),
+        active: body.condition?.active !== false,
         actor: auth.sub,
       });
     } else if (action === 'question_option') {
