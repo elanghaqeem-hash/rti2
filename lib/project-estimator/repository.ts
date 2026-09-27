@@ -130,6 +130,28 @@ function serviceFromRow(row: ServiceRow): EstimatorService {
   };
 }
 
+function loadServiceRecommendations(serviceId: string): ProjectEstimate['recommendations'] {
+  const rows = getDatabase().prepare(
+    `SELECT d.related_service_id, s.name, d.relation_type, d.reason
+     FROM service_dependencies d
+     JOIN services s ON s.id = d.related_service_id
+     WHERE d.service_id = ? AND d.is_active = 1 AND s.is_active = 1
+     ORDER BY d.sort_order, s.name`,
+  ).all(serviceId) as Array<{
+    related_service_id: string;
+    name: string;
+    relation_type: 'requires' | 'recommends';
+    reason: string | null;
+  }>;
+
+  return rows.map((row) => ({
+    serviceId: row.related_service_id,
+    name: row.name,
+    relationType: row.relation_type,
+    reason: row.reason || `Related RTI service for the selected project scope.`,
+  }));
+}
+
 function buildQuestions(
   rows: QuestionRow[],
   options: OptionRow[],
@@ -487,6 +509,7 @@ export function getEstimatorSessionByToken(resumeToken: string) {
           readinessScore: Number(latestEstimate.readiness_score),
           team: safeJson(latestEstimate.team_json, []),
           factors: safeJson(latestEstimate.factors_json, []),
+          recommendations: safeJson(latestEstimate.recommendations_json, []),
           createdAt: latestEstimate.created_at,
         }
       : null,
@@ -816,6 +839,8 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
       }))
     : [{ role: 'Consultant / Specialist', quantity: 1, estimatedDays: Math.ceil(effortDays) }];
 
+  const recommendations = loadServiceRecommendations(service.id);
+
   const prior = db.prepare('SELECT MAX(version) AS version FROM project_estimates WHERE session_id = ?').get(sessionId) as
     | { version: number | null }
     | undefined;
@@ -837,8 +862,8 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
     `INSERT INTO project_estimates
       (id, session_id, version, service_id, complexity_index, complexity_level, project_size,
        effort_days, duration_min_weeks, duration_max_weeks, price_min, price_max,
-       readiness_score, team_json, factors_json, trace_json, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       readiness_score, team_json, factors_json, recommendations_json, trace_json, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     estimateId,
     sessionId,
@@ -852,10 +877,10 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
     durationMaxWeeks,
     priceMin,
     priceMax,
-    priceConfigured,
     readinessScore,
     JSON.stringify(team),
     JSON.stringify(factors.slice(0, 6)),
+    JSON.stringify(recommendations),
     JSON.stringify(trace),
     now,
   );
@@ -877,9 +902,11 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
     durationMaxWeeks,
     priceMin,
     priceMax,
+    priceConfigured,
     readinessScore,
     team,
     factors: factors.slice(0, 6),
+    recommendations,
     trace,
     createdAt: now,
   };
@@ -1015,6 +1042,7 @@ export async function createRfqDraft(params: {
     readinessScore: Number(estimateRow.readiness_score),
     team: safeJson(estimateRow.team_json, []),
     factors: safeJson(estimateRow.factors_json, []),
+    recommendations: safeJson(estimateRow.recommendations_json, []),
     trace: safeJson(estimateRow.trace_json, {}),
     createdAt: estimateRow.created_at,
   };
