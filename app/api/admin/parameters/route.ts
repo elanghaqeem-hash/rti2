@@ -9,8 +9,7 @@ import {
 import {
   deactivateParameterOption,
   listParameterOverrides,
-  upsertParameterOption,
-  ParameterDatabaseUnavailableError,
+  upsertParameterOption
 } from '@/lib/parameters/repository';
 
 export const runtime = 'nodejs';
@@ -74,19 +73,16 @@ export async function GET(req: Request) {
 
   try {
     overrides = await listParameterOverrides(groupKeys);
-  } catch (error) {
-    if (error instanceof ParameterDatabaseUnavailableError) {
-      return NextResponse.json(
-        {
-          success: false,
-          groups: PARAMETER_GROUPS,
-          database: { connected: false },
-          error: 'RTI_DB belum tersedia atau migration parameter belum diterapkan.',
-        },
-        { status: 503, headers: { 'Cache-Control': 'no-store' } },
-      );
-    }
-    throw error;
+  } catch {
+    return NextResponse.json(
+      {
+        success: false,
+        groups: PARAMETER_GROUPS,
+        database: { connected: false },
+        error: 'RTI_DB belum tersedia atau migration parameter belum diterapkan.',
+      },
+      { status: 503, headers: { 'Cache-Control': 'no-store' } },
+    );
   }
 
   const overrideMap = new Map(
@@ -118,25 +114,31 @@ export async function GET(req: Request) {
 export async function PUT(req: Request) {
   if (!authorized(req)) return unauthorized();
 
+  const body = await req.json().catch(() => null);
+  let option: ParameterOption;
+
   try {
-    const body = await req.json();
-    const option = validateOption(body?.option);
+    option = validateOption(body?.option);
+  } catch {
+    return NextResponse.json(
+      { success: false, error: 'Parameter tidak valid.' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+
+  try {
     await upsertParameterOption(option);
     return NextResponse.json(
       { success: true, option },
       { headers: { 'Cache-Control': 'no-store' } },
     );
-  } catch (error) {
-    const status = error instanceof ParameterDatabaseUnavailableError ? 503 : 400;
+  } catch {
     return NextResponse.json(
       {
         success: false,
-        error:
-          status === 503
-            ? 'RTI_DB belum tersedia atau migration parameter belum diterapkan.'
-            : 'Parameter tidak valid.',
+        error: 'RTI_DB belum tersedia atau migration parameter belum diterapkan.',
       },
-      { status, headers: { 'Cache-Control': 'no-store' } },
+      { status: 503, headers: { 'Cache-Control': 'no-store' } },
     );
   }
 }
@@ -144,28 +146,30 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   if (!authorized(req)) return unauthorized();
 
-  try {
-    const body = await req.json();
-    const group = String(body?.group || '').trim();
-    const value = String(body?.value || '').trim();
-    if (!PARAMETER_GROUP_MAP[group] || !value) throw new Error('invalid');
+  const body = await req.json().catch(() => null);
+  const group = String(body?.group || '').trim();
+  const value = String(body?.value || '').trim();
 
+  if (!PARAMETER_GROUP_MAP[group] || !value) {
+    return NextResponse.json(
+      { success: false, error: 'Parameter tidak valid.' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+
+  try {
     await deactivateParameterOption(group, value);
     return NextResponse.json(
       { success: true },
       { headers: { 'Cache-Control': 'no-store' } },
     );
-  } catch (error) {
-    const status = error instanceof ParameterDatabaseUnavailableError ? 503 : 400;
+  } catch {
     return NextResponse.json(
       {
         success: false,
-        error:
-          status === 503
-            ? 'RTI_DB belum tersedia atau migration parameter belum diterapkan.'
-            : 'Parameter tidak valid.',
+        error: 'RTI_DB belum tersedia atau migration parameter belum diterapkan.',
       },
-      { status, headers: { 'Cache-Control': 'no-store' } },
+      { status: 503, headers: { 'Cache-Control': 'no-store' } },
     );
   }
 }
