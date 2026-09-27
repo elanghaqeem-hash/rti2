@@ -592,8 +592,14 @@ export default function ProjectEstimatorPage() {
 
               <div className="mt-4 rounded-2xl border border-gold-500/30 bg-beige-50 p-6">
                 <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted">Indicative Investment</div>
-                <div className="mt-1 text-2xl font-extrabold text-navy-900">{money(estimate.priceMin)} – {money(estimate.priceMax)}</div>
-                <p className="mt-2 text-xs text-muted">{publicDisclaimer}</p>
+                <div className="mt-1 text-2xl font-extrabold text-navy-900">
+                  {estimate.priceConfigured ? `${money(estimate.priceMin)} – ${money(estimate.priceMax)}` : 'Commercial Review Required'}
+                </div>
+                <p className="mt-2 text-xs text-muted">
+                  {estimate.priceConfigured
+                    ? publicDisclaimer
+                    : 'Official RTI pricing baseline has not yet been calibrated for this service. No fabricated price is shown.'}
+                </p>
               </div>
               <div className="mt-5 grid gap-5 lg:grid-cols-2">
                 <div className="rounded-2xl border border-line p-5">
