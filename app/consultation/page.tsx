@@ -11,16 +11,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { BRAND_CONFIG } from '@/lib/config/contact';
-
-const TIME_SLOTS = [
-  '09:00 WIB',
-  '10:00 WIB',
-  '11:00 WIB',
-  '13:00 WIB',
-  '14:00 WIB',
-  '15:00 WIB',
-  '16:00 WIB',
-];
+import { useParameterGroups } from '@/components/parameters/useParameterOptions';
 
 export default function ConsultationPage() {
   const [name, setName] = useState('');
@@ -28,6 +19,9 @@ export default function ConsultationPage() {
   const [topic, setTopic] = useState('Konsultasi Teknologi & Cybersecurity');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+  const parameterGroups = useParameterGroups(['consultation.topics', 'consultation.time_slots']);
+  const topicOptions = parameterGroups['consultation.topics'] || [];
+  const timeSlots = parameterGroups['consultation.time_slots'] || [];
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -125,14 +119,9 @@ export default function ConsultationPage() {
                 onChange={(e) => setTopic(e.target.value)}
                 className="w-full rounded-xl border border-line bg-white px-3.5 py-3 text-sm outline-none focus:ring-2 focus:ring-gold-500"
               >
-                <option>Konsultasi Teknologi & Cybersecurity</option>
-                <option>Software Development</option>
-                <option>Cybersecurity / VAPT / SOC</option>
-                <option>GRC, Policy, SOP & ISO</option>
-                <option>Technology Blueprint & Advisory</option>
-                <option>Training & Awareness</option>
-                <option>Technology & Cyber Maturity Assessment</option>
-                <option>Lainnya</option>
+                {topicOptions.map((option) => (
+                  <option key={option.value} value={option.label}>{option.label}</option>
+                ))}
               </select>
             </div>
 
@@ -164,9 +153,9 @@ export default function ConsultationPage() {
                   className="w-full rounded-xl border border-line bg-white px-3.5 py-3 text-sm outline-none focus:ring-2 focus:ring-gold-500"
                 >
                   <option value="">Pilih waktu</option>
-                  {TIME_SLOTS.map((slot) => (
-                    <option key={slot} value={slot}>
-                      {slot}
+                  {timeSlots.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
                     </option>
                   ))}
                 </select>
