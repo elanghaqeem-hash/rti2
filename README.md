@@ -14,7 +14,7 @@
 | Legal Corporate Name | **PT Riset Teknologi Indonesia** |
 
 > [!IMPORTANT]
-> The phrase *"PT Riset Teknologi Informasi"* is strictly prohibited. Automated unit tests enforce this rule in CI (`npm test`).
+> Any alteration replacing "Indonesia" with "Informasi" in the legal corporate name is strictly prohibited. Automated unit tests enforce this rule in CI (`npm test`).
 
 ### Official Contact
 - **Headquarters:** Graha Mustika Ratu, 7th Floor, Jl. Jend. Gatot Subroto Kav. 74-75, Menteng Dalam, Tebet, South Jakarta, DKI Jakarta 12870
