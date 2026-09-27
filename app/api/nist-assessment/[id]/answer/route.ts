@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getApplicableNistQuestionIds } from '@/lib/nist/engine';
 import { hasNistAssessmentAccess } from '@/lib/nist/access';
 import {
   getNistAssessmentConfig,
@@ -79,15 +80,20 @@ export async function POST(
     });
     const config = getNistAssessmentConfig();
     const answers = listNistAnswers(id);
+    const applicableIds = getApplicableNistQuestionIds(config, answers);
+    const answeredIds = new Set(answers.map((item) => item.questionId));
+    const applicableAnswered = applicableIds.filter((questionId) =>
+      answeredIds.has(questionId),
+    ).length;
 
     return NextResponse.json(
       {
         success: true,
         answer,
         progress: {
-          answered: answers.length,
-          total: config.questions.length,
-          percent: Math.round((answers.length / Math.max(config.questions.length, 1)) * 100),
+          answered: applicableAnswered,
+          total: applicableIds.length,
+          percent: Math.round((applicableAnswered / Math.max(applicableIds.length, 1)) * 100),
         },
       },
       { headers: { ...NO_STORE, ...rlHeaders } },
