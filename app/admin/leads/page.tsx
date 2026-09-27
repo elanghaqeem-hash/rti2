@@ -161,6 +161,12 @@ export default function AdminLeadsPage() {
             >
               Manage Parameters
             </Link>
+            <Link
+              href="/admin/solution-finder"
+              className="px-3 py-2.5 rounded-xl border border-line text-xs font-bold text-navy-900 hover:bg-grey-50"
+            >
+              Solution Finder
+            </Link>
             <div
               className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold ${
                 databaseConnected
