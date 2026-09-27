@@ -25,7 +25,10 @@ type ProviderId =
   | 'openai'
   | 'gemini'
   | 'groq'
-  | 'openrouter';
+  | 'openrouter'
+  | 'deepseek'
+  | 'mistral'
+  | 'xai';
 
 type ClientSettings = {
   version: 1;
@@ -79,6 +82,9 @@ const PROVIDER_LABELS: Record<ProviderId, string> = {
   gemini: 'Google Gemini',
   groq: 'Groq',
   openrouter: 'OpenRouter',
+  deepseek: 'DeepSeek',
+  mistral: 'Mistral AI',
+  xai: 'xAI Grok',
 };
 
 const TABS = [
