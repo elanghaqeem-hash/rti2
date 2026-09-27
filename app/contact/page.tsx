@@ -14,6 +14,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import Link from 'next/link';
+import { TurnstileWidget } from '@/components/security/TurnstileWidget';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -30,11 +31,18 @@ export default function ContactPage() {
 
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileRequired = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.consent) {
       alert('Mohon setujui ketentuan Pelindungan Data Pribadi (UU PDP) untuk melanjutkan.');
+      return;
+    }
+
+    if (turnstileRequired && !turnstileToken) {
+      alert('Mohon selesaikan verifikasi keamanan sebelum mengirim formulir.');
       return;
     }
 
@@ -55,6 +63,7 @@ export default function ContactPage() {
           whatsapp: formData.whatsapp,
           needSummary: `[Layanan: ${formData.serviceInterest}] ${formData.needSummary}`,
           consent: formData.consent,
+          turnstileToken,
         }),
       });
 
@@ -382,10 +391,14 @@ export default function ContactPage() {
                       </label>
                     </div>
 
+                    <div className="pt-2">
+                      <TurnstileWidget onTokenChange={setTurnstileToken} />
+                    </div>
+
                     <div className="pt-3">
                       <button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || (turnstileRequired && !turnstileToken)}
                         className="w-full py-3.5 rounded-xl bg-gold-500 hover:bg-gold-300 text-navy-900 font-extrabold text-sm transition shadow flex items-center justify-center gap-2 disabled:opacity-50"
                       >
                         {isSubmitting ? (
