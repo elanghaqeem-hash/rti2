@@ -189,6 +189,7 @@ export default function ProjectEstimatorAdminPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Link href="/admin/project-estimator/configuration" className="rounded-xl border border-line px-4 py-2.5 text-xs font-bold text-navy-900 hover:bg-grey-50">Estimator Configuration</Link>
               <Link href="/admin/system" className="rounded-xl border border-line px-4 py-2.5 text-xs font-bold text-navy-900 hover:bg-grey-50">System Setup</Link>
               <Link href="/admin/parameters" className="rounded-xl border border-line px-4 py-2.5 text-xs font-bold text-navy-900 hover:bg-grey-50">Global Parameters</Link>
               <button onClick={load} className="inline-flex items-center gap-2 rounded-xl bg-navy-900 px-4 py-2.5 text-xs font-extrabold text-white">
