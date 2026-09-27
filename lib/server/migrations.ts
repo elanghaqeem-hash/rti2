@@ -6,6 +6,7 @@ const MIGRATIONS = [
   '0001_leads.sql',
   '0002_system_parameters.sql',
   '0003_enterprise_solution_finder.sql',
+  '0004_nist_cyber_quick_check.sql',
 ] as const;
 
 export interface MigrationStatus {
@@ -17,6 +18,8 @@ export interface MigrationStatus {
     leads: boolean;
     systemParameters: boolean;
     enterpriseFinder: boolean;
+    nistAssessments: boolean;
+    nistQuestions: boolean;
   };
 }
 
@@ -65,6 +68,8 @@ export function getMigrationStatus(): MigrationStatus {
         tableExists('enterprise_finder_questions') &&
         tableExists('enterprise_finder_assessments') &&
         tableExists('enterprise_finder_services'),
+      nistAssessments: tableExists('nist_assessments'),
+      nistQuestions: tableExists('nist_questions'),
     },
   };
 }
