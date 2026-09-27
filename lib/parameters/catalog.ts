@@ -33,6 +33,15 @@ export const PARAMETER_GROUPS: ParameterGroupDefinition[] = [
     options: [],
   },
   {
+    key: 'iso27001.applicability',
+    label: 'ISO 27001 - Control Applicability',
+    description: 'Selectable applicability values for the Draft Statement of Applicability assistant.',
+    options: [
+      option('applicable', 'Applicable', 10, 'Control is applicable to the assessed ISMS scope and risk context.'),
+      option('not_applicable', 'Not Applicable', 20, 'Control is excluded with documented risk and applicability justification.'),
+    ],
+  },
+  {
     key: 'contact.sectors',
     label: 'Sektor / Industri',
     description: 'Digunakan pada form kontak, lead capture, dan diagnostic tools.',
