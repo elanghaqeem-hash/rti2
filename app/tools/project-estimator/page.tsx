@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { LeadModal } from '@/components/tools/LeadModal';
+import { useParameterGroups } from '@/components/parameters/useParameterOptions';
 import {
   Calculator,
   Code2,
@@ -28,6 +29,24 @@ export default function ProjectEstimatorPage() {
   const [testType, setTestType] = useState('grey_box');
 
   const [showLeadModal, setShowLeadModal] = useState(false);
+  const parameterGroups = useParameterGroups([
+    'project.types',
+    'project.app_types',
+    'project.module_complexity',
+    'project.integrations',
+    'project.ai_capability',
+    'project.vapt_scope',
+    'project.asset_count',
+    'project.test_type',
+  ]);
+  const projectTypes = parameterGroups['project.types'] || [];
+  const appTypeOptions = parameterGroups['project.app_types'] || [];
+  const moduleOptions = parameterGroups['project.module_complexity'] || [];
+  const integrationOptions = parameterGroups['project.integrations'] || [];
+  const aiOptions = parameterGroups['project.ai_capability'] || [];
+  const vaptOptions = parameterGroups['project.vapt_scope'] || [];
+  const assetOptions = parameterGroups['project.asset_count'] || [];
+  const testTypeOptions = parameterGroups['project.test_type'] || [];
 
   // Estimate computation (Weeks & Sprints)
   let estimatedWeeks = '8 – 12 Weeks';
@@ -84,28 +103,23 @@ export default function ProjectEstimatorPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           {/* Project Type Switcher */}
           <div className="flex rounded-xl bg-white p-1.5 border border-line shadow-sm max-w-md mx-auto">
-            <button
-              onClick={() => setProjectType('software')}
-              className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 ${
-                projectType === 'software'
-                  ? 'bg-navy-900 text-white shadow'
-                  : 'text-muted hover:text-navy-900'
-              }`}
-            >
-              <Code2 className="w-4 h-4" />
-              Software Development
-            </button>
-            <button
-              onClick={() => setProjectType('vapt')}
-              className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 ${
-                projectType === 'vapt'
-                  ? 'bg-navy-900 text-white shadow'
-                  : 'text-muted hover:text-navy-900'
-              }`}
-            >
-              <Shield className="w-4 h-4" />
-              VAPT / Penetration Testing
-            </button>
+            {projectTypes.map((option) => {
+              const Icon = option.value === 'vapt' ? Shield : Code2;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => setProjectType(option.value as 'software' | 'vapt')}
+                  className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 ${
+                    projectType === option.value
+                      ? 'bg-navy-900 text-white shadow'
+                      : 'text-muted hover:text-navy-900'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {option.label}
+                </button>
+              );
+            })}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -122,9 +136,9 @@ export default function ProjectEstimatorPage() {
                       onChange={(e) => setAppType(e.target.value)}
                       className="w-full px-3 py-2.5 rounded-lg border border-line text-xs font-semibold bg-white"
                     >
-                      <option value="web_only">Responsive Enterprise Web Application</option>
-                      <option value="web_mobile">Web Platform + Native iOS & Android Apps</option>
-                      <option value="api_gateway">High-Throughput API Gateway & Microservices</option>
+                      {appTypeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -137,9 +151,9 @@ export default function ProjectEstimatorPage() {
                       onChange={(e) => setModulesCount(e.target.value)}
                       className="w-full px-3 py-2.5 rounded-lg border border-line text-xs font-semibold bg-white"
                     >
-                      <option value="low">Standard (1 – 3 Core Modules, Simple RBAC)</option>
-                      <option value="mid">Comprehensive (4 – 7 Modules, Multi-Role, Workflows)</option>
-                      <option value="high">Enterprise-Scale (8+ Modules, Multi-Tenant, Complex Engine)</option>
+                      {moduleOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -152,9 +166,9 @@ export default function ProjectEstimatorPage() {
                       onChange={(e) => setIntegrationsCount(e.target.value)}
                       className="w-full px-3 py-2.5 rounded-lg border border-line text-xs font-semibold bg-white"
                     >
-                      <option value="single">Minimal (1 – 2 APIs, e.g. Payment Gateway only)</option>
-                      <option value="multiple">Standard (3 – 5 Integrations: ERP, Core Banking, Notification)</option>
-                      <option value="complex">Extensive (Multiple legacy core systems, ESB/Kafka)</option>
+                      {integrationOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -167,9 +181,9 @@ export default function ProjectEstimatorPage() {
                       onChange={(e) => setAiCapability(e.target.value)}
                       className="w-full px-3 py-2.5 rounded-lg border border-line text-xs font-semibold bg-white"
                     >
-                      <option value="no">Standard CRUD & Business Logic</option>
-                      <option value="yes">Enterprise RAG / AI Chat Assistant Integration</option>
-                      <option value="complex">Custom ML Model Pipelines & Predictive Analytics</option>
+                      {aiOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
                 </>
@@ -184,10 +198,9 @@ export default function ProjectEstimatorPage() {
                       onChange={(e) => setVaptScope(e.target.value)}
                       className="w-full px-3 py-2.5 rounded-lg border border-line text-xs font-semibold bg-white"
                     >
-                      <option value="web_api">Web Application + REST APIs</option>
-                      <option value="mobile">Mobile Applications (Android APK + iOS IPA)</option>
-                      <option value="network">External / Internal Network Infrastructure</option>
-                      <option value="full">Full-Scope (Web, Mobile, API & Network)</option>
+                      {vaptOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -200,9 +213,9 @@ export default function ProjectEstimatorPage() {
                       onChange={(e) => setAssetCount(e.target.value)}
                       className="w-full px-3 py-2.5 rounded-lg border border-line text-xs font-semibold bg-white"
                     >
-                      <option value="small">Small Scope (Single web app or &lt; 20 API endpoints)</option>
-                      <option value="standard">Standard Scope (Multi-tenant app, 20 – 60 endpoints)</option>
-                      <option value="large">Large Scope (Ecosystem with &gt; 60 endpoints & mobile apps)</option>
+                      {assetOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -215,9 +228,9 @@ export default function ProjectEstimatorPage() {
                       onChange={(e) => setTestType(e.target.value)}
                       className="w-full px-3 py-2.5 rounded-lg border border-line text-xs font-semibold bg-white"
                     >
-                      <option value="grey_box">Grey Box (Authenticated credentials - Recommended)</option>
-                      <option value="black_box">Black Box (Zero knowledge external attacker simulation)</option>
-                      <option value="white_box">White Box (Includes source code audit & architecture review)</option>
+                      {testTypeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
                 </>
