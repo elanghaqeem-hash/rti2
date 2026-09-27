@@ -62,6 +62,7 @@ type TargetRow = {
   criticality: 'Critical' | 'High' | 'Medium' | 'Low';
   weight: number;
   gateKey?: string | null;
+  applicabilityRule?: string | null;
   kind: 'question' | 'control';
 };
 
@@ -584,7 +585,45 @@ export function saveIsoResponse(
   };
 }
 
-function targetRows(versionId: string, mode: IsoMode): TargetRow[] {
+function targetApplies(target: TargetRow, assessment: Record<string, unknown>) {
+  if (!target.applicabilityRule) return true;
+  try {
+    const rule = JSON.parse(target.applicabilityRule) as {
+      field?: string;
+      equals?: unknown;
+      notEquals?: unknown;
+      notEmpty?: boolean;
+    };
+    if (!rule.field) return true;
+
+    const fieldMap: Record<string, string> = {
+      cloudStatus: 'cloud_status',
+      cloudProvider: 'cloud_provider',
+      remoteWorking: 'remote_working',
+      outsourcedIt: 'outsourced_it',
+      processesPersonalData: 'processes_personal_data',
+      hasSoc: 'has_soc',
+      hasIncidentResponseTeam: 'has_incident_response_team',
+      hasBcpDrp: 'has_bcp_drp',
+      iso27001Certified: 'iso27001_certified',
+    };
+    const databaseField = fieldMap[rule.field] || rule.field;
+    let value = assessment[databaseField];
+
+    if (['remoteWorking','outsourcedIt','processesPersonalData','hasSoc','hasIncidentResponseTeam','hasBcpDrp','iso27001Certified'].includes(rule.field)) {
+      value = Number(value) === 1;
+    }
+
+    if (rule.notEmpty) return String(value ?? '').trim().length > 0;
+    if (Object.prototype.hasOwnProperty.call(rule, 'equals')) return value === rule.equals;
+    if (Object.prototype.hasOwnProperty.call(rule, 'notEquals')) return value !== rule.notEquals;
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+function targetRows(versionId: string, mode: IsoMode, assessment: Record<string, unknown>): TargetRow[] {
   const db = getDatabase();
   const questions = db.prepare(`
     SELECT id,
@@ -597,7 +636,8 @@ function targetRows(versionId: string, mode: IsoMode): TargetRow[] {
       recommendation,
       criticality,
       weight,
-      gate_key AS gateKey
+      gate_key AS gateKey,
+      applicability_rule AS applicabilityRule
     FROM assessment_questions
     WHERE version_id = ? AND status = 'active'
       AND (? = 'full' OR is_quick = 1)
@@ -618,7 +658,8 @@ function targetRows(versionId: string, mode: IsoMode): TargetRow[] {
         recommendation,
         criticality,
         weight,
-        NULL AS gateKey
+        NULL AS gateKey,
+        NULL AS applicabilityRule
       FROM annex_controls
       WHERE version_id = ? AND status = 'active'
       ORDER BY sort_order
@@ -626,7 +667,7 @@ function targetRows(versionId: string, mode: IsoMode): TargetRow[] {
     result.push(...controls.map((row) => ({ ...row, kind: 'control' as const })));
   }
 
-  return result;
+  return result.filter((target) => targetApplies(target, assessment));
 }
 
 function weightedScore(targets: TargetRow[], responses: Map<string, ResponseRow>) {
@@ -697,7 +738,7 @@ export function calculateIsoAssessment(assessmentId: string, token: string) {
   const assessment = authAssessment(assessmentId, token);
   const versionId = String(assessment.version_id);
   const mode = String(assessment.mode) === 'full' ? 'full' : 'quick';
-  const targets = targetRows(versionId, mode);
+  const targets = targetRows(versionId, mode, assessment);
 
   const responseRows = db.prepare(`
     SELECT target_ref, response_value, is_na, applicability_justification,
