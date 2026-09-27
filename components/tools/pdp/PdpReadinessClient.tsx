@@ -317,16 +317,19 @@ export default function PdpReadinessClient() {
   };
 
   const updateResponse = (questionId: string, patch: Partial<ResponseRow>) => {
-    setResponses((current) => ({
-      ...current,
-      [questionId]: {
-        questionId,
-        confidence: 'unverified',
-        evidenceStatus: 'not_available',
-        ...(current[questionId] || {}),
-        ...patch,
-      },
-    }));
+    setResponses((current) => {
+      const existing = current[questionId];
+      return {
+        ...current,
+        [questionId]: {
+          ...(existing || {}),
+          questionId,
+          confidence: existing?.confidence || 'unverified',
+          evidenceStatus: existing?.evidenceStatus || 'not_available',
+          ...patch,
+        },
+      };
+    });
   };
 
   const persistSession = (id: string, token: string) => {
