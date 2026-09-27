@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { calculateEstimatorSession } from '@/lib/project-estimator/repository';
+import { calculateEstimatorSession, verifyEstimatorSessionAccess } from '@/lib/project-estimator/repository';
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/security/request-protection';
 
 export const runtime = 'nodejs';
@@ -13,7 +13,9 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null) as any;
   const sessionId = typeof body?.sessionId === 'string' ? body.sessionId.trim() : '';
-  if (!sessionId) return NextResponse.json({ success: false, error: 'Session ID is required.' }, { status: 400, headers });
+  const resumeToken = typeof body?.resumeToken === 'string' ? body.resumeToken.trim() : '';
+  if (!sessionId || !resumeToken) return NextResponse.json({ success: false, error: 'Session access token is required.' }, { status: 400, headers });
+  if (!verifyEstimatorSessionAccess(sessionId, resumeToken)) return NextResponse.json({ success: false, error: 'Estimator draft access denied.' }, { status: 403, headers });
 
   try {
     const estimate = calculateEstimatorSession(sessionId);
