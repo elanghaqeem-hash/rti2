@@ -686,7 +686,10 @@ export function getStoredNistResult(assessmentId: string): NistAssessmentResult 
   const strongestFunction = [...functionScores].sort((a, b) => b.score - a.score)[0];
   const weakestFunction = [...functionScores].sort((a, b) => a.score - b.score)[0];
 
-  const config = getNistAssessmentConfig();
+  const config = getNistAssessmentConfig({
+    frameworkVersion: assessment.frameworkVersion,
+    questionnaireVersion: assessment.questionnaireVersion,
+  });
   const tierRule = config.tierRules.find((item) => item.tier === assessment.indicativeTier)
     || config.tierRules[0];
 
