@@ -1206,6 +1206,15 @@ export function recordEvidenceFile(
     now(),
   );
 
+  if (input.targetRef) {
+    db.prepare(`
+      UPDATE assessment_responses
+      SET evidence_status = 'evidence_uploaded', updated_at = ?
+      WHERE assessment_id = ? AND target_ref = ?
+        AND evidence_status IN ('no_evidence','evidence_planned','evidence_exists')
+    `).run(now(), assessmentId, input.targetRef);
+  }
+
   audit(
     assessmentId,
     String(assessment.organization_id),
