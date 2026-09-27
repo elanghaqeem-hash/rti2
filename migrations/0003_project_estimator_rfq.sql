@@ -137,6 +137,35 @@ CREATE TABLE IF NOT EXISTS pricing_parameters (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS estimator_rules (
+  id TEXT PRIMARY KEY,
+  service_id TEXT,
+  name TEXT NOT NULL,
+  condition_json TEXT NOT NULL DEFAULT '[]',
+  effects_json TEXT NOT NULL DEFAULT '{}',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS estimator_settings (
+  key TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  value TEXT NOT NULL,
+  is_public INTEGER NOT NULL DEFAULT 0 CHECK (is_public IN (0,1)),
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS estimator_notification_templates (
+  key TEXT PRIMARY KEY,
+  channel TEXT NOT NULL CHECK (channel IN ('email','whatsapp','system')),
+  subject TEXT,
+  body TEXT NOT NULL,
+  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS resource_roles (
   id TEXT PRIMARY KEY,
   role_key TEXT NOT NULL UNIQUE,
@@ -319,6 +348,7 @@ CREATE INDEX IF NOT EXISTS idx_rfqs_status_created ON rfqs(status, created_at DE
 CREATE INDEX IF NOT EXISTS idx_opportunities_stage ON opportunities(stage, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_questions_service_order ON estimator_questions(service_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_services_category_active ON services(category_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_estimator_rules_service ON estimator_rules(service_id, sort_order, is_active);
 
 -- Production configuration seed: RTI service catalog, not customer/demo transaction data.
 INSERT OR IGNORE INTO service_categories (id, slug, name, description, sort_order, is_active, created_at, updated_at) VALUES
@@ -365,6 +395,22 @@ INSERT OR IGNORE INTO pricing_parameters (key,label,value,min_value,max_value,is
 ('complexity_multiplier_very_high','Very high complexity multiplier',1.40,0.50,4.00,1,CURRENT_TIMESTAMP),
 ('accelerated_timeline_multiplier','Accelerated timeline multiplier',1.15,1.00,2.00,1,CURRENT_TIMESTAMP),
 ('price_range_spread','Public indicative range spread',0.15,0.05,0.50,1,CURRENT_TIMESTAMP);
+
+INSERT OR IGNORE INTO estimator_settings (key,label,value,is_public,updated_at) VALUES
+('rfq_prefix','RFQ number prefix','RTI-RFQ',0,CURRENT_TIMESTAMP),
+('public_disclaimer','Public estimator disclaimer','This estimate is indicative and is generated based on information submitted by the user and configurable project estimation parameters. It is not a binding commercial offer. Final pricing, scope, timeline, technical architecture, resource allocation, tax treatment and contractual terms are subject to RTI review and formal quotation.',1,CURRENT_TIMESTAMP),
+('whatsapp_number','RTI WhatsApp destination','',0,CURRENT_TIMESTAMP),
+('whatsapp_message_template','WhatsApp RFQ message','Hello RTI, I have completed Project Estimator. My RFQ reference is {{rfq_number}}. I would like to discuss the project.',1,CURRENT_TIMESTAMP),
+('internal_rfq_email','Internal RFQ notification email','',0,CURRENT_TIMESTAMP);
+
+INSERT OR IGNORE INTO estimator_notification_templates (key,channel,subject,body,is_active,updated_at) VALUES
+('rfq_customer_confirmation','email','RTI RFQ {{rfq_number}} received','Thank you. RTI has received RFQ {{rfq_number}} for {{project_name}}. Our team will review the submitted scope before preparing any formal proposal or quotation.',1,CURRENT_TIMESTAMP),
+('rfq_internal_alert','email','New RTI RFQ {{rfq_number}}','A new RFQ was submitted by {{company}} for {{service}}. Review the Project Estimator admin console for scope, indicative value, readiness and next actions.',1,CURRENT_TIMESTAMP);
+
+INSERT OR IGNORE INTO estimator_rules (id,service_id,name,condition_json,effects_json,sort_order,is_active,updated_at) VALUES
+('rule-vapt-large-auth','svc-vapt','Large authenticated VAPT scope','[{"field":"asset_volume","operator":"equals","value":"large"},{"field":"test_method","operator":"equals","value":"grey"}]','{"complexityDelta":8,"effortMultiplier":1.15,"priceMultiplier":1.10,"factor":"Large authenticated attack surface"}',10,1,CURRENT_TIMESTAMP),
+('rule-dev-complex-integration','svc-webapp','Complex application integrations','[{"field":"integration_complexity","operator":"equals","value":"high"}]','{"complexityDelta":10,"effortMultiplier":1.20,"priceMultiplier":1.15,"factor":"Complex enterprise integrations"}',20,1,CURRENT_TIMESTAMP),
+('rule-accelerated',NULL,'Accelerated delivery pressure','[{"field":"timeline_pressure","operator":"equals","value":"accelerated"}]','{"complexityDelta":8,"effortMultiplier":1.10,"priceMultiplier":1.15,"durationMultiplier":0.85,"factor":"Accelerated delivery timeline"}',30,0,CURRENT_TIMESTAMP);
 
 INSERT OR IGNORE INTO resource_roles (id,role_key,name,internal_day_rate,is_active,updated_at) VALUES
 ('role-pm','project_manager','Project Manager',NULL,1,CURRENT_TIMESTAMP),
