@@ -32,3 +32,20 @@ test('environment files are ignored while the example remains tracked', () => {
   assert.match(gitignore, /^\.env\.\*$/m);
   assert.match(gitignore, /^!\.env\.example$/m);
 });
+
+
+test('extended AI providers are wired into settings and router', () => {
+  const store = source('lib/admin/settings-store.ts');
+  const router = source('lib/ai/provider-router.ts');
+  const adminUi = source('app/admin/page.tsx');
+
+  for (const provider of ['deepseek', 'mistral', 'xai']) {
+    assert.match(store, new RegExp("'" + provider + "'"));
+    assert.match(router, new RegExp("case '" + provider + "'"));
+    assert.match(adminUi, new RegExp("'" + provider + "'"));
+  }
+
+  assert.match(router, /https:\/\/api\.deepseek\.com\/chat\/completions/);
+  assert.match(router, /https:\/\/api\.mistral\.ai\/v1\/chat\/completions/);
+  assert.match(router, /https:\/\/api\.x\.ai\/v1\/chat\/completions/);
+});
