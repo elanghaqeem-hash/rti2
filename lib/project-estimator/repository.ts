@@ -63,6 +63,17 @@ function safeJson<T>(value: string | null | undefined, fallback: T): T {
   }
 }
 
+function getSetting(key: string, fallback = ''): string {
+  try {
+    const row = getDatabase()
+      .prepare('SELECT value FROM estimator_settings WHERE key = ?')
+      .get(key) as { value?: string } | undefined;
+    return typeof row?.value === 'string' ? row.value : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function serviceFromRow(row: ServiceRow): EstimatorService {
   return {
     id: row.id,
@@ -170,6 +181,10 @@ export function getEstimatorBootstrap(): EstimatorBootstrap {
      ORDER BY sort_order`,
   ).all() as Array<{ key: string; label: string; weight: number }>;
 
+  const publicSettingRows = db.prepare(
+    `SELECT key, value FROM estimator_settings WHERE is_public = 1 ORDER BY key`,
+  ).all() as Array<{ key: string; value: string }>;
+
   return {
     categories: categories.map((row) => ({
       id: row.id,
@@ -180,6 +195,7 @@ export function getEstimatorBootstrap(): EstimatorBootstrap {
     services: serviceRows.map(serviceFromRow),
     questions: buildQuestions(questionRows, optionRows),
     dimensions: dimensions.map((row) => ({ ...row, weight: Number(row.weight) })),
+    publicSettings: Object.fromEntries(publicSettingRows.map((row) => [row.key, row.value])),
   };
 }
 
@@ -336,6 +352,79 @@ function priceMultiplierForLevel(level: ProjectEstimate['complexityLevel']) {
   return Number(row?.value || 1);
 }
 
+type RuleCondition = {
+  field: string;
+  operator?: 'equals' | 'not_equals' | 'includes' | 'in' | 'gt' | 'gte' | 'lt' | 'lte' | 'truthy';
+  value?: unknown;
+};
+
+type RuleEffects = {
+  complexityDelta?: number;
+  effortMultiplier?: number;
+  priceMultiplier?: number;
+  durationMultiplier?: number;
+  factor?: string;
+};
+
+function matchesRuleCondition(condition: RuleCondition, answers: Map<string, unknown>) {
+  const actual = answers.get(condition.field);
+  const operator = condition.operator || 'equals';
+  if (operator === 'truthy') return Boolean(actual);
+  if (operator === 'equals') return String(actual) === String(condition.value);
+  if (operator === 'not_equals') return String(actual) !== String(condition.value);
+  if (operator === 'includes') {
+    return Array.isArray(actual)
+      ? actual.map(String).includes(String(condition.value))
+      : String(actual || '').includes(String(condition.value || ''));
+  }
+  if (operator === 'in') {
+    return Array.isArray(condition.value) && condition.value.map(String).includes(String(actual));
+  }
+  const left = Number(actual);
+  const right = Number(condition.value);
+  if (!Number.isFinite(left) || !Number.isFinite(right)) return false;
+  if (operator === 'gt') return left > right;
+  if (operator === 'gte') return left >= right;
+  if (operator === 'lt') return left < right;
+  if (operator === 'lte') return left <= right;
+  return false;
+}
+
+function evaluateRules(serviceId: string, answers: Map<string, unknown>) {
+  const rows = getDatabase().prepare(
+    `SELECT id, name, condition_json, effects_json
+     FROM estimator_rules
+     WHERE is_active = 1 AND (service_id IS NULL OR service_id = ?)
+     ORDER BY sort_order, name`,
+  ).all(serviceId) as Array<{
+    id: string;
+    name: string;
+    condition_json: string;
+    effects_json: string;
+  }>;
+
+  let complexityDelta = 0;
+  let effortMultiplier = 1;
+  let priceMultiplier = 1;
+  let durationMultiplier = 1;
+  const factors: string[] = [];
+  const appliedRules: string[] = [];
+
+  for (const row of rows) {
+    const conditions = safeJson<RuleCondition[]>(row.condition_json, []);
+    if (!conditions.every((condition) => matchesRuleCondition(condition, answers))) continue;
+    const effects = safeJson<RuleEffects>(row.effects_json, {});
+    complexityDelta += Number(effects.complexityDelta || 0);
+    effortMultiplier *= Number(effects.effortMultiplier || 1);
+    priceMultiplier *= Number(effects.priceMultiplier || 1);
+    durationMultiplier *= Number(effects.durationMultiplier || 1);
+    if (effects.factor) factors.push(effects.factor);
+    appliedRules.push(row.id);
+  }
+
+  return { complexityDelta, effortMultiplier, priceMultiplier, durationMultiplier, factors, appliedRules };
+}
+
 function loadSessionAnswers(sessionId: string, serviceId: string, mode: 'quick' | 'detailed') {
   const db = getDatabase();
   const rows = db.prepare(
@@ -421,8 +510,10 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
   const factors: string[] = [];
   let answeredRequired = 0;
   let requiredCount = 0;
+  const answerMap = new Map<string, unknown>();
 
   for (const row of rows) {
+    answerMap.set(row.question_key, safeJson<unknown>(row.answer_json, null));
     const answer = safeJson<unknown>(row.answer_json, null);
     const hasAnswer = answer !== null && answer !== '' && answer !== false;
     if (Number(row.required) === 1) {
@@ -446,20 +537,30 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
   }
 
   const averageScore = totalWeight ? weightedScore / totalWeight : 3;
-  const complexityIndex = Math.round(Math.min(100, Math.max(0, ((averageScore - 1) / 4) * 100)));
+  const ruleResult = evaluateRules(service.id, answerMap);
+  factors.push(...ruleResult.factors);
+  const complexityIndex = Math.round(
+    Math.min(100, Math.max(0, ((averageScore - 1) / 4) * 100 + ruleResult.complexityDelta)),
+  );
   const complexityLevel = levelFromIndex(complexityIndex);
   const complexityMultiplier = priceMultiplierForLevel(complexityLevel);
-  const effortFactor = effortMultipliers.length
+  const effortFactor = (effortMultipliers.length
     ? effortMultipliers.reduce((sum, value) => sum + value, 0) / effortMultipliers.length
-    : 1;
-  const priceFactor = priceMultipliers.length
+    : 1) * ruleResult.effortMultiplier;
+  const priceFactor = (priceMultipliers.length
     ? priceMultipliers.reduce((sum, value) => sum + value, 0) / priceMultipliers.length
-    : 1;
+    : 1) * ruleResult.priceMultiplier;
 
   const effortDays = Math.max(1, Math.round(service.baseEffortDays * effortFactor * complexityMultiplier * 10) / 10);
   const scale = effortDays / Math.max(service.baseEffortDays, 1);
-  const durationMinWeeks = Math.max(1, Math.round(service.durationMinWeeks * scale * 10) / 10);
-  const durationMaxWeeks = Math.max(durationMinWeeks, Math.round(service.durationMaxWeeks * scale * 10) / 10);
+  const durationMinWeeks = Math.max(
+    1,
+    Math.round(service.durationMinWeeks * scale * ruleResult.durationMultiplier * 10) / 10,
+  );
+  const durationMaxWeeks = Math.max(
+    durationMinWeeks,
+    Math.round(service.durationMaxWeeks * scale * ruleResult.durationMultiplier * 10) / 10,
+  );
   const priceMin = Math.max(0, Math.round(service.basePriceMin * priceFactor * complexityMultiplier));
   const priceMax = Math.max(priceMin, Math.round(service.basePriceMax * priceFactor * complexityMultiplier));
   const projectSize = sizeFromEffort(effortDays);
@@ -500,6 +601,7 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
     priceFactor: Math.round(priceFactor * 1000) / 1000,
     requiredAnswered: answeredRequired,
     requiredTotal: requiredCount,
+    appliedRules: ruleResult.appliedRules,
   };
 
   db.prepare(
@@ -698,7 +800,8 @@ export async function createRfqDraft(params: {
 
   const now = new Date().toISOString();
   const rfqId = randomUUID();
-  const rfqNumber = `RTI-RFQ-${new Date().getUTCFullYear()}-${randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()}`;
+  const rfqPrefix = getSetting('rfq_prefix', 'RTI-RFQ').replace(/[^A-Za-z0-9-]/g, '').slice(0, 32) || 'RTI-RFQ';
+  const rfqNumber = `${rfqPrefix}-${new Date().getUTCFullYear()}-${randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()}`;
 
   db.exec('BEGIN IMMEDIATE;');
   try {
