@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { upsertEstimatorSession } from '@/lib/project-estimator/repository';
+import { getEstimatorSessionByToken, upsertEstimatorSession } from '@/lib/project-estimator/repository';
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/security/request-protection';
 import type { SessionInput } from '@/lib/project-estimator/types';
 
@@ -7,6 +7,21 @@ export const runtime = 'nodejs';
 
 function validText(value: unknown, max: number) {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
+}
+
+export async function GET(req: Request) {
+  const limit = await enforceRateLimit(req, { bucket: 'project-estimator-resume', limit: 30, windowSeconds: 300 });
+  const headers = { 'Cache-Control': 'no-store', ...rateLimitHeaders(limit) };
+  if (!limit.allowed) {
+    return NextResponse.json({ success: false, error: 'Saved draft lookup is temporarily unavailable or rate limited.' }, { status: limit.reason === 'limit-exceeded' ? 429 : 503, headers });
+  }
+  const token = new URL(req.url).searchParams.get('token')?.trim() || '';
+  if (!token) return NextResponse.json({ success: false, error: 'Resume token is required.' }, { status: 400, headers });
+  try {
+    return NextResponse.json({ success: true, ...getEstimatorSessionByToken(token) }, { headers });
+  } catch {
+    return NextResponse.json({ success: false, error: 'Saved estimator draft was not found or is no longer available.' }, { status: 404, headers });
+  }
 }
 
 export async function POST(req: Request) {
@@ -26,7 +41,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = upsertEstimatorSession(input, validText(body?.sessionId, 80) || undefined);
+    const result = upsertEstimatorSession(input, validText(body?.sessionId, 80) || undefined, validText(body?.resumeToken, 256) || undefined);
     return NextResponse.json({ success: true, ...result }, { status: 201, headers });
   } catch (error) {
     console.error('Estimator session persistence failed:', error);
