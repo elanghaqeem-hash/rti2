@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   if (!limit.allowed) {
     return NextResponse.json({ success: false, error: 'Saved draft lookup is temporarily unavailable or rate limited.' }, { status: limit.reason === 'limit-exceeded' ? 429 : 503, headers });
   }
-  const token = new URL(req.url).searchParams.get('token')?.trim() || '';
+  const token = req.headers.get('x-rti-resume-token')?.trim() || new URL(req.url).searchParams.get('token')?.trim() || '';
   if (!token) return NextResponse.json({ success: false, error: 'Resume token is required.' }, { status: 400, headers });
   try {
     return NextResponse.json({ success: true, ...getEstimatorSessionByToken(token) }, { headers });
