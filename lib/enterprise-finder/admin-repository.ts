@@ -22,7 +22,11 @@ function db() {
   }
 }
 
-function row(table: string, where: string, values: unknown[]) {
+function row(
+  table: string,
+  where: string,
+  values: Array<string | number | bigint | null>,
+) {
   const allowed = new Set([
     'enterprise_finder_questions',
     'enterprise_finder_question_options',
