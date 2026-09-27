@@ -1246,6 +1246,16 @@ export function recordEvidenceFile(
 }
 
 
+export function getIsoApplicabilityOptions() {
+  const db = getDatabase();
+  return db.prepare(`
+    SELECT value, label, description, sort_order AS sortOrder
+    FROM system_parameters
+    WHERE group_key = 'iso27001.applicability' AND is_active = 1
+    ORDER BY sort_order, label
+  `).all();
+}
+
 export function getIsoSoa(assessmentId: string, token: string) {
   const db = getDatabase();
   const assessment = authAssessment(assessmentId, token);
