@@ -719,6 +719,34 @@ export function getStoredNistResult(assessmentId: string): NistAssessmentResult 
   };
 }
 
+export function recordNistGeneratedReport(
+  assessmentId: string,
+  generatedBy: string,
+) {
+  const db = getDatabase();
+  const assessment = getNistAssessment(assessmentId);
+  const id = randomUUID();
+  const generatedAt = new Date().toISOString();
+
+  db.prepare(
+    `INSERT INTO nist_generated_reports(
+      id, assessment_id, report_version, framework_version,
+      questionnaire_version, scoring_model_version, generated_at, generated_by
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    id,
+    assessmentId,
+    'NIST-CSF-2.0-QC-v1.0',
+    assessment.frameworkVersion,
+    assessment.questionnaireVersion,
+    assessment.scoringModelVersion,
+    generatedAt,
+    String(generatedBy || 'assessment-user').slice(0, 240),
+  );
+
+  return { id, generatedAt, reportVersion: 'NIST-CSF-2.0-QC-v1.0' };
+}
+
 export function writeNistAudit(params: {
   actor: string;
   action: string;
