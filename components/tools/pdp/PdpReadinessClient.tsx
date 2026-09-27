@@ -254,9 +254,14 @@ function riskTone(priority: string) {
 }
 
 function statusTone(value: string) {
-  if (/likely|required|identified/i.test(value)) return 'border-amber-200 bg-amber-50 text-amber-900';
+  if (/no high-risk trigger|trigger not evident/i.test(value)) {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-800';
+  }
   if (/further/i.test(value)) return 'border-blue-200 bg-blue-50 text-blue-900';
-  return 'border-emerald-200 bg-emerald-50 text-emerald-800';
+  if (/likely|required|trigger identified/i.test(value)) {
+    return 'border-amber-200 bg-amber-50 text-amber-900';
+  }
+  return 'border-slate-200 bg-slate-50 text-slate-800';
 }
 
 function Radar({ domains }: { domains: Result['domainScores'] }) {
