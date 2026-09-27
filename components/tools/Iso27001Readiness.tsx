@@ -298,6 +298,40 @@ export function Iso27001Readiness() {
           comment: String(row.comment || ''),
         };
       }
+      const assessment = data.assessment || {};
+      setProfile({
+        name: String(assessment.organization_name || ''),
+        industry: String(assessment.industry || ''),
+        subIndustry: String(assessment.sub_industry || ''),
+        country: String(assessment.country || 'Indonesia'),
+        employeeCount: assessment.employee_count == null ? '' : String(assessment.employee_count),
+        locationCount: assessment.location_count == null ? '' : String(assessment.location_count),
+        businessUnitCount: assessment.business_unit_count == null ? '' : String(assessment.business_unit_count),
+        itUserCount: assessment.it_user_count == null ? '' : String(assessment.it_user_count),
+        cloudStatus: String(assessment.cloud_status || ''),
+        cloudProvider: String(assessment.cloud_provider || ''),
+        dataCenter: String(assessment.data_center || ''),
+        criticalThirdParties: String(assessment.critical_third_parties || ''),
+        regulatoryEnvironment: String(assessment.regulatory_environment || ''),
+        targetCertification: String(assessment.target_certification || ''),
+        targetCertificationDate: String(assessment.target_certification_date || ''),
+        remoteWorking: Number(assessment.remote_working) === 1,
+        outsourcedIt: Number(assessment.outsourced_it) === 1,
+        processesPersonalData: Number(assessment.processes_personal_data) === 1,
+        hasSoc: Number(assessment.has_soc) === 1,
+        hasIncidentResponseTeam: Number(assessment.has_incident_response_team) === 1,
+        hasBcpDrp: Number(assessment.has_bcp_drp) === 1,
+        iso27001Certified: Number(assessment.iso27001_certified) === 1,
+      });
+      try {
+        const storedScope = JSON.parse(String(assessment.scope_json || '{}'));
+        if (storedScope && typeof storedScope === 'object') {
+          setScope((existing) => ({ ...existing, ...storedScope }));
+        }
+      } catch {}
+      setAssessmentConsent(Number(assessment.assessment_consent) === 1);
+      setEvidenceConsent(Number(assessment.evidence_processing_consent) === 1);
+      setAiConsent(Number(assessment.ai_processing_consent) === 1);
       setMode(nextMode);
       setAssessmentId(session.id);
       setAccessToken(session.token);
@@ -414,6 +448,32 @@ export function Iso27001Readiness() {
       URL.revokeObjectURL(url);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Report PDF tidak dapat dibuat.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteAssessment() {
+    if (!assessmentId || !accessToken) return;
+    const confirmed = window.confirm(
+      'Delete this assessment and its uploaded evidence? This action cannot be undone.',
+    );
+    if (!confirmed) return;
+
+    setBusy(true);
+    setMessage('');
+    try {
+      const response = await fetch('/api/assessments/' + encodeURIComponent(assessmentId), {
+        method: 'DELETE',
+        headers: { 'x-assessment-token': accessToken },
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || 'Assessment deletion failed.');
+      }
+      reset();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Assessment deletion failed.');
     } finally {
       setBusy(false);
     }
@@ -707,7 +767,10 @@ export function Iso27001Readiness() {
 
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-950"><ShieldCheck className="mr-2 inline h-4 w-4" />{result.disclaimer}</div>
           {message && <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-900">{message}</div>}
-          <button onClick={reset} className="inline-flex items-center gap-2 text-xs font-bold text-muted hover:text-navy-900"><RotateCcw className="h-4 w-4" /> Start a new assessment</button>
+          <div className="flex flex-wrap items-center gap-4">
+            <button onClick={reset} className="inline-flex items-center gap-2 text-xs font-bold text-muted hover:text-navy-900"><RotateCcw className="h-4 w-4" /> Start a new assessment</button>
+            <button onClick={deleteAssessment} disabled={busy} className="text-xs font-bold text-rose-700 disabled:opacity-50">Delete this assessment & evidence</button>
+          </div>
         </div>
       </main>
     );
