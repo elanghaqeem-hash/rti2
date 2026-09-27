@@ -566,6 +566,77 @@ export function completeFinderAssessment(
   }
 }
 
+export function getFinderDraft(
+  assessmentId: string,
+  token: string,
+): {
+  status: 'draft' | 'completed';
+  locale: FinderLocale;
+  input: Partial<FinderAssessmentInput>;
+  updatedAt: string;
+} {
+  assertAssessmentToken(assessmentId, token);
+
+  try {
+    const database = db();
+    const assessment = database
+      .prepare(
+        `SELECT status, locale, updated_at
+         FROM enterprise_finder_assessments
+         WHERE id = ?`,
+      )
+      .get(assessmentId) as
+      | { status?: 'draft' | 'completed'; locale?: FinderLocale; updated_at?: string }
+      | undefined;
+
+    if (!assessment?.status) {
+      throw new Error('assessment-not-found');
+    }
+
+    const rows = database
+      .prepare(
+        `SELECT question_key, answer_json
+         FROM enterprise_finder_answers
+         WHERE assessment_id = ?`,
+      )
+      .all(assessmentId) as Array<{ question_key: string; answer_json: string }>;
+
+    const answers = Object.fromEntries(
+      rows.map((row) => [
+        row.question_key,
+        parseJson<unknown>(row.answer_json, null),
+      ]),
+    );
+
+    return {
+      status: assessment.status,
+      locale: assessment.locale === 'en' ? 'en' : 'id',
+      input: {
+        locale: assessment.locale === 'en' ? 'en' : 'id',
+        organization: answers.organization as FinderAssessmentInput['organization'] | undefined,
+        technology: answers.technology as FinderAssessmentInput['technology'] | undefined,
+        pressures: answers.pressures as FinderAssessmentInput['pressures'] | undefined,
+        triggerAnswers: answers.trigger_answers as FinderAssessmentInput['triggerAnswers'] | undefined,
+        objectives: answers.objectives as FinderAssessmentInput['objectives'] | undefined,
+        targetTimeline: answers.target_timeline as string | undefined,
+        deliveryPreference: answers.delivery_preference as string | undefined,
+      },
+      updatedAt: assessment.updated_at || new Date(0).toISOString(),
+    };
+  } catch (error) {
+    if (
+      error instanceof FinderDatabaseUnavailableError ||
+      (error instanceof Error &&
+        ['invalid-assessment-token', 'assessment-not-found'].includes(error.message))
+    ) {
+      throw error;
+    }
+    throw new FinderDatabaseUnavailableError(
+      error instanceof Error ? error.message : 'Unable to load assessment draft.',
+    );
+  }
+}
+
 export function getFinderAssessmentResult(
   assessmentId: string,
   token: string,
