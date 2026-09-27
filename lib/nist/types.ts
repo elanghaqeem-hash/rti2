@@ -71,6 +71,14 @@ export interface NistTierRule {
   minConfidence: number;
 }
 
+export interface NistBranchingRule {
+  id: string;
+  parentQuestionId: string;
+  answerValues: string[];
+  followUpQuestionId: string;
+  sortOrder: number;
+}
+
 export interface NistServiceMapping {
   id: string;
   categoryCode: string;
@@ -93,6 +101,7 @@ export interface NistAssessmentConfig {
   evidenceOptions: NistEvidenceOption[];
   scoringThresholds: NistScoringThreshold[];
   tierRules: NistTierRule[];
+  branchingRules: NistBranchingRule[];
   serviceMappings: NistServiceMapping[];
 }
 
