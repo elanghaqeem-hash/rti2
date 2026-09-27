@@ -21,8 +21,8 @@ export interface Lead {
  *
  * IMPORTANT:
  * This module intentionally contains no in-memory persistence and no sample
- * records. Operational lead data must come from an authenticated persistent
- * database adapter. Until that adapter exists, the API fails closed.
+ * records. Operational lead data comes from the persistent Cloudflare D1
+ * adapter. If the RTI_DB binding or migration is unavailable, the API fails closed.
  */
 export function calculateLeadScore(params: {
   role?: string;
