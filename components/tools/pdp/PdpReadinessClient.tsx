@@ -39,6 +39,8 @@ type Config = {
   answers: Array<{ value: string; label: string; score?: number }>;
   confidenceOptions: Array<{ value: string; label: string; factor: number }>;
   evidenceOptions: Array<{ value: string; label: string; factor: number }>;
+  organizationSizes: Array<{ value: string; label: string }>;
+  customerTypes: Array<{ value: string; label: string }>;
 };
 
 type Question = {
@@ -162,13 +164,6 @@ type Result = {
   disclaimer: string;
 };
 
-const ORGANIZATION_SIZES = [
-  ['1-50', '1–50 employees'],
-  ['51-250', '51–250 employees'],
-  ['251-1000', '251–1,000 employees'],
-  ['1001-5000', '1,001–5,000 employees'],
-  ['5000+', '5,000+ employees'],
-];
 
 const initialProfile: Profile = {
   companyName: '',
@@ -763,8 +758,8 @@ export default function PdpReadinessClient() {
                   className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-3 text-sm font-normal"
                 >
                   <option value="">Pilih skala</option>
-                  {ORGANIZATION_SIZES.map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
+                  {(config?.organizationSizes || []).map((item) => (
+                    <option key={item.value} value={item.value}>{item.label}</option>
                   ))}
                 </select>
               </label>
@@ -791,21 +786,21 @@ export default function PdpReadinessClient() {
               <div className="text-xs font-bold text-navy-900">
                 Jenis pelanggan
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {['B2B','B2C','B2G'].map((value) => {
-                    const active = profile.customerTypes.includes(value);
+                  {(config?.customerTypes || []).map((item) => {
+                    const active = profile.customerTypes.includes(item.value);
                     return (
                       <button
                         type="button"
-                        key={value}
+                        key={item.value}
                         onClick={() => setProfile((current) => ({
                           ...current,
                           customerTypes: active
-                            ? current.customerTypes.filter((item) => item !== value)
-                            : [...current.customerTypes, value],
+                            ? current.customerTypes.filter((value) => value !== item.value)
+                            : [...current.customerTypes, item.value],
                         }))}
                         className={'rounded-lg border px-3 py-2 text-xs ' + (active ? 'border-gold-500 bg-beige-50' : 'border-line bg-white')}
                       >
-                        {value}
+                        {item.label}
                       </button>
                     );
                   })}
