@@ -28,7 +28,14 @@ export const HexMark: React.FC<HexMarkProps> = ({
         aria-hidden="true"
       >
         <defs>
-          <linearGradient id="rtiOfficialGold" x1="46" y1="120" x2="462" y2="398" gradientUnits="userSpaceOnUse">
+          <linearGradient
+            id="rtiOfficialGold"
+            x1="46"
+            y1="120"
+            x2="462"
+            y2="398"
+            gradientUnits="userSpaceOnUse"
+          >
             <stop offset="0" stopColor="#F47A20" />
             <stop offset="0.48" stopColor="#F5A51C" />
             <stop offset="1" stopColor="#FFE600" />
@@ -37,7 +44,7 @@ export const HexMark: React.FC<HexMarkProps> = ({
 
         <polygon
           points="256,18 480,147 480,365 256,494 32,365 32,147"
-          fill={`url(#$"rtiOfficialGold")`}
+          fill="url(#rtiOfficialGold)"
         />
 
         <path
@@ -67,17 +74,20 @@ export const HexMark: React.FC<HexMarkProps> = ({
         />
         <circle cx="410" cy="332" r="20" fill="#FFFFFF" />
 
-        <polygon points="256,138 368,203 368,327 256,392 144,327 144,203" fill="#FFFFFF" />
+        <polygon
+          points="256,138 368,203 368,327 256,392 144,327 144,203"
+          fill="#FFFFFF"
+        />
         <polygon
           points="256,176 333,220 333,310 256,354 179,310 179,220"
-          stroke={`url(#$"rtiOfficialGold")`}
+          stroke="url(#rtiOfficialGold)"
           strokeWidth="8"
           strokeLinejoin="round"
         />
 
         <path
           d="M219 218V314M219 218H279C308 218 326 233 326 256C326 279 308 294 279 294H240M279 294L326 337"
-          stroke={`url(#$"rtiOfficialGold")`}
+          stroke="url(#rtiOfficialGold)"
           strokeWidth="12"
           strokeLinecap="round"
           strokeLinejoin="round"
