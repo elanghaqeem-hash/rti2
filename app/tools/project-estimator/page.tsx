@@ -15,7 +15,10 @@ import {
   Save,
   Send,
   ShieldCheck,
-  Sparkles,
+  Plus,
+  Trash2,
+  MessageCircle,
+  Calendar,
 } from 'lucide-react';
 import type {
   EstimatorBootstrap,
@@ -181,6 +184,19 @@ export default function ProjectEstimatorPage() {
   }, [bootstrap]);
 
   const progress = Math.round(((step + 1) / 7) * 100);
+  const publicDisclaimer =
+    bootstrap?.publicSettings?.public_disclaimer ||
+    'This estimate is indicative and is not a binding commercial offer. Final scope, pricing and terms require RTI review.';
+  const whatsappTemplate =
+    bootstrap?.publicSettings?.whatsapp_message_template ||
+    'Hello RTI, I have completed Project Estimator. My RFQ reference is {{rfq_number}}. I would like to discuss the project.';
+  const whatsappBase = bootstrap?.publicSettings?.whatsapp_url || '';
+  const whatsappHref =
+    rfq && whatsappBase
+      ? `${whatsappBase}${whatsappBase.includes('?') ? '&' : '?'}text=${encodeURIComponent(
+          whatsappTemplate.replaceAll('{{rfq_number}}', rfq.rfqNumber),
+        )}`
+      : '';
 
   const toggleObjective = (value: string) => {
     setSelectedObjectives((current) =>
@@ -190,6 +206,15 @@ export default function ProjectEstimatorPage() {
 
   const setAnswer = (key: string, value: unknown) => {
     setAnswers((current) => ({ ...current, [key]: value }));
+  };
+
+  const updateRfqList = (
+    key: 'projectObjective' | 'scopeOfWork' | 'technicalRequirements' | 'deliverables' | 'assumptions',
+    items: string[],
+  ) => {
+    setRfq((current) =>
+      current ? { ...current, content: { ...current.content, [key]: items } } : current,
+    );
   };
 
   const input: SessionInput = {
@@ -453,10 +478,32 @@ export default function ProjectEstimatorPage() {
                 </label>
                 <Field label="Contact name *" value={profile.contactName} onChange={(v) => setProfile({ ...profile, contactName: v })} />
                 <Field label="Business email *" type="email" value={profile.email} onChange={(v) => setProfile({ ...profile, email: v })} />
+                <label className="text-xs font-bold text-navy-900">Company size
+                  <select value={profile.companySize || ''} onChange={(e) => setProfile({ ...profile, companySize: e.target.value })} className="mt-1 w-full rounded-xl border border-line px-3 py-3 text-sm font-medium">
+                    <option value="">Select scale</option>
+                    <option value="1-50">1–50 employees</option>
+                    <option value="51-250">51–250 employees</option>
+                    <option value="251-1000">251–1,000 employees</option>
+                    <option value="1001-5000">1,001–5,000 employees</option>
+                    <option value="5000+">5,000+ employees</option>
+                  </select>
+                </label>
+                <Field label="Number of employees" type="number" value={profile.employeeCount} onChange={(v) => setProfile({ ...profile, employeeCount: v ? Number(v) : undefined })} />
+                <Field label="Number of offices / locations" type="number" value={profile.officeCount} onChange={(v) => setProfile({ ...profile, officeCount: v ? Number(v) : undefined })} />
+                <Field label="Location / city" value={profile.location} onChange={(v) => setProfile({ ...profile, location: v })} />
+                <Field label="Country" value={profile.country} onChange={(v) => setProfile({ ...profile, country: v })} />
                 <Field label="Title / role" value={profile.contactTitle} onChange={(v) => setProfile({ ...profile, contactTitle: v })} />
                 <Field label="Department" value={profile.department} onChange={(v) => setProfile({ ...profile, department: v })} />
+                <Field label="Phone" value={profile.phone} onChange={(v) => setProfile({ ...profile, phone: v })} />
                 <Field label="WhatsApp" value={profile.whatsapp} onChange={(v) => setProfile({ ...profile, whatsapp: v })} />
                 <Field label="Website" value={profile.website} onChange={(v) => setProfile({ ...profile, website: v })} />
+                <label className="text-xs font-bold text-navy-900">Preferred communication
+                  <select value={profile.preferredChannel || 'email'} onChange={(e) => setProfile({ ...profile, preferredChannel: e.target.value })} className="mt-1 w-full rounded-xl border border-line px-3 py-3 text-sm font-medium">
+                    <option value="email">Email</option>
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="phone">Phone</option>
+                  </select>
+                </label>
               </div>
             </div>
           )}
@@ -515,7 +562,7 @@ export default function ProjectEstimatorPage() {
                 ))}
               </div>
               <div className="mt-7 rounded-xl border border-blue-200 bg-blue-50 p-4 text-xs leading-relaxed text-blue-900">
-                Estimates are indicative, generated from RTI configuration and your inputs. Final scope, pricing, timeline, architecture, resource allocation, taxes and contractual terms require RTI review and formal quotation.
+                {publicDisclaimer}
               </div>
             </div>
           )}
@@ -546,7 +593,7 @@ export default function ProjectEstimatorPage() {
               <div className="mt-4 rounded-2xl border border-gold-500/30 bg-beige-50 p-6">
                 <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted">Indicative Investment</div>
                 <div className="mt-1 text-2xl font-extrabold text-navy-900">{money(estimate.priceMin)} – {money(estimate.priceMax)}</div>
-                <p className="mt-2 text-xs text-muted">Not a binding commercial offer. Internal cost, margin and resource rate are not exposed.</p>
+                <p className="mt-2 text-xs text-muted">{publicDisclaimer}</p>
               </div>
               <div className="mt-5 grid gap-5 lg:grid-cols-2">
                 <div className="rounded-2xl border border-line p-5">
@@ -596,11 +643,11 @@ export default function ProjectEstimatorPage() {
               </div>
 
               <div className="mt-5 space-y-5">
-                <ListSection title="Project Objectives" items={rfq.content.projectObjective} />
-                <ListSection title="Scope of Work" items={rfq.content.scopeOfWork} />
-                <ListSection title="Technical Requirements" items={rfq.content.technicalRequirements} />
-                <ListSection title="Deliverables" items={rfq.content.deliverables} />
-                <ListSection title="Assumptions" items={rfq.content.assumptions} />
+                <EditableListSection title="Project Objectives" items={rfq.content.projectObjective} editable={rfq.status === 'draft'} onChange={(items) => updateRfqList('projectObjective', items)} />
+                <EditableListSection title="Scope of Work" items={rfq.content.scopeOfWork} editable={rfq.status === 'draft'} onChange={(items) => updateRfqList('scopeOfWork', items)} />
+                <EditableListSection title="Technical Requirements" items={rfq.content.technicalRequirements} editable={rfq.status === 'draft'} onChange={(items) => updateRfqList('technicalRequirements', items)} />
+                <EditableListSection title="Deliverables" items={rfq.content.deliverables} editable={rfq.status === 'draft'} onChange={(items) => updateRfqList('deliverables', items)} />
+                <EditableListSection title="Assumptions" items={rfq.content.assumptions} editable={rfq.status === 'draft'} onChange={(items) => updateRfqList('assumptions', items)} />
                 {rfq.content.missingInformation.length > 0 && <ListSection title="Information Requiring Clarification" items={rfq.content.missingInformation} />}
                 {rfq.content.aiAssistedDraft && (
                   <RfqSection title="AI-assisted draft — review before submission"><p className="whitespace-pre-wrap text-xs leading-relaxed text-muted">{rfq.content.aiAssistedDraft}</p></RfqSection>
@@ -629,7 +676,19 @@ export default function ProjectEstimatorPage() {
               )}
 
               {rfq.status !== 'draft' && (
-                <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-800">RFQ submitted. RTI can now qualify the opportunity and proceed to presales/commercial review.</div>
+                <div className="mt-6 space-y-4">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-800">RFQ submitted. RTI can now qualify the opportunity and proceed to presales/commercial review.</div>
+                  <div className="flex flex-wrap gap-2 print:hidden">
+                    {whatsappHref && (
+                      <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-xs font-extrabold text-white">
+                        <MessageCircle className="h-4 w-4" /> Discuss with RTI
+                      </a>
+                    )}
+                    <Link href="/consultation" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line px-4 py-3 text-xs font-extrabold text-navy-900">
+                      <Calendar className="h-4 w-4" /> Schedule Consultation
+                    </Link>
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -708,4 +767,59 @@ function RfqSection({ title, children }: { title: string; children: React.ReactN
 function ListSection({ title, items }: { title: string; items: string[] }) {
   if (!items?.length) return null;
   return <RfqSection title={title}><ul className="space-y-2 text-xs leading-relaxed text-muted">{items.map((item, index) => <li key={index} className="flex gap-2"><span className="font-bold text-gold-600">•</span><span>{item}</span></li>)}</ul></RfqSection>;
+}
+
+function EditableListSection({
+  title,
+  items,
+  editable,
+  onChange,
+}: {
+  title: string;
+  items: string[];
+  editable: boolean;
+  onChange: (items: string[]) => void;
+}) {
+  return (
+    <RfqSection title={title}>
+      <div className="space-y-2">
+        {items.map((item, index) =>
+          editable ? (
+            <div key={index} className="flex items-start gap-2">
+              <textarea
+                value={item}
+                onChange={(event) => {
+                  const next = [...items];
+                  next[index] = event.target.value;
+                  onChange(next);
+                }}
+                className="min-h-16 flex-1 rounded-xl border border-line p-3 text-xs leading-relaxed"
+              />
+              <button
+                type="button"
+                onClick={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))}
+                className="rounded-lg border border-rose-200 p-2 text-rose-700"
+                aria-label={`Remove ${title} item`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <div key={index} className="flex gap-2 text-xs leading-relaxed text-muted">
+              <span className="font-bold text-gold-600">•</span><span>{item}</span>
+            </div>
+          ),
+        )}
+        {editable && (
+          <button
+            type="button"
+            onClick={() => onChange([...items, ''])}
+            className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-xs font-bold text-navy-900"
+          >
+            <Plus className="h-4 w-4" /> Add item
+          </button>
+        )}
+      </div>
+    </RfqSection>
+  );
 }
