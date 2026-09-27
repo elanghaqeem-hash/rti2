@@ -90,7 +90,40 @@ function rounded(value: number, digits = 0) {
   return Math.round(value * factor) / factor;
 }
 
-function maturity(score: number) {
+type ScoringConfig = {
+  parameters?: Record<string, number>;
+  maturityLevels?: Array<{
+    level: number;
+    label: string;
+    minScore: number;
+    maxScore: number;
+  }>;
+};
+
+function parameter(
+  scoring: ScoringConfig | undefined,
+  key: string,
+  fallback: number,
+) {
+  const value = scoring?.parameters?.[key];
+  return Number.isFinite(value) ? Number(value) : fallback;
+}
+
+function maturity(score: number, scoring?: ScoringConfig) {
+  const configured = scoring?.maturityLevels
+    ?.filter(
+      (item) =>
+        Number.isFinite(item.level) &&
+        Number.isFinite(item.minScore) &&
+        Number.isFinite(item.maxScore),
+    )
+    .sort((a, b) => a.level - b.level);
+
+  const match = configured?.find(
+    (item) => score >= item.minScore && score <= item.maxScore,
+  );
+  if (match) return { level: match.level, label: match.label };
+
   if (score < 20) return { level: 0, label: 'Not Established' };
   if (score < 40) return { level: 1, label: 'Initial' };
   if (score < 60) return { level: 2, label: 'Developing' };
@@ -215,6 +248,7 @@ export function scorePdpAssessment(params: {
   questions: PdpQuestion[];
   responses: PdpResponseInput[];
   profile: PdpProfile;
+  scoring?: ScoringConfig;
 }): PdpScoreResult {
   const responseMap = new Map(
     params.responses.map((response) => [response.questionId, response]),
@@ -243,12 +277,28 @@ export function scorePdpAssessment(params: {
   for (const question of params.questions) {
     const response = responseMap.get(question.id);
     const answerValue = response?.answerValue || '';
-    const raw = ANSWER_SCORE[answerValue] ?? 0;
+    const raw = parameter(
+      params.scoring,
+      'answer.' + answerValue,
+      ANSWER_SCORE[answerValue] ?? 0,
+    );
     const confidence = response?.confidence || 'unverified';
     const evidence = response?.evidenceStatus || 'not_available';
-    const confidenceFactor = CONFIDENCE_FACTOR[confidence] ?? 0.7;
-    const evidenceFactor = EVIDENCE_FACTOR[evidence] ?? 0.8;
-    const riskFactor = CRITICALITY_FACTOR[question.criticality] ?? 1;
+    const confidenceFactor = parameter(
+      params.scoring,
+      'confidence.' + confidence,
+      CONFIDENCE_FACTOR[confidence] ?? 0.7,
+    );
+    const evidenceFactor = parameter(
+      params.scoring,
+      'evidence.' + evidence,
+      EVIDENCE_FACTOR[evidence] ?? 0.8,
+    );
+    const riskFactor = parameter(
+      params.scoring,
+      'criticality.' + question.criticality,
+      CRITICALITY_FACTOR[question.criticality] ?? 1,
+    );
     const baseWeight = question.domainWeight * question.weight * riskFactor;
 
     const isAnswered = Boolean(answerValue);
@@ -312,7 +362,7 @@ export function scorePdpAssessment(params: {
     weightedDenominator > 0
       ? clamp((weightedNumerator / weightedDenominator) * 100)
       : 0;
-  const maturityResult = maturity(overallScore);
+  const maturityResult = maturity(overallScore, params.scoring);
   const evidenceConfidence =
     evidenceDenominator > 0
       ? clamp((evidenceNumerator / evidenceDenominator) * 100)
@@ -374,11 +424,11 @@ export function scorePdpAssessment(params: {
       likelihood,
       inherentRisk,
       priority:
-        inherentRisk >= 20
+        inherentRisk >= parameter(params.scoring, 'risk.critical_threshold', 20)
           ? 'Critical'
-          : inherentRisk >= 15
+          : inherentRisk >= parameter(params.scoring, 'risk.high_threshold', 15)
             ? 'High'
-            : inherentRisk >= 8
+            : inherentRisk >= parameter(params.scoring, 'risk.medium_threshold', 8)
               ? 'Medium'
               : 'Low',
       recommendedAction: finding.recommendedAction,
