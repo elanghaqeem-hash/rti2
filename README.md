@@ -89,3 +89,60 @@ To verify brand compliance and legal naming integrity:
 ```bash
 npm test
 ```
+
+
+---
+
+## 6. Super Admin Control Center
+
+The protected control plane is available at `/admin` and manages:
+
+- Website CMS fields used by the homepage hero and public contact/footer.
+- AI provider priority, model selection, enable/disable state, and API keys.
+- SMTP server configuration and sender identity.
+- Link to the existing operational lead dashboard at `/admin/leads`.
+
+All `/admin/*` and `/api/admin/*` routes are protected by a signed HttpOnly session cookie. The public login endpoint is `/admin/login`.
+
+### Bootstrap the administrator
+
+Configure these values as deployment secrets, not source-code variables:
+
+```bash
+ADMIN_EMAIL=admin@risetin.co.id
+ADMIN_PASSWORD=<strong-unique-password>
+ADMIN_SESSION_SECRET=<long-random-secret>
+ADMIN_SETTINGS_ENCRYPTION_KEY=<separate-long-random-secret>
+```
+
+### Enable persistent CMS/API/SMTP settings
+
+Create a dedicated Cloudflare KV namespace and configure:
+
+```bash
+CLOUDFLARE_ACCOUNT_ID=...
+CLOUDFLARE_KV_NAMESPACE_ID=...
+CLOUDFLARE_KV_API_TOKEN=...
+```
+
+The application encrypts the complete control-plane settings payload with AES-GCM before writing it to KV. Stored API keys and SMTP passwords are never returned to the browser; the UI only receives a boolean indicating whether each secret is configured.
+
+If KV is not configured, the website continues using the existing environment-based defaults, but the Save button remains disabled to avoid pretending that configuration changes are persistent.
+
+### SMTP baseline
+
+The control plane stores the following runtime SMTP settings securely:
+
+```bash
+SMTP_ENABLED=false
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM_NAME=Risetin
+SMTP_FROM_EMAIL=admin@risetin.co.id
+SMTP_REPLY_TO=admin@risetin.co.id
+```
+
+The current admin validation checks that the SMTP configuration is complete. An actual outbound test email should only be enabled after the selected Cloudflare runtime/SMTP relay is confirmed to support the required network transport.
