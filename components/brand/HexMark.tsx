@@ -19,7 +19,7 @@ export const HexMark: React.FC<HexMarkProps> = ({
       style={{ width: size, height: size }}
     >
       <img
-        src="/rti-mark-v3.webp"
+        src="/rti-mark-official.svg"
         alt=""
         width={size}
         height={size}
