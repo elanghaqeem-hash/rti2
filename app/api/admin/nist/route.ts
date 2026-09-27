@@ -301,6 +301,34 @@ export async function PATCH(req: Request) {
          WHERE tier = ?`,
       ).run(label, minOverall, minGovern, minConfidence, tier);
       after = db.prepare('SELECT * FROM nist_tier_rules WHERE tier = ?').get(tier);
+    } else if (entity === 'answer-option') {
+      before = db.prepare('SELECT * FROM nist_answer_options WHERE value = ?').get(key);
+      if (!before) throw new Error('Answer option not found.');
+
+      const current = before as any;
+      const label =
+        changes.label === undefined
+          ? String(current.label)
+          : text(changes.label, 160, true);
+      const description =
+        changes.description === undefined
+          ? String(current.description)
+          : text(changes.description, 800, true);
+      const score =
+        changes.score === undefined
+          ? Number(current.score)
+          : numberValue(changes.score, 0, 100);
+      const active =
+        changes.active === undefined
+          ? Number(current.active) === 1
+          : booleanValue(changes.active);
+
+      db.prepare(
+        `UPDATE nist_answer_options
+         SET label = ?, description = ?, score = ?, active = ?
+         WHERE value = ?`,
+      ).run(label, description, score, active ? 1 : 0, key);
+      after = db.prepare('SELECT * FROM nist_answer_options WHERE value = ?').get(key);
     } else if (entity === 'service') {
       before = db.prepare('SELECT * FROM nist_service_mappings WHERE id = ?').get(key);
       if (!before) throw new Error('Service mapping not found.');
