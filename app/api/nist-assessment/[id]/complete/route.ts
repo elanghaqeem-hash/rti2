@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { hasNistAssessmentAccess } from '@/lib/nist/access';
-import { scoreNistAssessment } from '@/lib/nist/engine';
+import { getApplicableNistQuestionIds, scoreNistAssessment } from '@/lib/nist/engine';
 import {
   getNistAssessment,
   getNistAssessmentConfig,
@@ -58,18 +58,18 @@ export async function POST(
     });
     const answers = listNistAnswers(id);
     const answered = new Set(answers.map((answer) => answer.questionId));
-    const required = config.questions.filter((question) => question.isCore);
-    const missing = required.filter((question) => !answered.has(question.id));
+    const applicableIds = getApplicableNistQuestionIds(config, answers);
+    const missing = applicableIds.filter((questionId) => !answered.has(questionId));
 
     if (missing.length > 0) {
       return NextResponse.json(
         {
           success: false,
           error: 'Complete all required Quick Check questions before calculating the Cyber Readiness Score.',
-          missingQuestionIds: missing.map((question) => question.id),
+          missingQuestionIds: missing,
           progress: {
-            answered: answers.length,
-            total: required.length,
+            answered: applicableIds.filter((questionId) => answered.has(questionId)).length,
+            total: applicableIds.length,
           },
         },
         { status: 409, headers: { ...NO_STORE, ...rlHeaders } },
