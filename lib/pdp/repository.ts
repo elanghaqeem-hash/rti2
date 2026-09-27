@@ -508,6 +508,37 @@ export function recordPdpReport(
   );
 }
 
+export function getPdpScoringConfig() {
+  ensurePdpSeeded();
+  const db = getDatabase();
+  const parameterRows = db.prepare(
+    `SELECT key, numeric_value AS numericValue
+     FROM pdp_scoring_parameters WHERE is_active = 1`,
+  ).all() as Array<{ key: string; numericValue: number }>;
+
+  const maturityRows = db.prepare(
+    `SELECT level, label, min_score AS minScore, max_score AS maxScore
+     FROM pdp_maturity_levels WHERE is_active = 1 ORDER BY level`,
+  ).all() as Array<{
+    level: number;
+    label: string;
+    minScore: number;
+    maxScore: number;
+  }>;
+
+  return {
+    parameters: Object.fromEntries(
+      parameterRows.map((row) => [row.key, Number(row.numericValue)]),
+    ) as Record<string, number>,
+    maturityLevels: maturityRows.map((row) => ({
+      level: Number(row.level),
+      label: row.label,
+      minScore: Number(row.minScore),
+      maxScore: Number(row.maxScore),
+    })),
+  };
+}
+
 export function getAdminPdpCatalog() {
   ensurePdpSeeded();
   const db = getDatabase();
@@ -541,6 +572,31 @@ export function getAdminPdpCatalog() {
       `SELECT id, code, label, description, config_json AS configJson,
               is_active AS active, sort_order AS sortOrder, updated_at AS updatedAt
        FROM pdp_industry_packs ORDER BY sort_order, label`,
+    ).all(),
+    scoringParameters: db.prepare(
+      `SELECT key, label, numeric_value AS numericValue, description,
+              is_active AS active, updated_at AS updatedAt
+       FROM pdp_scoring_parameters ORDER BY key`,
+    ).all(),
+    maturityLevels: db.prepare(
+      `SELECT level, label, min_score AS minScore, max_score AS maxScore,
+              description, is_active AS active, updated_at AS updatedAt
+       FROM pdp_maturity_levels ORDER BY level`,
+    ).all(),
+    evidenceTypes: db.prepare(
+      `SELECT code, label, extensions_json AS extensionsJson, mime_types_json AS mimeTypesJson,
+              max_bytes AS maxBytes, is_active AS active, updated_at AS updatedAt
+       FROM pdp_evidence_types ORDER BY code`,
+    ).all(),
+    aiPrompts: db.prepare(
+      `SELECT code, label, prompt_text AS promptText, version,
+              is_active AS active, updated_at AS updatedAt
+       FROM pdp_ai_prompts ORDER BY code`,
+    ).all(),
+    reportTemplates: db.prepare(
+      `SELECT code, label, config_json AS configJson, version,
+              is_active AS active, updated_at AS updatedAt
+       FROM pdp_report_templates ORDER BY code`,
     ).all(),
   };
 }
