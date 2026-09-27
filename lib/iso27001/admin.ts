@@ -93,6 +93,54 @@ function cleanVersion(value: unknown) {
   return String(value || '').trim().slice(0, 120);
 }
 
+function adminAudit(
+  action: string,
+  objectType: string,
+  objectId: string | null,
+  oldValue?: unknown,
+  newValue?: unknown,
+) {
+  const db = getDatabase();
+  db.prepare(`
+    INSERT INTO audit_logs
+      (id,organization_id,assessment_id,actor_type,actor_id,action,object_type,object_id,old_value,new_value,created_at)
+    VALUES (?,NULL,NULL,'admin',NULL,?,?,?,?,?,?)
+  `).run(
+    crypto.randomUUID(),
+    action,
+    objectType,
+    objectId,
+    oldValue === undefined ? null : JSON.stringify(oldValue),
+    newValue === undefined ? null : JSON.stringify(newValue),
+    new Date().toISOString(),
+  );
+}
+
+function assertEditableEntity(entity: EntityName, id: string) {
+  if (entity === 'ai_provider') return;
+  const db = getDatabase();
+  const definition = ENTITY[entity];
+  const row = db.prepare(`
+    SELECT v.status
+    FROM ${definition.table} e
+    JOIN assessment_versions v ON v.id = e.version_id
+    WHERE e.id = ?
+  `).get(id) as { status?: string } | undefined;
+  if (!row?.status) throw new Error('Configuration record not found.');
+  if (!['Draft','Review'].includes(row.status)) {
+    throw new Error('Published or archived framework versions are immutable. Clone the version before editing.');
+  }
+}
+
+function assertEditableVersion(versionId: string) {
+  const db = getDatabase();
+  const row = db.prepare('SELECT status FROM assessment_versions WHERE id = ?').get(versionId) as { status?: string } | undefined;
+  if (!row?.status) throw new Error('Assessment version not found.');
+  if (!['Draft','Review'].includes(row.status)) {
+    throw new Error('Published or archived framework versions are immutable. Clone the version before adding records.');
+  }
+}
+
 function queryVersion(versionId?: string) {
   const db = getDatabase();
   if (versionId) {
@@ -283,13 +331,16 @@ export function updateIsoAdminEntity(entity: EntityName, id: string, patch: Reco
   const definition = ENTITY[entity];
   if (!definition) throw new Error('Unsupported ISO admin entity.');
 
+  assertEditableEntity(entity, id);
   const normalized = normalizePatch(entity, patch);
+  const before = db.prepare(`SELECT * FROM ${definition.table} WHERE id = ?`).get(id);
   if (entity === 'question') normalized.updated_at = new Date().toISOString();
   if (entity === 'ai_provider') normalized.updated_at = new Date().toISOString();
 
   const keys = Object.keys(normalized);
   const set = keys.map((key) => `${key} = ?`).join(', ');
   db.prepare(`UPDATE ${definition.table} SET ${set} WHERE id = ?`).run(...keys.map((key) => normalized[key]), id);
+  adminAudit('admin.config.updated', 'iso27001_' + entity, id, before, normalized);
 
   return { id, entity, updated: normalized };
 }
@@ -299,6 +350,7 @@ export function createIsoAdminEntity(entity: EntityName, versionId: string, inpu
   const definition = ENTITY[entity];
   if (!definition) throw new Error('Unsupported ISO admin entity.');
   if (entity === 'ai_provider') throw new Error('AI providers are pre-registered; update them instead.');
+  assertEditableVersion(versionId);
 
   const id = crypto.randomUUID();
   const normalized = normalizePatch(entity, input);
@@ -329,6 +381,7 @@ export function createIsoAdminEntity(entity: EntityName, versionId: string, inpu
       .run(...keys.map((key) => values[key]));
   }
 
+  adminAudit('admin.config.created', 'iso27001_' + entity, id, undefined, input);
   return { id, entity };
 }
 
@@ -337,6 +390,8 @@ export function deleteIsoAdminEntity(entity: EntityName, id: string) {
   const definition = ENTITY[entity];
   if (!definition) throw new Error('Unsupported ISO admin entity.');
   if (entity === 'section') throw new Error('Sections cannot be deleted while questions may reference them; reorder or rename them instead.');
+  assertEditableEntity(entity, id);
+  const before = db.prepare(`SELECT * FROM ${definition.table} WHERE id = ?`).get(id);
 
   if (['question','control','response_option','maturity_level','report_template'].includes(entity)) {
     db.prepare(`UPDATE ${definition.table} SET status = 'inactive' WHERE id = ?`).run(id);
@@ -344,6 +399,7 @@ export function deleteIsoAdminEntity(entity: EntityName, id: string) {
     const activeColumn = entity === 'ai_provider' ? 'is_enabled' : 'is_active';
     db.prepare(`UPDATE ${definition.table} SET ${activeColumn} = 0 WHERE id = ?`).run(id);
   }
+  adminAudit('admin.config.deactivated', 'iso27001_' + entity, id, before, undefined);
   return { id, entity, deactivated: true };
 }
 
@@ -436,6 +492,7 @@ export function cloneIsoVersion(sourceVersionId: string, newVersion: string) {
     }
 
     db.exec('COMMIT;');
+    adminAudit('admin.version.cloned', 'iso27001_version', targetVersionId, { sourceVersionId }, { version, status: 'Draft' });
     return { versionId: targetVersionId, version, status: 'Draft' };
   } catch (error) {
     db.exec('ROLLBACK;');
@@ -448,6 +505,18 @@ export function changeIsoVersionStatus(versionId: string, status: 'Draft' | 'Rev
   const now = new Date().toISOString();
   const row = db.prepare('SELECT template_id FROM assessment_versions WHERE id = ?').get(versionId) as { template_id?: string } | undefined;
   if (!row?.template_id) throw new Error('Assessment version not found.');
+
+  if (status === 'Published') {
+    const controlCount = Number((db.prepare("SELECT COUNT(*) AS c FROM annex_controls WHERE version_id = ? AND status = 'active'").get(versionId) as { c: number }).c);
+    const quickCount = Number((db.prepare("SELECT COUNT(*) AS c FROM assessment_questions WHERE version_id = ? AND status = 'active' AND is_quick = 1").get(versionId) as { c: number }).c);
+    const optionCount = Number((db.prepare("SELECT COUNT(*) AS c FROM response_options WHERE version_id = ? AND status = 'active'").get(versionId) as { c: number }).c);
+    const activeScoring = Number((db.prepare("SELECT COUNT(*) AS c FROM scoring_rules WHERE version_id = ? AND is_active = 1 AND rule_key IN ('requirement_readiness','control_readiness','evidence_readiness','governance_readiness','audit_readiness')").get(versionId) as { c: number }).c);
+
+    if (controlCount !== 93) throw new Error(`Cannot publish: Annex A requires exactly 93 active controls; found ${controlCount}.`);
+    if (quickCount < 25 || quickCount > 40) throw new Error(`Cannot publish: Quick Scan must contain 25–40 active questions; found ${quickCount}.`);
+    if (optionCount < 7) throw new Error('Cannot publish: response scale 0–5 plus Not Applicable is incomplete.');
+    if (activeScoring < 5) throw new Error('Cannot publish: deterministic scoring rules are incomplete.');
+  }
 
   db.exec('BEGIN IMMEDIATE;');
   try {
@@ -466,6 +535,7 @@ export function changeIsoVersionStatus(versionId: string, status: 'Draft' | 'Rev
     `).run(status, status, now, now, versionId);
 
     db.exec('COMMIT;');
+    adminAudit('admin.version.status_changed', 'iso27001_version', versionId, undefined, { status });
     return { versionId, status };
   } catch (error) {
     db.exec('ROLLBACK;');
