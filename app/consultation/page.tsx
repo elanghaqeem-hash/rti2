@@ -9,6 +9,8 @@ import {
   Clock3,
   MessageCircle,
   ShieldCheck,
+  Video,
+  Building2,
 } from 'lucide-react';
 import { BRAND_CONFIG } from '@/lib/config/contact';
 import { useParameterGroups } from '@/components/parameters/useParameterOptions';
@@ -73,7 +75,35 @@ export default function ConsultationPage() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-5xl grid-cols-1 gap-6 px-4 py-10 sm:px-6 lg:grid-cols-12 lg:px-8">
+      <section className="mx-auto max-w-5xl px-4 pt-8 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex items-center gap-3 rounded-2xl border border-line bg-white p-4 shadow-sm">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <Video className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-extrabold text-navy-900">Pertemuan Virtual</h2>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted">
+                Video call untuk diskusi awal yang cepat dan fleksibel.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-2xl border border-line bg-white p-4 shadow-sm">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gold-500/10 text-gold-600">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-extrabold text-navy-900">Pertemuan Tatap Muka</h2>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted">
+                Koordinasikan lokasi dan waktu bersama tim RTI setelah pengajuan jadwal.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto grid max-w-5xl grid-cols-1 gap-6 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-12 lg:px-8">
         <div className="lg:col-span-8">
           <form
             onSubmit={submit}
