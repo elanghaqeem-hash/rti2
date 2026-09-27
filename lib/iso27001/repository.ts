@@ -1097,6 +1097,29 @@ export function getIsoResults(assessmentId: string, token: string) {
     ORDER BY g.sort_order
   `).all(assessmentId, String(assessment.version_id));
 
+  const serviceMappings = db.prepare(`
+    SELECT match_key AS matchKey, service_name AS serviceName, cta_parameter_key AS ctaParameterKey
+    FROM service_mappings
+    WHERE version_id = ? AND is_active = 1
+    ORDER BY id
+  `).all(String(assessment.version_id)) as Array<{
+    matchKey: string;
+    serviceName: string;
+    ctaParameterKey: string | null;
+  }>;
+
+  const serviceRecommendations = serviceMappings
+    .filter((mapping) =>
+      gaps.some((gap) =>
+        String(gap.severity) === mapping.matchKey ||
+        String(gap.targetRef) === mapping.matchKey ||
+        String(gap.clauseControl) === mapping.matchKey,
+      ),
+    )
+    .filter((mapping, index, all) =>
+      all.findIndex((item) => item.serviceName === mapping.serviceName) === index,
+    );
+
   return {
     assessment: {
       id: assessmentId,
@@ -1115,6 +1138,7 @@ export function getIsoResults(assessmentId: string, token: string) {
     gates,
     gaps,
     roadmap,
+    serviceRecommendations,
     settings: settingMap(),
   };
 }
@@ -1189,4 +1213,343 @@ export function recordEvidenceFile(
   );
 
   return { id, scanStatus: 'pending' };
+}
+
+
+export function getIsoSoa(assessmentId: string, token: string) {
+  const db = getDatabase();
+  const assessment = authAssessment(assessmentId, token);
+  const versionId = String(assessment.version_id);
+
+  return db.prepare(`
+    SELECT
+      c.id AS controlId,
+      c.control_ref AS controlRef,
+      c.domain,
+      c.title,
+      COALESCE(a.applicable, 1) AS applicable,
+      a.justification,
+      a.risk_reference AS riskReference,
+      a.owner,
+      r.response_value AS implementationStatus,
+      r.evidence_status AS evidenceStatus,
+      r.evidence_note AS evidenceNote
+    FROM annex_controls c
+    LEFT JOIN control_applicability a
+      ON a.assessment_id = ? AND a.annex_control_id = c.id
+    LEFT JOIN assessment_responses r
+      ON r.assessment_id = ? AND r.annex_control_id = c.id
+    WHERE c.version_id = ? AND c.status = 'active'
+    ORDER BY c.sort_order, c.control_ref
+  `).all(assessmentId, assessmentId, versionId);
+}
+
+export function saveIsoSoa(
+  assessmentId: string,
+  token: string,
+  input: {
+    controlId: string;
+    applicable: boolean;
+    justification?: string;
+    riskReference?: string;
+    owner?: string;
+  },
+) {
+  const db = getDatabase();
+  const assessment = authAssessment(assessmentId, token);
+  const controlId = cleanText(input.controlId, 120);
+  const target = resolveTarget(String(assessment.version_id), controlId);
+  if (target.kind !== 'control') throw new Error('SoA item must reference an Annex A control.');
+
+  const justification = cleanText(input.justification, 3000);
+  if (!input.applicable && justification.length < 8) {
+    throw new Error('A non-applicable control requires documented justification.');
+  }
+
+  const id = crypto.randomUUID();
+  const timestamp = now();
+  db.prepare(`
+    INSERT INTO control_applicability
+      (id,assessment_id,annex_control_id,applicable,justification,risk_reference,owner,updated_at)
+    VALUES (?,?,?,?,?,?,?,?)
+    ON CONFLICT(assessment_id,annex_control_id) DO UPDATE SET
+      applicable = excluded.applicable,
+      justification = excluded.justification,
+      risk_reference = excluded.risk_reference,
+      owner = excluded.owner,
+      updated_at = excluded.updated_at
+  `).run(
+    id,
+    assessmentId,
+    controlId,
+    input.applicable ? 1 : 0,
+    justification || (input.applicable ? 'Applicable based on current assessment scope and risk context.' : ''),
+    cleanText(input.riskReference, 500) || null,
+    cleanText(input.owner, 240) || null,
+    timestamp,
+  );
+
+  audit(
+    assessmentId,
+    String(assessment.organization_id),
+    'soa.updated',
+    'control_applicability',
+    controlId,
+    undefined,
+    {
+      applicable: input.applicable,
+      justification,
+      riskReference: cleanText(input.riskReference, 500) || null,
+      owner: cleanText(input.owner, 240) || null,
+    },
+  );
+
+  return { controlId, applicable: input.applicable, updatedAt: timestamp };
+}
+
+export function listIsoRisks(assessmentId: string, token: string) {
+  authAssessment(assessmentId, token);
+  const db = getDatabase();
+  return db.prepare(`
+    SELECT id, asset_process AS assetProcess, threat, vulnerability, impact, likelihood,
+      inherent_risk AS inherentRisk, controls, residual_risk AS residualRisk,
+      risk_owner AS riskOwner, treatment, created_at AS createdAt, updated_at AS updatedAt
+    FROM risks
+    WHERE assessment_id = ?
+    ORDER BY updated_at DESC
+  `).all(assessmentId);
+}
+
+export function upsertIsoRisk(
+  assessmentId: string,
+  token: string,
+  input: Record<string, unknown>,
+) {
+  const db = getDatabase();
+  const assessment = authAssessment(assessmentId, token);
+  const id = cleanText(input.id, 120) || crypto.randomUUID();
+  const assetProcess = cleanText(input.assetProcess, 500);
+  if (!assetProcess) throw new Error('Asset/process is required.');
+
+  const impact = input.impact == null ? null : Math.max(1, Math.min(5, Math.trunc(Number(input.impact))));
+  const likelihood = input.likelihood == null ? null : Math.max(1, Math.min(5, Math.trunc(Number(input.likelihood))));
+  const inherentRisk =
+    impact != null && likelihood != null
+      ? impact * likelihood
+      : input.inherentRisk == null
+        ? null
+        : Math.max(1, Math.min(25, Math.trunc(Number(input.inherentRisk))));
+  const residualRisk =
+    input.residualRisk == null
+      ? null
+      : Math.max(1, Math.min(25, Math.trunc(Number(input.residualRisk))));
+  const timestamp = now();
+
+  const existing = db.prepare('SELECT id FROM risks WHERE id = ? AND assessment_id = ?').get(id, assessmentId) as { id?: string } | undefined;
+
+  if (existing?.id) {
+    db.prepare(`
+      UPDATE risks SET
+        asset_process = ?, threat = ?, vulnerability = ?, impact = ?, likelihood = ?,
+        inherent_risk = ?, controls = ?, residual_risk = ?, risk_owner = ?, treatment = ?, updated_at = ?
+      WHERE id = ? AND assessment_id = ?
+    `).run(
+      assetProcess,
+      cleanText(input.threat, 1000) || null,
+      cleanText(input.vulnerability, 1000) || null,
+      impact,
+      likelihood,
+      inherentRisk,
+      cleanText(input.controls, 2000) || null,
+      residualRisk,
+      cleanText(input.riskOwner, 240) || null,
+      cleanText(input.treatment, 2000) || null,
+      timestamp,
+      id,
+      assessmentId,
+    );
+  } else {
+    db.prepare(`
+      INSERT INTO risks (
+        id,assessment_id,asset_process,threat,vulnerability,impact,likelihood,inherent_risk,
+        controls,residual_risk,risk_owner,treatment,created_at,updated_at
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).run(
+      id,
+      assessmentId,
+      assetProcess,
+      cleanText(input.threat, 1000) || null,
+      cleanText(input.vulnerability, 1000) || null,
+      impact,
+      likelihood,
+      inherentRisk,
+      cleanText(input.controls, 2000) || null,
+      residualRisk,
+      cleanText(input.riskOwner, 240) || null,
+      cleanText(input.treatment, 2000) || null,
+      timestamp,
+      timestamp,
+    );
+  }
+
+  audit(
+    assessmentId,
+    String(assessment.organization_id),
+    existing?.id ? 'risk.updated' : 'risk.created',
+    'risk',
+    id,
+    undefined,
+    { assetProcess, inherentRisk, residualRisk },
+  );
+
+  return { id, inherentRisk, residualRisk, updatedAt: timestamp };
+}
+
+export function deleteIsoRisk(assessmentId: string, token: string, riskId: string) {
+  const db = getDatabase();
+  const assessment = authAssessment(assessmentId, token);
+  const result = db.prepare('DELETE FROM risks WHERE id = ? AND assessment_id = ?').run(riskId, assessmentId);
+  if (Number(result.changes) < 1) throw new Error('Risk record not found.');
+  audit(assessmentId, String(assessment.organization_id), 'risk.deleted', 'risk', riskId);
+  return { id: riskId, deleted: true };
+}
+
+export function getIsoAiAnalysisContext(assessmentId: string, token: string, targetRef: string) {
+  const db = getDatabase();
+  const assessment = authAssessment(assessmentId, token);
+  if (Number(assessment.ai_processing_consent) !== 1) {
+    throw new Error('AI processing consent has not been granted for this assessment.');
+  }
+
+  const target = resolveTarget(String(assessment.version_id), targetRef);
+  const metadata =
+    target.kind === 'question'
+      ? db.prepare(`
+          SELECT question_text AS questionText, purpose, expected_evidence AS expectedEvidence,
+            risk_if_missing AS riskIfMissing, recommendation, clause_ref AS reference, domain
+          FROM assessment_questions WHERE id = ?
+        `).get(target.id)
+      : db.prepare(`
+          SELECT question_text AS questionText, purpose, expected_evidence AS expectedEvidence,
+            risk_if_missing AS riskIfMissing, recommendation, control_ref AS reference, domain
+          FROM annex_controls WHERE id = ?
+        `).get(target.id);
+
+  const response = db.prepare(`
+    SELECT response_value AS responseValue, is_na AS isNA,
+      applicability_justification AS applicabilityJustification,
+      evidence_status AS evidenceStatus, evidence_note AS evidenceNote, comment
+    FROM assessment_responses
+    WHERE assessment_id = ? AND target_ref = ?
+  `).get(assessmentId, targetRef) as Record<string, unknown> | undefined;
+
+  const files = db.prepare(`
+    SELECT original_name AS originalName, mime_type AS mimeType, size_bytes AS sizeBytes,
+      stored_name AS storedName, scan_status AS scanStatus
+    FROM evidence_files
+    WHERE assessment_id = ? AND target_ref = ?
+    ORDER BY created_at DESC
+  `).all(assessmentId, targetRef) as Array<Record<string, unknown>>;
+
+  const textualExtracts: Array<{ file: string; text: string }> = [];
+  for (const file of files) {
+    if (file.mimeType !== 'text/plain') continue;
+    try {
+      const safeStoredName = path.basename(String(file.storedName || ''));
+      if (!safeStoredName) continue;
+      const filePath = path.join(evidenceUploadDirectory(), safeStoredName);
+      const textValue = fs.readFileSync(filePath, 'utf8').slice(0, 20000);
+      textualExtracts.push({ file: String(file.originalName || safeStoredName), text: textValue });
+    } catch {
+      // Evidence metadata remains available even when direct text extraction is unavailable.
+    }
+  }
+
+  return {
+    assessment: {
+      id: assessmentId,
+      organizationName: assessment.organization_name,
+      frameworkVersion: assessment.framework_version,
+      mode: assessment.mode,
+    },
+    target: metadata,
+    response: response || null,
+    evidenceFiles: files.map(({ storedName: _storedName, ...safe }) => safe),
+    textualExtracts,
+    limitations:
+      'TXT evidence can be read directly. Binary PDF/Office/image content is not extracted by this server module unless a dedicated document parser is added; only metadata and user evidence notes are supplied for those files.',
+  };
+}
+
+export function recordIsoAiAnalysis(
+  assessmentId: string,
+  token: string,
+  targetRef: string,
+  provider: string,
+) {
+  const assessment = authAssessment(assessmentId, token);
+  audit(
+    assessmentId,
+    String(assessment.organization_id),
+    'ai.analysis.requested',
+    'iso27001_evidence',
+    targetRef,
+    undefined,
+    { provider },
+  );
+}
+
+export function deleteIsoAssessment(assessmentId: string, token: string) {
+  const db = getDatabase();
+  const assessment = authAssessment(assessmentId, token);
+  const organizationId = String(assessment.organization_id);
+  const files = db.prepare('SELECT stored_name FROM evidence_files WHERE assessment_id = ?').all(assessmentId) as Array<{ stored_name: string }>;
+
+  for (const file of files) {
+    try {
+      const storedName = path.basename(String(file.stored_name || ''));
+      if (storedName) fs.rmSync(path.join(evidenceUploadDirectory(), storedName), { force: true });
+    } catch {
+      // Continue database deletion even if a stale evidence file is already missing.
+    }
+  }
+
+  db.exec('BEGIN IMMEDIATE;');
+  try {
+    db.prepare('DELETE FROM assessments WHERE id = ?').run(assessmentId);
+    const remaining = db.prepare('SELECT COUNT(*) AS c FROM assessments WHERE organization_id = ?').get(organizationId) as { c: number };
+    if (Number(remaining.c) === 0) {
+      db.prepare('DELETE FROM organizations WHERE id = ?').run(organizationId);
+    }
+    db.exec('COMMIT;');
+  } catch (error) {
+    db.exec('ROLLBACK;');
+    throw error;
+  }
+
+  return { assessmentId, deleted: true };
+}
+
+export function deleteIsoEvidence(
+  assessmentId: string,
+  token: string,
+  evidenceId: string,
+) {
+  const db = getDatabase();
+  const assessment = authAssessment(assessmentId, token);
+  const row = db.prepare(`
+    SELECT id, stored_name FROM evidence_files WHERE id = ? AND assessment_id = ?
+  `).get(evidenceId, assessmentId) as { id?: string; stored_name?: string } | undefined;
+  if (!row?.id) throw new Error('Evidence file not found.');
+
+  if (row.stored_name) {
+    try {
+      fs.rmSync(path.join(evidenceUploadDirectory(), path.basename(row.stored_name)), { force: true });
+    } catch {
+      // Database deletion is authoritative; stale storage can be cleaned by operations.
+    }
+  }
+  db.prepare('DELETE FROM evidence_files WHERE id = ? AND assessment_id = ?').run(evidenceId, assessmentId);
+  audit(assessmentId, String(assessment.organization_id), 'evidence.deleted', 'evidence_file', evidenceId);
+  return { evidenceId, deleted: true };
 }
