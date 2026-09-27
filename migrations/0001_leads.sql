@@ -1,5 +1,5 @@
--- RTI / Risetin production lead database
--- Apply to the Cloudflare D1 database bound as RTI_DB.
+-- RTI / Risetin persistent lead database
+-- SQLite-compatible migration for the production server database.
 -- No sample rows are inserted by this migration.
 
 PRAGMA foreign_keys = ON;
