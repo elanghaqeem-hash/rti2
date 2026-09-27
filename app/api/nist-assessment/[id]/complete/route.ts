@@ -76,10 +76,15 @@ export async function POST(
       );
     }
 
+    const applicableAnswerSet = new Set(applicableIds);
+    const applicableAnswers = answers.filter((answer) =>
+      applicableAnswerSet.has(answer.questionId),
+    );
+
     const result = scoreNistAssessment({
       assessmentId: id,
       config,
-      answers,
+      answers: applicableAnswers,
     });
     persistNistResult(id, result);
 
