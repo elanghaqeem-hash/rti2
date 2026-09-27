@@ -5,6 +5,7 @@ import { getDatabase, getDatabasePath } from '@/lib/server/database';
 const MIGRATIONS = [
   '0001_leads.sql',
   '0002_system_parameters.sql',
+  '0003_project_estimator_rfq.sql',
 ] as const;
 
 export interface MigrationStatus {
@@ -15,6 +16,9 @@ export interface MigrationStatus {
   tables: {
     leads: boolean;
     systemParameters: boolean;
+    projectEstimator: boolean;
+    rfq: boolean;
+    services: boolean;
   };
 }
 
@@ -59,6 +63,9 @@ export function getMigrationStatus(): MigrationStatus {
     tables: {
       leads: tableExists('leads'),
       systemParameters: tableExists('system_parameters'),
+      projectEstimator: tableExists('estimator_sessions') && tableExists('project_estimates'),
+      rfq: tableExists('rfqs') && tableExists('rfq_versions'),
+      services: tableExists('services') && tableExists('estimator_questions'),
     },
   };
 }
