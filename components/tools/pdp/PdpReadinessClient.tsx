@@ -21,6 +21,7 @@ import {
   Scale,
   ShieldCheck,
   Upload,
+  Trash2,
 } from 'lucide-react';
 
 type Mode = 'quick' | 'comprehensive';
@@ -526,6 +527,68 @@ export default function PdpReadinessClient() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'PDF report tidak dapat dihasilkan.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const exportAssessment = async () => {
+    setBusy(true);
+    setMessage('');
+    try {
+      const response = await fetch('/api/tools/pdp-readiness/export?id=' + encodeURIComponent(assessmentId), {
+        headers: { Authorization: 'Bearer ' + resumeToken },
+        cache: 'no-store',
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'RTI-UU-PDP-Assessment-Export.json';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Assessment export tidak dapat dihasilkan.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteAssessment = async () => {
+    if (!window.confirm('Hapus assessment ini secara permanen beserta response dan evidence yang terkait?')) return;
+    setBusy(true);
+    setMessage('');
+    try {
+      const response = await fetch('/api/tools/pdp-readiness/assessment', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + resumeToken,
+        },
+        body: JSON.stringify({ assessmentId }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || 'Assessment tidak dapat dihapus.');
+      try {
+        window.localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // Storage may be disabled.
+      }
+      setAssessmentId('');
+      setResumeToken('');
+      setQuestions([]);
+      setResponses({});
+      setResult(null);
+      setAiAnalysis('');
+      setResumeAvailable(false);
+      setStep('intro');
+      setMessage('Assessment dan data terkait telah dihapus.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Assessment tidak dapat dihapus.');
     } finally {
       setBusy(false);
     }
@@ -1161,9 +1224,15 @@ export default function PdpReadinessClient() {
                 <button onClick={downloadPdf} disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-gold-500 px-4 py-3 text-xs font-extrabold text-navy-900 disabled:opacity-50">
                   <Download className="h-4 w-4" /> Download Executive Report
                 </button>
+                <button onClick={exportAssessment} disabled={busy} className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-4 py-3 text-xs font-extrabold text-white hover:bg-white/10 disabled:opacity-50">
+                  <FileText className="h-4 w-4" /> Export Assessment Data
+                </button>
                 <Link href="/consultation" className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-4 py-3 text-xs font-extrabold text-white hover:bg-white/10">
                   Request Consultation <ArrowRight className="h-4 w-4" />
                 </Link>
+                <button onClick={deleteAssessment} disabled={busy} className="inline-flex items-center gap-2 rounded-xl border border-rose-300/50 px-4 py-3 text-xs font-extrabold text-rose-100 hover:bg-rose-500/10 disabled:opacity-50">
+                  <Trash2 className="h-4 w-4" /> Delete Assessment
+                </button>
               </div>
             </div>
           </div>
