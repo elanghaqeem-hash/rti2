@@ -1,3 +1,4 @@
+import { getDatabase } from '@/lib/server/database';
 export type AiChatMessage = {
   role: 'user' | 'assistant';
   content: string;
@@ -29,6 +30,24 @@ const DEFAULT_PROVIDER_ORDER: AiProviderId[] = [
 const PROVIDER_IDS = new Set<AiProviderId>(DEFAULT_PROVIDER_ORDER);
 
 function getProviderOrder(): AiProviderId[] {
+  try {
+    const rows = getDatabase()
+      .prepare(
+        `SELECT value FROM system_parameters
+         WHERE group_key = 'ai.provider_order' AND is_active = 1
+         ORDER BY sort_order, label`,
+      )
+      .all() as Array<{ value: string }>;
+    const databaseOrder = rows
+      .map((row) => String(row.value).trim().toLowerCase())
+      .filter((value): value is AiProviderId => PROVIDER_IDS.has(value as AiProviderId));
+    if (databaseOrder.length > 0) {
+      return Array.from(new Set(databaseOrder));
+    }
+  } catch {
+    // Database-managed provider order is optional; fall back to server environment.
+  }
+
   const configured = (process.env.AI_PROVIDER_ORDER || '')
     .split(',')
     .map((value) => value.trim().toLowerCase())
