@@ -64,7 +64,7 @@ export default function RootLayout({
     alternateName: [BRAND_CONFIG.brandName, BRAND_CONFIG.acronym],
     name: BRAND_CONFIG.brandName,
     url: BRAND_CONFIG.contact.website,
-    logo: 'https://risetin.co.id/rti-mark.webp',
+    logo: 'https://risetin.co.id/rti-mark-v2.webp',
     address: {
       '@type': 'PostalAddress',
       streetAddress: `${BRAND_CONFIG.contact.address.building}, ${BRAND_CONFIG.contact.address.street}`,
