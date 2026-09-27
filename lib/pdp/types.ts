@@ -14,6 +14,14 @@ export interface PdpProfile {
   operatingRegions: string[];
   crossBorderOperations: boolean;
   internationalTransfer: boolean;
+  publicServiceProcessing: boolean;
+  largeScaleProcessing: boolean;
+  regularSystematicLargeScaleMonitoring: boolean;
+  largeScaleSpecificDataProcessing: boolean;
+  largeScaleCriminalDataProcessing: boolean;
+  actsAsController: boolean;
+  actsAsProcessor: boolean;
+  organizationalComplexityHigh: boolean;
   childrenData: boolean;
   healthData: boolean;
   biometricData: boolean;
