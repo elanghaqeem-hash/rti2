@@ -966,14 +966,19 @@ export function calculateIsoAssessment(assessmentId: string, token: string) {
 
     db.prepare(`
       UPDATE assessments
-      SET overall_score = ?, evidence_score = ?, governance_score = ?, audit_score = ?,
+      SET overall_score = ?, requirement_score = ?, control_score = ?, evidence_score = ?,
+          governance_score = ?, audit_score = ?, stage1_score = ?, stage2_score = ?,
           readiness_level = ?, gates_completed = ?, updated_at = ?
       WHERE id = ?
     `).run(
       overallScore,
+      requirementReadiness,
+      controlReadiness,
       evidenceReadiness,
       governanceReadiness,
       auditReadiness,
+      stage1Preparation,
+      stage2Preparation,
       maturity?.label || 'Unclassified',
       gatesCompleted,
       now(),
@@ -1128,9 +1133,13 @@ export function getIsoResults(assessmentId: string, token: string) {
       organizationName: assessment.organization_name,
       frameworkVersion: assessment.framework_version,
       overallScore: assessment.overall_score,
+      requirementScore: assessment.requirement_score,
+      controlScore: assessment.control_score,
       evidenceScore: assessment.evidence_score,
       governanceScore: assessment.governance_score,
       auditScore: assessment.audit_score,
+      stage1Score: assessment.stage1_score,
+      stage2Score: assessment.stage2_score,
       readinessLevel: assessment.readiness_level,
       gatesCompleted: assessment.gates_completed,
       updatedAt: assessment.updated_at,
