@@ -93,6 +93,8 @@ export default function ProjectEstimatorPage() {
   const [budgetExpectation, setBudgetExpectation] = useState('');
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const [sessionId, setSessionId] = useState('');
+  const [resumeToken, setResumeToken] = useState('');
+  const [savedAt, setSavedAt] = useState('');
   const [estimate, setEstimate] = useState<(Omit<ProjectEstimate, 'trace'>) | null>(null);
   const [rfq, setRfq] = useState<RfqRecord | null>(null);
   const [consent, setConsent] = useState(false);
@@ -109,10 +111,58 @@ export default function ProjectEstimatorPage() {
         const data = await response.json();
         if (!response.ok) throw new Error(data?.error || 'Estimator configuration unavailable.');
         setBootstrap(data);
-        if (data.services?.[0]?.id) setServiceId(data.services[0].id);
+        if (data.services?.[0]?.id) setServiceId((current) => current || data.services[0].id);
       })
       .catch((error) => setMessage(error instanceof Error ? error.message : 'Estimator configuration unavailable.'))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+    const token = new URLSearchParams(hash).get('resume')?.trim() || '';
+    if (!token) return;
+
+    let cancelled = false;
+    setWorking(true);
+    fetch('/api/v1/project-estimator/session', {
+      cache: 'no-store',
+      headers: { 'X-RTI-Resume-Token': token },
+    })
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.error || 'Saved draft could not be restored.');
+        if (cancelled) return;
+        setResumeToken(token);
+        setSessionId(data.sessionId);
+        setMode(data.input.mode);
+        setProjectName(data.input.projectName || '');
+        setSelectedObjectives(Array.isArray(data.input.businessObjectives) ? data.input.businessObjectives : []);
+        setServiceId(data.input.serviceId || '');
+        setTargetTimeline(data.input.targetTimeline || '');
+        setBudgetExpectation(data.input.budgetExpectation || '');
+        setProfile({ ...defaultProfile, ...(data.input.profile || {}) });
+        setAnswers(data.input.answers || {});
+        if (data.estimate) {
+          setEstimate(data.estimate);
+          setStep(5);
+        } else {
+          setStep(4);
+        }
+        setSavedAt(new Date().toISOString());
+        window.history.replaceState({}, '', window.location.pathname + window.location.search);
+        setMessage('Saved project draft restored securely.');
+      })
+      .catch((error) => {
+        if (!cancelled) setMessage(error instanceof Error ? error.message : 'Saved draft could not be restored.');
+      })
+      .finally(() => {
+        if (!cancelled) setWorking(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const selectedService = bootstrap?.services.find((service) => service.id === serviceId);
@@ -173,6 +223,57 @@ export default function ProjectEstimatorPage() {
     return true;
   };
 
+  const canPersistDraft =
+    Boolean(projectName.trim()) &&
+    Boolean(profile.companyName.trim()) &&
+    Boolean(profile.industry) &&
+    Boolean(profile.contactName.trim()) &&
+    /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(profile.email.trim()) &&
+    Boolean(serviceId);
+
+  const saveDraft = async () => {
+    if (!canPersistDraft) {
+      setMessage('Complete project name, company, industry, contact name, email, and service before saving the draft.');
+      return null;
+    }
+    setWorking(true);
+    setMessage('');
+    try {
+      const response = await fetch('/api/v1/project-estimator/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input,
+          sessionId: sessionId || undefined,
+          resumeToken: resumeToken || undefined,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || 'Project draft could not be saved.');
+      setSessionId(data.sessionId);
+      setResumeToken(data.resumeToken);
+      setSavedAt(new Date().toISOString());
+      setMessage('Saved to RTI database. Use the secure resume link to continue later.');
+      return data as { sessionId: string; resumeToken: string };
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Project draft could not be saved.');
+      return null;
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const copyResumeLink = async () => {
+    if (!resumeToken || typeof window === 'undefined') return;
+    const link = `${window.location.origin}/tools/project-estimator#resume=${encodeURIComponent(resumeToken)}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setMessage('Secure resume link copied. Anyone with this link can access this draft, so share it carefully.');
+    } catch {
+      setMessage(link);
+    }
+  };
+
   const calculate = async () => {
     if (!validateBeforeEstimate()) return;
     setWorking(true);
@@ -181,16 +282,22 @@ export default function ProjectEstimatorPage() {
       const sessionResponse = await fetch('/api/v1/project-estimator/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input, sessionId: sessionId || undefined }),
+        body: JSON.stringify({
+          input,
+          sessionId: sessionId || undefined,
+          resumeToken: resumeToken || undefined,
+        }),
       });
       const sessionData = await sessionResponse.json();
       if (!sessionResponse.ok) throw new Error(sessionData?.error || 'Could not save project.');
       setSessionId(sessionData.sessionId);
+      setResumeToken(sessionData.resumeToken);
+      setSavedAt(new Date().toISOString());
 
       const estimateResponse = await fetch('/api/v1/project-estimator/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: sessionData.sessionId }),
+        body: JSON.stringify({ sessionId: sessionData.sessionId, resumeToken: sessionData.resumeToken }),
       });
       const estimateData = await estimateResponse.json();
       if (!estimateResponse.ok) throw new Error(estimateData?.error || 'Could not calculate estimate.');
@@ -212,7 +319,7 @@ export default function ProjectEstimatorPage() {
       const response = await fetch('/api/v1/project-estimator/rfq', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, estimateId: estimate.id, useAi }),
+        body: JSON.stringify({ sessionId, estimateId: estimate.id, useAi, resumeToken }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || 'RFQ could not be generated.');
@@ -232,7 +339,7 @@ export default function ProjectEstimatorPage() {
       const response = await fetch(`/api/v1/project-estimator/rfq/${rfq.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: rfq.content }),
+        body: JSON.stringify({ content: rfq.content, resumeToken }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || 'RFQ could not be saved.');
@@ -259,7 +366,7 @@ export default function ProjectEstimatorPage() {
       const response = await fetch(`/api/v1/project-estimator/rfq/${rfq.id}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consent, turnstileToken }),
+        body: JSON.stringify({ consent, turnstileToken, resumeToken }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || 'RFQ could not be submitted.');
@@ -421,6 +528,20 @@ export default function ProjectEstimatorPage() {
                 <Metric label="Duration" value={`${estimate.durationMinWeeks}–${estimate.durationMaxWeeks} weeks`} sub="Indicative delivery window" />
                 <Metric label="RFQ Readiness" value={`${estimate.readinessScore}%`} sub={estimate.readinessScore >= 80 ? 'Ready for proposal review' : 'Requires clarification'} />
               </div>
+              {resumeToken && (
+                <div className="mt-5 flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="text-xs font-extrabold text-emerald-900">Draft saved securely</div>
+                    <div className="mt-1 text-[11px] text-emerald-800">
+                      {savedAt ? `Last persistence: ${new Date(savedAt).toLocaleString('id-ID')}` : 'Stored in RTI database'}
+                    </div>
+                  </div>
+                  <button onClick={copyResumeLink} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2 text-xs font-extrabold text-emerald-900">
+                    <Save className="h-4 w-4" /> Copy Secure Resume Link
+                  </button>
+                </div>
+              )}
+
               <div className="mt-4 rounded-2xl border border-gold-500/30 bg-beige-50 p-6">
                 <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted">Indicative Investment</div>
                 <div className="mt-1 text-2xl font-extrabold text-navy-900">{money(estimate.priceMin)} – {money(estimate.priceMax)}</div>
@@ -509,11 +630,25 @@ export default function ProjectEstimatorPage() {
               {rfq.status !== 'draft' && (
                 <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-800">RFQ submitted. RTI can now qualify the opportunity and proceed to presales/commercial review.</div>
               )}
+              </div>
             </div>
           )}
 
           {step < 5 && (
-            <div className="mt-8 flex items-center justify-between border-t border-line pt-5">
+            <div className="mt-8 flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                {step >= 2 && (
+                  <button onClick={saveDraft} disabled={working || !canPersistDraft} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line px-4 py-3 text-xs font-bold text-navy-900 disabled:opacity-30">
+                    <Save className="h-4 w-4" /> Save Draft
+                  </button>
+                )}
+                {resumeToken && (
+                  <button onClick={copyResumeLink} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-900">
+                    Copy Resume Link
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-2 sm:justify-end">
               <button onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line px-4 py-3 text-xs font-bold text-navy-900 disabled:opacity-30"><ArrowLeft className="h-4 w-4" /> Back</button>
               {step < 4 ? (
                 <button onClick={() => { setMessage(''); setStep((s) => s + 1); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-navy-900 px-5 py-3 text-xs font-extrabold text-white">Continue <ArrowRight className="h-4 w-4" /></button>
