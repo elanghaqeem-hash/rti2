@@ -1,5 +1,5 @@
 -- RTI centralized parameter registry
--- Apply after migrations/0001_leads.sql to the D1 database bound as RTI_DB.
+-- SQLite-compatible migration applied after migrations/0001_leads.sql.
 
 PRAGMA foreign_keys = ON;
 
