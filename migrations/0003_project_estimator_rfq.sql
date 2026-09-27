@@ -185,6 +185,18 @@ CREATE TABLE IF NOT EXISTS service_resource_defaults (
   FOREIGN KEY (resource_role_id) REFERENCES resource_roles(id)
 );
 
+CREATE TABLE IF NOT EXISTS service_dependencies (
+  service_id TEXT NOT NULL,
+  related_service_id TEXT NOT NULL,
+  relation_type TEXT NOT NULL CHECK (relation_type IN ('requires','recommends')),
+  reason TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+  PRIMARY KEY(service_id, related_service_id, relation_type),
+  FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
+  FOREIGN KEY (related_service_id) REFERENCES services(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS estimator_sessions (
   id TEXT PRIMARY KEY,
   mode TEXT NOT NULL CHECK (mode IN ('quick','detailed')),
@@ -216,6 +228,16 @@ CREATE TABLE IF NOT EXISTS estimator_answers (
   FOREIGN KEY (question_id) REFERENCES estimator_questions(id)
 );
 
+CREATE TABLE IF NOT EXISTS estimator_events (
+  id TEXT PRIMARY KEY,
+  session_id TEXT,
+  rfq_id TEXT,
+  event_type TEXT NOT NULL,
+  metadata_json TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (session_id) REFERENCES estimator_sessions(id) ON DELETE SET NULL
+);
+
 CREATE TABLE IF NOT EXISTS project_estimates (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL,
@@ -237,6 +259,24 @@ CREATE TABLE IF NOT EXISTS project_estimates (
   UNIQUE(session_id, version),
   FOREIGN KEY (session_id) REFERENCES estimator_sessions(id) ON DELETE CASCADE,
   FOREIGN KEY (service_id) REFERENCES services(id)
+);
+
+CREATE TABLE IF NOT EXISTS estimate_commercials (
+  estimate_id TEXT PRIMARY KEY,
+  resource_cost INTEGER NOT NULL DEFAULT 0,
+  third_party_cost INTEGER NOT NULL DEFAULT 0,
+  license_cost INTEGER NOT NULL DEFAULT 0,
+  travel_cost INTEGER NOT NULL DEFAULT 0,
+  contingency_pct REAL NOT NULL DEFAULT 0,
+  margin_pct REAL NOT NULL DEFAULT 0,
+  discount_amount INTEGER NOT NULL DEFAULT 0,
+  tax_pct REAL NOT NULL DEFAULT 0,
+  total_before_tax INTEGER NOT NULL DEFAULT 0,
+  tax_amount INTEGER NOT NULL DEFAULT 0,
+  total_quotation INTEGER NOT NULL DEFAULT 0,
+  updated_by TEXT,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (estimate_id) REFERENCES project_estimates(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS estimate_items (
@@ -352,6 +392,9 @@ CREATE INDEX IF NOT EXISTS idx_opportunities_stage ON opportunities(stage, updat
 CREATE INDEX IF NOT EXISTS idx_questions_service_order ON estimator_questions(service_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_services_category_active ON services(category_id, is_active);
 CREATE INDEX IF NOT EXISTS idx_estimator_rules_service ON estimator_rules(service_id, sort_order, is_active);
+CREATE INDEX IF NOT EXISTS idx_estimator_events_session ON estimator_events(session_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_estimator_events_type ON estimator_events(event_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_service_dependencies_service ON service_dependencies(service_id, relation_type, sort_order);
 
 -- Production configuration seed: RTI service catalog, not customer/demo transaction data.
 INSERT OR IGNORE INTO service_categories (id, slug, name, description, sort_order, is_active, created_at, updated_at) VALUES
@@ -408,7 +451,17 @@ INSERT OR IGNORE INTO estimator_settings (key,label,value,is_public,updated_at) 
 ('whatsapp_number','RTI WhatsApp destination','',0,CURRENT_TIMESTAMP),
 ('whatsapp_url','RTI WhatsApp public URL','',1,CURRENT_TIMESTAMP),
 ('whatsapp_message_template','WhatsApp RFQ message','Hello RTI, I have completed Project Estimator. My RFQ reference is {{rfq_number}}. I would like to discuss the project.',1,CURRENT_TIMESTAMP),
-('internal_rfq_email','Internal RFQ notification email','',0,CURRENT_TIMESTAMP);
+('internal_rfq_email','Internal RFQ notification email','',0,CURRENT_TIMESTAMP),
+('complexity_threshold_very_low','Complexity threshold - Very Low maximum','20',0,CURRENT_TIMESTAMP),
+('complexity_threshold_low','Complexity threshold - Low maximum','40',0,CURRENT_TIMESTAMP),
+('complexity_threshold_moderate','Complexity threshold - Moderate maximum','60',0,CURRENT_TIMESTAMP),
+('complexity_threshold_high','Complexity threshold - High maximum','80',0,CURRENT_TIMESTAMP),
+('project_size_micro_max_effort','Project size Micro max effort-days','5',0,CURRENT_TIMESTAMP),
+('project_size_small_max_effort','Project size Small max effort-days','15',0,CURRENT_TIMESTAMP),
+('project_size_medium_max_effort','Project size Medium max effort-days','35',0,CURRENT_TIMESTAMP),
+('project_size_large_max_effort','Project size Large max effort-days','70',0,CURRENT_TIMESTAMP),
+('readiness_required_weight','RFQ readiness required-answer weight','80',0,CURRENT_TIMESTAMP),
+('readiness_profile_weight','RFQ readiness profile weight','20',0,CURRENT_TIMESTAMP);
 
 INSERT OR IGNORE INTO estimator_notification_templates (key,channel,subject,body,is_active,updated_at) VALUES
 ('rfq_customer_confirmation','email','RTI RFQ {{rfq_number}} received','Thank you. RTI has received RFQ {{rfq_number}} for {{project_name}}. Our team will review the submitted scope before preparing any formal proposal or quotation.',1,CURRENT_TIMESTAMP),
@@ -530,3 +583,12 @@ INSERT OR IGNORE INTO estimator_question_conditions
   (id, question_id, source_question_key, operator, compare_value, is_active)
 VALUES
   ('cond-dev-cloud-provider','q-dev-cloud-provider','cloud_required','equals','true',1);
+
+
+INSERT OR IGNORE INTO service_dependencies
+  (service_id, related_service_id, relation_type, reason, sort_order, is_active)
+VALUES
+  ('svc-iso27001','svc-vapt','recommends','Technical security validation can support ISMS risk treatment and control assurance.',10,1),
+  ('svc-iso27001','svc-training','recommends','Security awareness can support people-related ISMS controls and adoption.',20,1),
+  ('svc-pdp','svc-cyber-gov','recommends','Privacy remediation may require security governance and control alignment.',10,1),
+  ('svc-webapp','svc-vapt','recommends','Independent security testing is recommended before production release.',10,1);
