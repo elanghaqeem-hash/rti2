@@ -55,7 +55,7 @@ http://localhost:3000
 
 ## 4. Key Interactive Modules & Diagnostic Engines
 
-1. **Maturity Self-Assessment (`/tools/maturity-assessment`):** 10-domain diagnostic with current vs. target radar charts and gap analysis.
+1. **Technology & Cyber Maturity Self-Assessment (`/assessment`):** 20-domain diagnostic with 20-question Quick Assessment, 120-question Comprehensive Assessment, server-verified scoring, evidence confidence, gap analysis, risk exposure, roadmap, and print-ready executive report. The legacy `/tools/maturity-assessment` route redirects here.
 2. **Cyber Quick Check (`/tools/cyber-quick-check`):** NIST CSF 2.0 evaluation with wheel scores and quick-win remediations.
 3. **Passive Security Headers Check (`/tools/security-headers-check`):** Passive HTTP header evaluation with strict DNS resolution & anti-SSRF protections.
 4. **Enterprise Solution Finder (`/tools/solution-finder`):** 4-step wizard matching sector challenges to service blueprints.
