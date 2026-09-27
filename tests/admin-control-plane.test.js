@@ -49,3 +49,15 @@ test('extended AI providers are wired into settings and router', () => {
   assert.match(router, /https:\/\/api\.mistral\.ai\/v1\/chat\/completions/);
   assert.match(router, /https:\/\/api\.x\.ai\/v1\/chat\/completions/);
 });
+
+
+test('admin provides simple AI type and API key setup menu', () => {
+  const adminUi = source('app/admin/page.tsx');
+
+  assert.match(adminUi, /Konfigurasi Cepat API AI/);
+  assert.match(adminUi, /Jenis AI/);
+  assert.match(adminUi, /API Key/);
+  assert.match(adminUi, /Simpan & Aktifkan/);
+  assert.match(adminUi, /selectedAiProvider/);
+  assert.match(adminUi, /selectedAiApiKey/);
+});
