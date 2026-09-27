@@ -44,8 +44,16 @@ export async function GET(
       gatesTotal: Array.isArray(result.gates) ? result.gates.length : 0,
       gaps: result.gaps,
       roadmap: result.roadmap,
+      reportTitle:
+        String(result.reportTemplate?.name || '') || 'RTI ISO/IEC 27001 Readiness Assessment',
+      headerText:
+        String(result.reportTemplate?.headerText || '') ||
+        'PT Riset Teknologi Indonesia | ISO/IEC 27001 Readiness Assessment',
+      footerText:
+        String(result.reportTemplate?.footerText || '') ||
+        'Confidential | Generated through RTI ISO/IEC 27001 Readiness Diagnostic Tool',
       disclaimer:
-        String(result.settings?.DISCLAIMER || '') ||
+        String(result.reportTemplate?.disclaimerText || result.settings?.DISCLAIMER || '') ||
         'This is an RTI readiness indicator and not an official ISO certification score.',
     });
 
