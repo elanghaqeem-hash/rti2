@@ -21,6 +21,7 @@ import {
 export const Header: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [servicesDropdown, setServicesDropdown] = useState(false);
+  const [assessmentDropdown, setAssessmentDropdown] = useState(false);
   const [toolsDropdown, setToolsDropdown] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -156,6 +157,87 @@ export const Header: React.FC = () => {
               )}
             </div>
 
+            {/* Assessment Dropdown */}
+            <div
+              className="relative"
+              onMouseEnter={() => setAssessmentDropdown(true)}
+              onMouseLeave={() => setAssessmentDropdown(false)}
+            >
+              <button
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition-colors hover:text-white hover:bg-navy-700/60 ${
+                  assessmentDropdown ? 'text-white bg-navy-700/70' : ''
+                }`}
+                aria-expanded={assessmentDropdown}
+              >
+                <span>Assessment</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-gold-500 text-navy-900">
+                  FREE
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+
+              {assessmentDropdown && (
+                <div className="absolute top-full left-0 w-[390px] bg-navy-900/98 backdrop-blur-2xl rounded-2xl shadow-2xl border border-navy-700/80 p-3 grid gap-1 z-50 text-white animate-fade-in">
+                  <div className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-widest text-gold-300/90 border-b border-navy-700/60">
+                    RTI Technology & Cyber Diagnostic
+                  </div>
+                  <Link
+                    href="/assessment"
+                    className="p-3 rounded-xl hover:bg-navy-700/70 transition flex items-start gap-3"
+                    onClick={() => setAssessmentDropdown(false)}
+                  >
+                    <BarChart3 className="w-4 h-4 mt-0.5 text-gold-300 shrink-0" />
+                    <div>
+                      <div className="text-xs font-bold text-white">Technology & Cyber Maturity</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">20 domains · quick or 120-question comprehensive path</div>
+                    </div>
+                  </Link>
+                  <Link
+                    href="/tools/cyber-quick-check"
+                    className="p-3 rounded-xl hover:bg-navy-700/70 transition flex items-start gap-3"
+                    onClick={() => setAssessmentDropdown(false)}
+                  >
+                    <Shield className="w-4 h-4 mt-0.5 text-blue-400 shrink-0" />
+                    <div>
+                      <div className="text-xs font-bold text-white">Cybersecurity Maturity / Quick Check</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">Rapid cybersecurity posture diagnostic</div>
+                    </div>
+                  </Link>
+                  <Link
+                    href="/tools/iso27001-readiness"
+                    className="p-3 rounded-xl hover:bg-navy-700/70 transition flex items-start gap-3"
+                    onClick={() => setAssessmentDropdown(false)}
+                  >
+                    <FileCheck className="w-4 h-4 mt-0.5 text-emerald-400 shrink-0" />
+                    <div>
+                      <div className="text-xs font-bold text-white">ISO 27001 Readiness</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">ISMS readiness diagnostic</div>
+                    </div>
+                  </Link>
+                  <Link
+                    href="/tools/pdp-readiness"
+                    className="p-3 rounded-xl hover:bg-navy-700/70 transition flex items-start gap-3"
+                    onClick={() => setAssessmentDropdown(false)}
+                  >
+                    <CheckCircle2 className="w-4 h-4 mt-0.5 text-cyan-400 shrink-0" />
+                    <div>
+                      <div className="text-xs font-bold text-white">Data Protection & Privacy</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">Privacy, RoPA, DPIA and governance readiness</div>
+                    </div>
+                  </Link>
+                  <div className="pt-2 border-t border-navy-700/60 mt-1">
+                    <Link
+                      href="/assessment"
+                      className="block text-center text-xs font-bold text-gold-400 hover:text-gold-300 py-1"
+                      onClick={() => setAssessmentDropdown(false)}
+                    >
+                      Start Free Maturity Assessment &rarr;
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Interactive Tools Dropdown */}
             <div
               className="relative"
@@ -181,12 +263,12 @@ export const Header: React.FC = () => {
                     Self-Service Diagnostic Suite
                   </div>
                   <Link
-                    href="/tools/maturity-assessment"
+                    href="/assessment"
                     className="p-2.5 rounded-xl hover:bg-navy-700/70 transition text-xs font-semibold flex items-center justify-between text-slate-200 hover:text-white"
                     onClick={() => setToolsDropdown(false)}
                   >
-                    <span>10-Domain Maturity Assessment</span>
-                    <span className="text-[10px] font-mono text-gold-400 font-bold">Radar</span>
+                    <span>Technology & Cyber Maturity</span>
+                    <span className="text-[10px] font-mono text-gold-400 font-bold">20 Domains</span>
                   </Link>
                   <Link
                     href="/tools/cyber-quick-check"
@@ -269,10 +351,10 @@ export const Header: React.FC = () => {
           {/* Action CTAs */}
           <div className="hidden lg:flex items-center gap-3">
             <Link
-              href="/tools/maturity-assessment"
+              href="/assessment"
               className="px-4 py-2 rounded-lg bg-navy-700/80 border border-navy-500/80 text-xs font-bold text-slate-200 hover:text-white hover:bg-navy-700 transition"
             >
-              Request Assessment
+              Start Free Assessment
             </Link>
 
             <Link
@@ -306,6 +388,13 @@ export const Header: React.FC = () => {
             onClick={() => setMobileMenuOpen(false)}
           >
             Services (All 13 Pillars)
+          </Link>
+          <Link
+            href="/assessment"
+            className="block px-3 py-2 rounded-lg font-bold text-gold-300 hover:text-white hover:bg-navy-700/50"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Assessment
           </Link>
           <Link
             href="/tools"
@@ -352,7 +441,7 @@ export const Header: React.FC = () => {
 
           <div className="pt-4 border-t border-navy-700/60 flex flex-col gap-2">
             <Link
-              href="/tools/maturity-assessment"
+              href="/assessment"
               className="w-full text-center py-3 rounded-xl bg-gold-500 text-navy-900 font-extrabold text-xs"
               onClick={() => setMobileMenuOpen(false)}
             >
