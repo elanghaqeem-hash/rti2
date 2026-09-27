@@ -51,11 +51,13 @@ test('Security readiness: passive scanner never follows redirects automatically'
   assert.match(scanner, /redirect:\s*['"]manual['"]/);
 });
 
-test('Build readiness: production build does not mutate dependencies with forced npm install', () => {
+test('Build readiness: production build pins tooling and never bypasses dependency checks with --force', () => {
   const packageJson = JSON.parse(read('package.json'));
-  assert.doesNotMatch(packageJson.scripts.build, /npm\s+install/);
   assert.doesNotMatch(packageJson.scripts.build, /--force/);
+  assert.match(packageJson.scripts.build, /--no-save/);
+  assert.match(packageJson.scripts.build, /--package-lock=false/);
   assert.match(packageJson.scripts.build, /@opennextjs\/cloudflare@1\.20\.6/);
+  assert.match(packageJson.scripts.build, /wrangler@4\.141\.0/);
 });
 
 test('Dependency hardening: Next nested PostCSS is overridden to a patched line', () => {
