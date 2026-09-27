@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy-900: #0B1F3A;
+  --navy-700: #13305A;
+  --navy-500: #1B3E70;
+  --blue-600: #1F5BD8;
+  --blue-400: #4F86F0;
+  --blue-50:  #E3EBFB;
+  --gold-500: #E4A11B;
+  --gold-300: #F3C94A;
+  --gold-grad: linear-gradient(45deg, #EE7A1E, #EFA41C 55%, #F1D21B);
+  --beige-50: #F7F2EA;
+  --beige-200:#EDE3D2;
+  --grey-50:  #EEF1F5;
+  --line:     #D5DBE4;
+  --muted:    #5A6A80;
+  --white:    #FFFFFF;
+}
+
+body {
+  color: var(--navy-900);
+  background-color: var(--white);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Reduced motion preference respect */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-delay: -1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    background-attachment: initial !important;
+    scroll-behavior: auto !important;
+    transition-delay: 0s !important;
+    transition-duration: 0s !important;
+  }
+}
