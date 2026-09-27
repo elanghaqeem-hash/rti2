@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Shield,
   Clock,
+  MessageCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -139,23 +140,65 @@ export default function ContactPage() {
                 </div>
 
                 <div className="pt-4 border-t border-line">
-                  <div className="bg-beige-50 p-4 rounded-xl border border-beige-200">
-                    <div className="flex items-center gap-2 text-xs font-bold text-navy-900 mb-1">
-                      <Clock className="w-4 h-4 text-gold-500" />
-                      30-Minute Initial Consultation
+                  <div className="overflow-hidden rounded-2xl border border-gold-500/25 bg-gradient-to-br from-beige-50 via-white to-gold-500/5">
+                    <div className="p-5 sm:p-6">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold-500/10 text-gold-600">
+                          <Clock className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-gold-600">
+                            Konsultasi Awal • 30 Menit
+                          </span>
+                          <h3 className="mt-1 text-base sm:text-lg font-extrabold leading-snug text-navy-900">
+                            Jadwalkan Konsultasi dengan Tim RTI
+                          </h3>
+                        </div>
+                      </div>
+
+                      <p className="mt-3 text-xs sm:text-sm leading-relaxed text-muted">
+                        Diskusikan kebutuhan teknologi, cybersecurity, GRC, ISO, pengembangan sistem,
+                        atau training bersama solution lead kami. Pilih waktu yang paling sesuai untuk
+                        sesi video call awal.
+                      </p>
+
+                      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                        {['30 menit', 'Video call', 'Tanpa komitmen'].map((item) => (
+                          <div
+                            key={item}
+                            className="rounded-lg border border-line bg-white px-2 py-2 text-[10px] sm:text-[11px] font-bold text-navy-700"
+                          >
+                            {item}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-4 space-y-2.5">
+                        <a
+                          href={BRAND_CONFIG.contact.bookingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-navy-900 px-4 py-3 text-xs sm:text-sm font-extrabold text-white transition hover:bg-navy-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
+                        >
+                          <Calendar className="h-4 w-4 text-gold-400" />
+                          Pilih Jadwal Konsultasi
+                        </a>
+
+                        <a
+                          href={BRAND_CONFIG.contact.whatsappUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-navy-900/15 bg-white px-4 py-3 text-xs sm:text-sm font-bold text-navy-900 transition hover:border-gold-500/60 hover:bg-gold-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
+                        >
+                          <MessageCircle className="h-4 w-4 text-emerald-600" />
+                          Konsultasi via WhatsApp
+                        </a>
+                      </div>
+
+                      <p className="mt-3 text-center text-[10px] text-muted">
+                        Kalender konsultasi akan terbuka di tab baru.
+                      </p>
                     </div>
-                    <p className="text-[11px] text-muted leading-relaxed mb-3">
-                      Need immediate architectural or compliance alignment? Book an introductory video call slot with our solution leads.
-                    </p>
-                    <a
-                      href={BRAND_CONFIG.contact.bookingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-navy-900 text-white font-bold text-xs hover:bg-navy-700 transition"
-                    >
-                      <Calendar className="w-3.5 h-3.5 text-gold-400" />
-                      Open Booking Calendar (Cal.com)
-                    </a>
                   </div>
                 </div>
               </div>
