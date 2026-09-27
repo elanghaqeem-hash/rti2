@@ -5,6 +5,7 @@ import { getDatabase, getDatabasePath } from '@/lib/server/database';
 const MIGRATIONS = [
   '0001_leads.sql',
   '0002_system_parameters.sql',
+  '0003_enterprise_solution_finder.sql',
 ] as const;
 
 export interface MigrationStatus {
@@ -15,6 +16,7 @@ export interface MigrationStatus {
   tables: {
     leads: boolean;
     systemParameters: boolean;
+    enterpriseFinder: boolean;
   };
 }
 
@@ -59,6 +61,10 @@ export function getMigrationStatus(): MigrationStatus {
     tables: {
       leads: tableExists('leads'),
       systemParameters: tableExists('system_parameters'),
+      enterpriseFinder:
+        tableExists('enterprise_finder_questions') &&
+        tableExists('enterprise_finder_assessments') &&
+        tableExists('enterprise_finder_services'),
     },
   };
 }

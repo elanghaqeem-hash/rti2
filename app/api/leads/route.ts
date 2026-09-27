@@ -55,6 +55,30 @@ function normalizeEmail(value: unknown): string {
   return email;
 }
 
+function normalizeLeadSignals(value: unknown) {
+  if (!value || typeof value !== 'object') return undefined;
+
+  const raw = value as Record<string, unknown>;
+  const bounded = (input: unknown, max: number) => {
+    const number = Number(input);
+    if (!Number.isFinite(number)) return undefined;
+    return Math.max(0, Math.min(max, number));
+  };
+
+  const timeline =
+    typeof raw.timeline === 'string' ? raw.timeline.trim().slice(0, 40) : undefined;
+
+  return {
+    urgency: bounded(raw.urgency, 100),
+    severity: bounded(raw.severity, 100),
+    identifiedGaps: bounded(raw.identifiedGaps, 50),
+    timeline,
+    regulated: raw.regulated === true,
+    requestProposal: raw.requestProposal === true,
+    requestConsultation: raw.requestConsultation === true,
+  };
+}
+
 function normalizeSubmission(body: unknown) {
   if (!body || typeof body !== 'object') {
     throw new Error('body');
@@ -75,6 +99,7 @@ function normalizeSubmission(body: unknown) {
   const email = normalizeEmail(value.email);
   const whatsapp = normalizeText(value.whatsapp, { max: 40 });
   const needSummary = normalizeText(value.needSummary, { max: 12_000 });
+  const signals = normalizeLeadSignals(value.leadSignals);
 
   return {
     source,
@@ -86,6 +111,7 @@ function normalizeSubmission(body: unknown) {
     email,
     whatsapp: whatsapp || undefined,
     needSummary: needSummary || undefined,
+    signals,
   };
 }
 

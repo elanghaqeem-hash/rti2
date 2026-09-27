@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import type { Lead } from '@/lib/scoring/leads';
+import { leadQualificationLabel, type Lead } from '@/lib/scoring/leads';
 import { BRAND_CONFIG } from '@/lib/config/contact';
 import { useParameterOptions } from '@/components/parameters/useParameterOptions';
 import {
@@ -161,6 +161,12 @@ export default function AdminLeadsPage() {
             >
               Manage Parameters
             </Link>
+            <Link
+              href="/admin/solution-finder"
+              className="px-3 py-2.5 rounded-xl border border-line text-xs font-bold text-navy-900 hover:bg-grey-50"
+            >
+              Solution Finder
+            </Link>
             <div
               className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold ${
                 databaseConnected
@@ -283,6 +289,9 @@ export default function AdminLeadsPage() {
                           <Star className="w-3 h-3 fill-current" />
                           {l.score}
                         </span>
+                        <div className="mt-1 text-[9px] font-extrabold uppercase tracking-wider text-muted">
+                          {leadQualificationLabel(l.score)}
+                        </div>
                       </td>
 
                       <td className="py-4 px-4">

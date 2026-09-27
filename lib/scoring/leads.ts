@@ -16,19 +16,28 @@ export interface Lead {
   consentVersion: string;
 }
 
+export interface LeadQualificationSignals {
+  urgency?: number;
+  severity?: number;
+  identifiedGaps?: number;
+  timeline?: string;
+  regulated?: boolean;
+  requestProposal?: boolean;
+  requestConsultation?: boolean;
+}
+
 /**
- * Lead scoring is pure business logic only.
+ * Pure lead-qualification business logic.
  *
- * IMPORTANT:
- * This module intentionally contains no in-memory persistence and no sample
- * records. Operational lead data comes from the persistent Cloudflare D1
- * adapter. If the RTI_DB binding or migration is unavailable, the API fails closed.
+ * Operational lead data remains database-backed. Optional diagnostic signals can
+ * strengthen qualification but are never shown back to the public user.
  */
 export function calculateLeadScore(params: {
   role?: string;
   sector?: string;
   toolSlug?: string;
   needSummary?: string;
+  signals?: LeadQualificationSignals;
 }): number {
   let score = 20;
 
@@ -43,7 +52,11 @@ export function calculateLeadScore(params: {
     role.includes('vp')
   ) {
     score += 35;
-  } else if (role.includes('manager') || role.includes('lead') || role.includes('principal')) {
+  } else if (
+    role.includes('manager') ||
+    role.includes('lead') ||
+    role.includes('principal')
+  ) {
     score += 20;
   } else {
     score += 10;
@@ -63,8 +76,37 @@ export function calculateLeadScore(params: {
   }
 
   if (params.toolSlug) {
-    score += 20;
+    score += 10;
+  }
+
+  const signals = params.signals;
+  if (signals) {
+    const urgency = Math.max(0, Math.min(100, Number(signals.urgency) || 0));
+    const severity = Math.max(0, Math.min(100, Number(signals.severity) || 0));
+    const gaps = Math.max(0, Math.min(50, Number(signals.identifiedGaps) || 0));
+
+    score += Math.round((urgency / 100) * 5);
+    score += Math.round((severity / 100) * 5);
+    score += Math.min(5, Math.ceil(gaps / 3));
+
+    if (signals.regulated) score += 3;
+    if (signals.requestConsultation) score += 3;
+    if (signals.requestProposal) score += 5;
+
+    if (signals.timeline === 'emergency' || signals.timeline === 'lt30') {
+      score += 4;
+    } else if (signals.timeline === '1_3_months') {
+      score += 2;
+    }
   }
 
   return Math.min(score, 100);
+}
+
+export function leadQualificationLabel(
+  score: number,
+): 'Hot' | 'Warm' | 'Nurture' {
+  if (score >= 85) return 'Hot';
+  if (score >= 60) return 'Warm';
+  return 'Nurture';
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { LeadModal } from '@/components/tools/LeadModal';
 import { useParameterGroups } from '@/components/parameters/useParameterOptions';
@@ -29,6 +29,30 @@ export default function ProjectEstimatorPage() {
   const [testType, setTestType] = useState('grey_box');
 
   const [showLeadModal, setShowLeadModal] = useState(false);
+  const [solutionFinderHandoff, setSolutionFinderHandoff] = useState<any>(null);
+
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem(
+        'rti.enterprise-solution-finder.rfq-handoff.v1',
+      );
+      if (!raw) return;
+      const handoff = JSON.parse(raw);
+      if (handoff?.source !== 'enterprise-solution-finder') return;
+      setSolutionFinderHandoff(handoff);
+
+      const serviceKeys = Array.isArray(handoff?.solutions)
+        ? handoff.solutions.map((item: any) => String(item?.serviceKey || ''))
+        : [];
+      if (serviceKeys.includes('vapt')) {
+        setProjectType('vapt');
+      } else if (serviceKeys.includes('software_development')) {
+        setProjectType('software');
+      }
+    } catch {
+      setSolutionFinderHandoff(null);
+    }
+  }, []);
   const parameterGroups = useParameterGroups([
     'project.types',
     'project.app_types',
@@ -101,6 +125,51 @@ export default function ProjectEstimatorPage() {
 
       <section className="py-12 bg-grey-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+          {solutionFinderHandoff && (
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+              <div className="text-[10px] font-extrabold uppercase tracking-wider text-blue-700">
+                Imported from Enterprise Solution Finder
+              </div>
+              <div className="mt-2 flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                <div>
+                  <h2 className="text-sm font-extrabold text-navy-900">
+                    Assessment context carried into RFQ scoping
+                  </h2>
+                  <p className="mt-1 text-[11px] leading-relaxed text-muted">
+                    Organization scale: {solutionFinderHandoff.organization?.organizationScale || '-'} ·
+                    Complexity: {solutionFinderHandoff.complexity || '-'} ·
+                    Indicative duration: {solutionFinderHandoff.expectedDuration || '-'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.sessionStorage.removeItem(
+                      'rti.enterprise-solution-finder.rfq-handoff.v1',
+                    );
+                    setSolutionFinderHandoff(null);
+                  }}
+                  className="text-[10px] font-bold text-blue-700 hover:underline"
+                >
+                  Clear imported context
+                </button>
+              </div>
+              {Array.isArray(solutionFinderHandoff.solutions) &&
+                solutionFinderHandoff.solutions.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {solutionFinderHandoff.solutions.slice(0, 5).map((item: any) => (
+                      <span
+                        key={item.serviceKey}
+                        className="rounded-full border border-blue-200 bg-white px-3 py-1 text-[10px] font-bold text-navy-900"
+                      >
+                        {item.name} · {item.matchScore}%
+                      </span>
+                    ))}
+                  </div>
+                )}
+            </div>
+          )}
+
           {/* Project Type Switcher */}
           <div className="flex rounded-xl bg-white p-1.5 border border-line shadow-sm max-w-md mx-auto">
             {projectTypes.map((option) => {
@@ -281,7 +350,20 @@ export default function ProjectEstimatorPage() {
         <LeadModal
           toolSlug="project-estimator"
           toolName="Indicative RFQ & Effort Estimate"
-          summaryData={{ projectType, estimatedWeeks, tShirtSize, recommendedTeam }}
+          summaryData={{
+            projectType,
+            estimatedWeeks,
+            tShirtSize,
+            recommendedTeam,
+            solutionFinderHandoff: solutionFinderHandoff
+              ? {
+                  assessmentId: solutionFinderHandoff.assessmentId,
+                  complexity: solutionFinderHandoff.complexity,
+                  priorities: solutionFinderHandoff.priorities,
+                  solutions: solutionFinderHandoff.solutions,
+                }
+              : undefined,
+          }}
           onClose={() => setShowLeadModal(false)}
           onSuccess={() => setShowLeadModal(false)}
         />
