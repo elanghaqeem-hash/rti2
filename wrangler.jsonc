@@ -20,8 +20,5 @@
   },
   "observability": {
     "enabled": true
-  },
-  "build": {
-    "command": "npm install --no-save --package-lock=false --force @opennextjs/cloudflare@1.20.6 wrangler@4.141.0 && npx opennextjs-cloudflare build"
   }
 }
