@@ -231,7 +231,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
                   disabled={loading || (turnstileRequired && !turnstileToken)}
                   className="w-full py-3 rounded-xl bg-gold-500 hover:bg-gold-300 text-navy-900 font-extrabold text-xs transition shadow flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  {loading ? 'Checking Secure Storage...' : 'Generate & Download Executive Report'}
+                  {loading ? 'Checking Secure Storage...' : 'Request Executive Report'}
                 </button>
               </div>
             </form>
@@ -240,7 +240,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
           <div className="text-center py-4 space-y-4">
             <CheckCircle2 className="w-14 h-14 text-emerald-500 mx-auto" />
             <h3 className="text-xl font-extrabold text-navy-900">
-              Report Dispatched & Available
+              Request Received
             </h3>
             <p className="text-xs text-muted max-w-sm mx-auto leading-relaxed">
               Your request has been received for <strong>{formData.email}</strong>. The report delivery status will follow the response returned by the production lead service.
