@@ -95,12 +95,11 @@ export function getEstimatorAdminDashboard(): EstimatorAdminDashboard {
      FROM rfqs r
      JOIN estimator_sessions es ON es.id = r.session_id
      JOIN organizations o ON o.id = es.organization_id
-     JOIN services s ON s.id = pe_service_id(r.id)
      JOIN project_estimates pe ON pe.id = r.estimate_id
+     JOIN services s ON s.id = pe.service_id
      LEFT JOIN opportunities op ON op.rfq_id = r.id
      ORDER BY r.updated_at DESC
-     LIMIT 500`
-      .replace('JOIN services s ON s.id = pe_service_id(r.id)', 'JOIN services s ON s.id = pe.service_id'),
+     LIMIT 500`,
   ).all() as any[];
 
   const services = db.prepare(
