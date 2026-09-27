@@ -164,6 +164,16 @@ export const PARAMETER_GROUPS: ParameterGroupDefinition[] = [
     ],
   },
   {
+    key: 'pdp.customer_types',
+    label: 'UU PDP - Jenis Pelanggan',
+    description: 'Pilihan jenis hubungan pelanggan pada profil organisasi PDP Readiness.',
+    options: [
+      option('B2B', 'B2B', 10),
+      option('B2C', 'B2C', 20),
+      option('B2G', 'B2G', 30),
+    ],
+  },
+  {
     key: 'assessment.maturity_levels',
     label: 'Assessment - Maturity Level',
     description: 'Label pilihan maturity 0–5. Value level merupakan key scoring dan tidak boleh diubah.',
