@@ -126,6 +126,7 @@ authenticated Admin opens `/admin/system` and explicitly runs
 - `migrations/0006_iso27001_adaptive_questions.sql`
 - `migrations/0007_iso27001_stage_indicators.sql`
 - `migrations/0008_iso27001_persisted_dimensions.sql`
+- `migrations/0009_iso27001_applicability_parameters.sql`
 
 The migration ledger prevents already-applied migrations from being run again.
 
