@@ -53,7 +53,8 @@ const tabs: ConfigTab[] = [
   { key: 'questions', label: 'Question Bank', collection: 'questions', entity: 'question', description: 'Diagnostic questions, evidence expectations, criticality, weights, branching, and Quick Scan inclusion.' },
   { key: 'clauses', label: 'Clauses', collection: 'sections', entity: 'section', description: 'Clause and assessment section labels, ordering, and Quick Scan availability.' },
   { key: 'controls', label: 'Annex Controls', collection: 'controls', entity: 'control', description: '93 Annex A control references and RTI paraphrased diagnostic prompts.' },
-  { key: 'scoring', label: 'Scoring & Weights', collection: 'scoringRules', entity: 'scoring_rule', description: 'Deterministic scoring dimensions and Stage 1 / Stage 2 indicator weights.' },
+  { key: 'scoring', label: 'Scoring', collection: 'scoringRules', entity: 'scoring_rule', description: 'Deterministic scoring dimensions used by the ISO readiness rule engine.' },
+  { key: 'weights', label: 'Weights', collection: 'scoringRules', entity: 'scoring_rule', description: 'Configurable weights for overall readiness and Stage 1 / Stage 2 preparation indicators.' },
   { key: 'maturity', label: 'Maturity Levels', collection: 'maturityLevels', entity: 'maturity_level', description: 'Readiness labels and score thresholds.' },
   { key: 'gates', label: 'Certification Gates', collection: 'gates', entity: 'gate', description: 'Ten readiness gates, minimum responses, evidence requirements, and order.' },
   { key: 'gap', label: 'Gap Rules', collection: 'gapRules', entity: 'gap_rule', description: 'Configurable mapping from criticality and implementation gap to severity.' },
@@ -61,6 +62,7 @@ const tabs: ConfigTab[] = [
   { key: 'recommendations', label: 'Recommendation Rules', collection: 'recommendationRules', entity: 'recommendation_rule', description: 'Advisory remediation recommendations generated from assessment gaps.' },
   { key: 'services', label: 'Service Mapping', collection: 'serviceMappings', entity: 'service_mapping', description: 'RTI service recommendations and parameterized CTA mappings.' },
   { key: 'report', label: 'Report Template', collection: 'reportTemplates', entity: 'report_template', description: 'Management report branding and disclaimer content.' },
+  { key: 'lead', label: 'Lead Settings', description: 'Parameterized RTI consultation URL, WhatsApp, email, duration labels, and lead-conversion settings.' },
   { key: 'ai', label: 'AI Settings', collection: 'aiProviders', entity: 'ai_provider', description: 'Provider model, priority, and enablement metadata. API keys remain server-side secrets.' },
   { key: 'version', label: 'Version Management', description: 'Clone, review, publish, and archive immutable framework versions.' },
   { key: 'audit', label: 'Audit Log', collection: 'auditLogs', description: 'Recent assessment and ISO diagnostic configuration activity.' },
@@ -387,6 +389,18 @@ export default function Iso27001AdminPage() {
                   </div>
                 </div>
               </>
+            )}
+
+            {snapshot && tab === 'lead' && (
+              <div className="rounded-2xl border border-line bg-white p-5 shadow-sm">
+                <h3 className="text-sm font-extrabold text-navy-900">ISO 27001 Lead & CTA Parameters</h3>
+                <p className="mt-2 text-xs leading-relaxed text-muted">
+                  Contact, consultation, duration, and disclaimer values are stored in system_parameters under the ISO 27001 scalar group and can be updated without redeployment.
+                </p>
+                <Link href="/admin/parameters" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-navy-900 px-4 py-2.5 text-xs font-extrabold text-white">
+                  <Settings2 className="h-4 w-4" /> Open Parameter Manager
+                </Link>
+              </div>
             )}
 
             {snapshot && tab === 'version' && (
