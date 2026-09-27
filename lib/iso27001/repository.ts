@@ -836,6 +836,45 @@ export function calculateIsoAssessment(assessmentId: string, token: string) {
   });
   const gatesCompleted = gateResults.filter((gate) => gate.complete).length;
 
+  const stage1Requirement = weightedScore(
+    requirementTargets.filter((t) => ['Clause 4','Clause 5','Clause 6','Clause 7'].includes(t.clauseRef)),
+    responses,
+  );
+  const stage2Requirement = weightedScore(
+    requirementTargets.filter((t) => ['Clause 8','Clause 9','Clause 10'].includes(t.clauseRef)),
+    responses,
+  );
+  const stage1GateScore = gateResults.slice(0, 5).length
+    ? (gateResults.slice(0, 5).filter((gate) => gate.complete).length / gateResults.slice(0, 5).length) * 100
+    : 0;
+  const stage2GateScore = gateResults.slice(5, 10).length
+    ? (gateResults.slice(5, 10).filter((gate) => gate.complete).length / gateResults.slice(5, 10).length) * 100
+    : 0;
+
+  const stageDimensionMap = new Map<string, number>([
+    ['stage1_requirement', stage1Requirement],
+    ['stage1_gates', stage1GateScore],
+    ['stage2_requirement', stage2Requirement],
+    ['stage2_controls', controlReadiness],
+    ['stage2_evidence', evidenceReadiness],
+    ['stage2_gates', stage2GateScore],
+  ]);
+
+  function stageIndicator(prefix: 'stage1_' | 'stage2_') {
+    let weighted = 0;
+    let weight = 0;
+    for (const rule of rules.filter((item) => item.rule_key.startsWith(prefix))) {
+      const score = stageDimensionMap.get(rule.rule_key);
+      if (score == null) continue;
+      weighted += score * Number(rule.weight);
+      weight += Number(rule.weight);
+    }
+    return weight > 0 ? weighted / weight : 0;
+  }
+
+  const stage1Preparation = stageIndicator('stage1_');
+  const stage2Preparation = stageIndicator('stage2_');
+
   const groupScores = (selector: (target: TargetRow) => string) => {
     const groups = new Map<string, TargetRow[]>();
     for (const target of targets) {
@@ -987,6 +1026,14 @@ export function calculateIsoAssessment(assessmentId: string, token: string) {
       evidenceReadiness: Math.round(evidenceReadiness * 10) / 10,
       governanceReadiness: Math.round(governanceReadiness * 10) / 10,
       auditReadiness: Math.round(auditReadiness * 10) / 10,
+    },
+    stage1: {
+      label: 'Stage 1 Preparation Indicator',
+      score: Math.round(stage1Preparation * 10) / 10,
+    },
+    stage2: {
+      label: 'Stage 2 Preparation Indicator',
+      score: Math.round(stage2Preparation * 10) / 10,
     },
     gates: {
       completed: gatesCompleted,
