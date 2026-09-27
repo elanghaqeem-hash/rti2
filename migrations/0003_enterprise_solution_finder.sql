@@ -164,6 +164,24 @@ CREATE TABLE IF NOT EXISTS enterprise_finder_events (
 CREATE INDEX IF NOT EXISTS idx_enterprise_finder_events_type_created
   ON enterprise_finder_events(event_type, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id TEXT PRIMARY KEY,
+  actor TEXT NOT NULL,
+  action TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_key TEXT,
+  old_value_json TEXT,
+  new_value_json TEXT,
+  ip_address TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created
+  ON audit_logs(created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_entity
+  ON audit_logs(entity_type, entity_key, created_at DESC);
+
 -- Questions -----------------------------------------------------------------
 INSERT OR IGNORE INTO enterprise_finder_questions
 (question_key, step, category, question_type, label_id, label_en, description_id, description_en, required, condition_json, weight, sort_order, version, is_active, updated_at)
