@@ -42,6 +42,7 @@ import {
   type AssessmentResult,
 } from '@/lib/assessment/engine';
 import { BRAND_CONFIG } from '@/lib/config/contact';
+import { useParameterGroups } from '@/components/parameters/useParameterOptions';
 
 type Stage = 'landing' | 'profile' | 'questions' | 'results';
 
@@ -68,22 +69,6 @@ const initialProfile: AssessmentProfile = {
   cloudAdoption: 'limited',
   aiAdoption: 'pilot',
 };
-
-const industryOptions = [
-  'Bank / BPR / BPRS',
-  'Multifinance',
-  'Insurance',
-  'Fintech / Payment',
-  'Securities / Capital Market',
-  'Government / Public Sector',
-  'BUMN / BUMD',
-  'Healthcare',
-  'Manufacturing',
-  'Retail / E-Commerce',
-  'Education',
-  'Technology / Digital Platform',
-  'Other',
-];
 
 const fileExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'txt', 'csv'];
 
@@ -202,6 +187,22 @@ export default function TechnologyCyberMaturityAssessmentPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiHelp, setAiHelp] = useState('');
   const [fileError, setFileError] = useState('');
+  const parameterGroups = useParameterGroups([
+    'assessment.industries',
+    'assessment.company_sizes',
+    'assessment.regulated',
+    'assessment.cloud_adoption',
+    'assessment.ai_adoption',
+    'assessment.maturity_levels',
+    'assessment.target_maturity',
+  ]);
+  const industryOptions = parameterGroups['assessment.industries'] || [];
+  const companySizeOptions = parameterGroups['assessment.company_sizes'] || [];
+  const regulatedOptions = parameterGroups['assessment.regulated'] || [];
+  const cloudOptions = parameterGroups['assessment.cloud_adoption'] || [];
+  const aiOptions = parameterGroups['assessment.ai_adoption'] || [];
+  const maturityOptions = parameterGroups['assessment.maturity_levels'] || [];
+  const targetMaturityOptions = parameterGroups['assessment.target_maturity'] || [];
 
   useEffect(() => {
     try {
@@ -675,7 +676,9 @@ export default function TechnologyCyberMaturityAssessmentPage() {
                   className="w-full rounded-xl border border-line bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-gold-500"
                 >
                   <option value="">Pilih industri</option>
-                  {industryOptions.map((industry) => <option key={industry}>{industry}</option>)}
+                  {industryOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
                 </select>
               </label>
 
@@ -688,11 +691,9 @@ export default function TechnologyCyberMaturityAssessmentPage() {
                   className="w-full rounded-xl border border-line bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-gold-500"
                 >
                   <option value="">Pilih skala</option>
-                  <option value="1-50">1–50 employees</option>
-                  <option value="51-250">51–250 employees</option>
-                  <option value="251-1000">251–1,000 employees</option>
-                  <option value="1001-5000">1,001–5,000 employees</option>
-                  <option value="5000+">5,000+ employees</option>
+                  {companySizeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
                 </select>
               </label>
 
@@ -703,9 +704,9 @@ export default function TechnologyCyberMaturityAssessmentPage() {
                   onChange={(event) => setProfile((current) => ({ ...current, regulated: event.target.value as AssessmentProfile['regulated'] }))}
                   className="w-full rounded-xl border border-line bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-gold-500"
                 >
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                  <option value="unsure">Not sure</option>
+                  {regulatedOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
                 </select>
               </label>
 
@@ -716,10 +717,9 @@ export default function TechnologyCyberMaturityAssessmentPage() {
                   onChange={(event) => setProfile((current) => ({ ...current, cloudAdoption: event.target.value as AssessmentProfile['cloudAdoption'] }))}
                   className="w-full rounded-xl border border-line bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-gold-500"
                 >
-                  <option value="none">No cloud use</option>
-                  <option value="limited">Limited / selected workloads</option>
-                  <option value="hybrid">Hybrid</option>
-                  <option value="cloud-first">Cloud-first</option>
+                  {cloudOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
                 </select>
               </label>
 
@@ -730,10 +730,9 @@ export default function TechnologyCyberMaturityAssessmentPage() {
                   onChange={(event) => setProfile((current) => ({ ...current, aiAdoption: event.target.value as AssessmentProfile['aiAdoption'] }))}
                   className="w-full rounded-xl border border-line bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-gold-500"
                 >
-                  <option value="none">No organizational AI use</option>
-                  <option value="pilot">Pilot / experimentation</option>
-                  <option value="production">Production use cases</option>
-                  <option value="scaled">Scaled enterprise AI</option>
+                  {aiOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
                 </select>
               </label>
 
@@ -805,21 +804,24 @@ export default function TechnologyCyberMaturityAssessmentPage() {
               </div>
 
               <div className="mt-6 grid gap-3">
-                {currentQuestion.options.map((option) => {
-                  const selected = answers[currentQuestion.id] === option.level;
+                {maturityOptions.map((option) => {
+                  const optionLevel = Number(option.value);
+                  const selected = answers[currentQuestion.id] === optionLevel;
                   return (
                     <button
-                      key={option.level}
-                      onClick={() => handleAnswer(currentQuestion, option.level)}
+                      key={option.value}
+                      onClick={() => handleAnswer(currentQuestion, optionLevel)}
                       className={`w-full rounded-2xl border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-gold-500 ${selected ? 'border-gold-500 bg-gold-500/10 shadow-sm' : 'border-line hover:border-gold-500/60 hover:bg-beige-50/40'}`}
                     >
                       <div className="flex gap-4">
                         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-black ${selected ? 'bg-gold-500 text-navy-900' : 'bg-grey-50 text-navy-900'}`}>
-                          {option.level}
+                          {option.value}
                         </span>
                         <div>
                           <div className="text-xs font-extrabold text-navy-900">{option.label}</div>
-                          <div className="mt-1 text-xs leading-relaxed text-muted">{option.description}</div>
+                          {option.description && (
+                            <div className="mt-1 text-xs leading-relaxed text-muted">{option.description}</div>
+                          )}
                         </div>
                       </div>
                     </button>
@@ -839,7 +841,9 @@ export default function TechnologyCyberMaturityAssessmentPage() {
                       onChange={(event) => setTargets((current) => ({ ...current, [currentDomain.id]: Number(event.target.value) }))}
                       className="rounded-lg border border-line bg-white px-3 py-2 text-xs font-bold text-navy-900"
                     >
-                      {[3, 4, 5].map((level) => <option key={level} value={level}>Level {level}</option>)}
+                      {targetMaturityOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
