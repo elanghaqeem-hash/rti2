@@ -1,6 +1,6 @@
 export type PdpMode = 'quick' | 'comprehensive';
 export type PdpCriticality = 'Low' | 'Medium' | 'High' | 'Critical';
-export type PdpAnswerValue = 'yes' | 'partial' | 'no' | 'na' | 'planned' | 'unknown';
+export type PdpAnswerValue = string;
 export type PdpConfidence = 'confirmed' | 'partial' | 'unverified';
 export type PdpEvidenceStatus = 'verified' | 'available' | 'not_available' | 'not_required';
 
