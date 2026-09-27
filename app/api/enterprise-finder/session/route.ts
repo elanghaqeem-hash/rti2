@@ -3,6 +3,7 @@ import {
   createFinderAssessmentSession,
   FinderDatabaseUnavailableError,
   getFinderConfig,
+  getFinderDraft,
   saveFinderDraft,
 } from '@/lib/enterprise-finder/repository';
 import {
@@ -41,6 +42,29 @@ function failure(error: unknown, headers: Record<string, string> = {}) {
       headers: { ...NO_STORE, ...headers },
     },
   );
+}
+
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const assessmentId = String(url.searchParams.get('id') || '').trim();
+  const token = req.headers.get('x-assessment-token') || '';
+
+  if (!assessmentId || !token) {
+    return NextResponse.json(
+      { success: false, error: 'Assessment ID dan secure token wajib tersedia.' },
+      { status: 400, headers: NO_STORE },
+    );
+  }
+
+  try {
+    const draft = getFinderDraft(assessmentId, token);
+    return NextResponse.json(
+      { success: true, draft },
+      { headers: NO_STORE },
+    );
+  } catch (error) {
+    return failure(error);
+  }
 }
 
 export async function POST(req: Request) {
