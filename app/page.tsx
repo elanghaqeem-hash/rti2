@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { HoneycombHero } from '@/components/brand/HoneycombHero';
+import { ExecutiveHeroConsole } from '@/components/brand/ExecutiveHeroConsole';
 import { ComplexityToClarity } from '@/components/diagrams/ComplexityToClarity';
 import { EcosystemGraph } from '@/components/diagrams/EcosystemGraph';
 import { LifecycleSeven } from '@/components/diagrams/LifecycleSeven';
@@ -16,62 +16,140 @@ import {
   FileCheck,
   CheckCircle2,
   Lock,
+  Compass,
+  Layers,
+  Award,
+  ChevronRight,
 } from 'lucide-react';
 
 export default function HomePage() {
   return (
-    <div className="w-full">
-      {/* 1. HERO SECTION (Dark Navy with Circuit & Honeycomb) */}
-      <section className="relative bg-navy-900 text-white pt-12 pb-20 sm:pt-16 sm:pb-28 overflow-hidden border-b border-navy-700">
+    <div className="w-full bg-white">
+      {/* 1. PRESTIGIOUS BIG 4 EXECUTIVE HERO SECTION */}
+      <section className="relative bg-navy-900 text-white pt-10 pb-20 sm:pt-14 sm:pb-24 overflow-hidden border-b border-navy-700/80">
+        {/* Subtle geometric background grid and lighting mesh */}
+        <div className="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(#4F86F0_1px,transparent_1px)] [background-size:24px_24px]" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none" />
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center max-w-4xl mx-auto">
-            {/* Tagline Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold-500/10 border border-gold-500/30 text-gold-300 text-xs font-bold uppercase tracking-wider mb-6">
-              <Sparkles className="w-3.5 h-3.5" />
-              Technology. Security. Transformation.
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left Column: Authoritative Editorial Copy */}
+            <div className="lg:col-span-7 space-y-6 text-left">
+              {/* Executive Eyebrow Badge */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-navy-700/80 border border-gold-500/40 text-gold-300 text-xs font-bold uppercase tracking-[0.2em] shadow-sm">
+                <Sparkles className="w-3.5 h-3.5 text-gold-400" />
+                <span>Technology &bull; Security &bull; Transformation</span>
+              </div>
+
+              {/* Main Headline */}
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.12]">
+                Technology That Moves{' '}
+                <span className="bg-gradient-to-r from-orange-400 via-amber-400 to-yellow-300 bg-clip-text text-transparent">
+                  Business Forward
+                </span>
+              </h1>
+
+              {/* Six Pillars Monospace Sub-bar */}
+              <div className="text-xs sm:text-sm font-semibold tracking-wider text-slate-300 uppercase font-mono flex flex-wrap items-center gap-2">
+                <span>Strategy</span>
+                <span className="text-gold-500">&bull;</span>
+                <span>Software</span>
+                <span className="text-gold-500">&bull;</span>
+                <span>Support</span>
+                <span className="text-gold-500">&bull;</span>
+                <span>Governance</span>
+                <span className="text-gold-500">&bull;</span>
+                <span>Cybersecurity</span>
+                <span className="text-gold-500">&bull;</span>
+                <span>People</span>
+              </div>
+
+              {/* Strategic Positioning Paragraph */}
+              <p className="text-base sm:text-lg text-slate-300 max-w-2xl leading-relaxed">
+                {BRAND_CONFIG.positioning.id}
+              </p>
+
+              {/* Key Trust Checkmarks */}
+              <div className="pt-1 space-y-2 text-xs sm:text-sm text-slate-300">
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Trusted by Tier-1 Banks, Sovereign Regulators & Fintech Gateways</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Integrated Governance, DevSecOps & 24/7 Managed Operations</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center gap-4">
+                <Link
+                  href="/tools/maturity-assessment"
+                  className="w-full sm:w-auto px-7 py-4 rounded-xl bg-gold-500 hover:bg-gold-300 text-navy-900 font-extrabold text-sm transition-all shadow-[0_10px_30px_-10px_rgba(228,161,27,0.5)] flex items-center justify-center gap-2 group"
+                >
+                  <span>Request an Assessment</span>
+                  <ArrowRight className="w-4 h-4 text-navy-900 group-hover:translate-x-1 transition-transform" />
+                </Link>
+
+                <Link
+                  href="/contact"
+                  className="w-full sm:w-auto px-7 py-4 rounded-xl bg-navy-700/80 hover:bg-navy-600 text-white font-bold text-sm transition border border-navy-500/80 flex items-center justify-center gap-2.5 shadow-sm"
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Talk to Risetin</span>
+                </Link>
+              </div>
             </div>
 
-            {/* Main Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
-              Technology That Moves{' '}
-              <span className="bg-gradient-to-r from-orange-400 via-amber-400 to-yellow-300 bg-clip-text text-transparent">
-                Business Forward
-              </span>
-            </h1>
-
-            {/* Sub-baris layanan */}
-            <p className="mt-4 text-xs sm:text-sm font-semibold tracking-wider text-slate-300 uppercase">
-              Strategy &bull; Software &bull; Support &bull; Governance &bull; Cybersecurity &bull; People
-            </p>
-
-            {/* Positioning Paragraph */}
-            <p className="mt-6 text-base sm:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
-              {BRAND_CONFIG.positioning.id}
-            </p>
-
-            {/* 2 Primary CTAs */}
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                href="/tools/maturity-assessment"
-                className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-gold-500 hover:bg-gold-300 text-navy-900 font-extrabold text-sm transition shadow-lg flex items-center justify-center gap-2 group"
-              >
-                <span>Request an Assessment</span>
-                <ArrowRight className="w-4 h-4 text-navy-900 group-hover:translate-x-1 transition-transform" />
-              </Link>
-
-              <Link
-                href="/contact"
-                className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-navy-700/80 hover:bg-navy-500 text-white font-semibold text-sm transition border border-navy-500/80 flex items-center justify-center gap-2"
-              >
-                <span>Talk to Risetin</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              </Link>
+            {/* Right Column: Executive Hero Console */}
+            <div className="lg:col-span-5">
+              <ExecutiveHeroConsole />
             </div>
           </div>
+        </div>
 
-          {/* Signature Animated Honeycomb Hero Graphic */}
-          <div className="mt-8 sm:mt-12">
-            <HoneycombHero />
+        {/* Executive Strategic Trust Strip */}
+        <div className="mt-16 pt-8 border-t border-navy-700/60 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-slate-300">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-navy-700/80 border border-navy-500/60 flex items-center justify-center text-gold-400 shrink-0">
+                <Layers className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-white block">6 Balanced Pillars</span>
+                <span className="text-[11px] text-slate-400">Zero vendor silo bias</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-navy-700/80 border border-navy-500/60 flex items-center justify-center text-emerald-400 shrink-0">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-white block">UU PDP No. 27/2022</span>
+                <span className="text-[11px] text-slate-400">National privacy aligned</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-navy-700/80 border border-navy-500/60 flex items-center justify-center text-blue-400 shrink-0">
+                <BarChart3 className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-white block">10-Domain Diagnostic</span>
+                <span className="text-[11px] text-slate-400">Instant radar benchmarks</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-navy-700/80 border border-navy-500/60 flex items-center justify-center text-gold-400 shrink-0">
+                <Lock className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-white block">100% NDA Privilege</span>
+                <span className="text-[11px] text-slate-400">Enterprise grade secrecy</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
