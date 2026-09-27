@@ -66,7 +66,7 @@ export const BRAND_CONFIG = {
     whatsappUrl: 'https://wa.me/6285668722734',
     email: 'admin@risetin.co.id',
     website: 'https://risetin.co.id',
-    bookingUrl: 'https://cal.com/risetin/30min',
+    bookingUrl: '/consultation',
     address: {
       building: 'Graha Mustika Ratu, 7th Floor',
       street: 'Jl. Jend. Gatot Subroto Kav. 74-75',
