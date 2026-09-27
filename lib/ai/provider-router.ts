@@ -8,12 +8,18 @@ export type AiProviderId =
   | 'openai'
   | 'gemini'
   | 'groq'
-  | 'openrouter';
+  | 'openrouter'
+  | 'deepseek';
 
 export type AiFailoverResult = {
   text: string;
   provider: AiProviderId;
   attempted: AiProviderId[];
+};
+
+export type AiProviderRuntimeConfig = {
+  provider: AiProviderId;
+  model?: string | null;
 };
 
 const DEFAULT_PROVIDER_ORDER: AiProviderId[] = [
@@ -22,11 +28,22 @@ const DEFAULT_PROVIDER_ORDER: AiProviderId[] = [
   'gemini',
   'groq',
   'openrouter',
+  'deepseek',
 ];
 
 const PROVIDER_IDS = new Set<AiProviderId>(DEFAULT_PROVIDER_ORDER);
 
-function getProviderOrder(): AiProviderId[] {
+function getProviderOrder(runtime?: AiProviderRuntimeConfig[]): AiProviderId[] {
+  if (runtime && runtime.length > 0) {
+    return Array.from(
+      new Set(
+        runtime
+          .map((item) => item.provider)
+          .filter((provider): provider is AiProviderId => PROVIDER_IDS.has(provider)),
+      ),
+    );
+  }
+
   const configured = (process.env.AI_PROVIDER_ORDER || '')
     .split(',')
     .map((value) => value.trim().toLowerCase())
@@ -80,11 +97,12 @@ async function callAnthropic(
   messages: AiChatMessage[],
   systemPrompt: string,
   contextText: string,
+  modelOverride?: string,
 ): Promise<string | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
 
-  const model = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
+  const model = modelOverride || process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
   const response = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -114,7 +132,7 @@ async function callAnthropic(
 }
 
 async function callOpenAiCompatible(params: {
-  provider: 'openai' | 'groq' | 'openrouter';
+  provider: 'openai' | 'groq' | 'openrouter' | 'deepseek';
   endpoint: string;
   apiKey?: string;
   model: string;
@@ -155,11 +173,12 @@ async function callGemini(
   messages: AiChatMessage[],
   systemPrompt: string,
   contextText: string,
+  modelOverride?: string,
 ): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
-  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  const model = modelOverride || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
   const endpoint =
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
@@ -203,31 +222,32 @@ async function callProvider(
   messages: AiChatMessage[],
   systemPrompt: string,
   contextText: string,
+  modelOverride?: string,
 ): Promise<string | null> {
   switch (provider) {
     case 'anthropic':
-      return callAnthropic(messages, systemPrompt, contextText);
+      return callAnthropic(messages, systemPrompt, contextText, modelOverride);
 
     case 'openai':
       return callOpenAiCompatible({
         provider: 'openai',
         endpoint: 'https://api.openai.com/v1/chat/completions',
         apiKey: process.env.OPENAI_API_KEY,
-        model: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
+        model: modelOverride || process.env.OPENAI_MODEL || 'gpt-4.1-mini',
         messages,
         systemPrompt,
         contextText,
       });
 
     case 'gemini':
-      return callGemini(messages, systemPrompt, contextText);
+      return callGemini(messages, systemPrompt, contextText, modelOverride);
 
     case 'groq':
       return callOpenAiCompatible({
         provider: 'groq',
         endpoint: 'https://api.groq.com/openai/v1/chat/completions',
         apiKey: process.env.GROQ_API_KEY,
-        model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+        model: modelOverride || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
         messages,
         systemPrompt,
         contextText,
@@ -238,7 +258,7 @@ async function callProvider(
         provider: 'openrouter',
         endpoint: 'https://openrouter.ai/api/v1/chat/completions',
         apiKey: process.env.OPENROUTER_API_KEY,
-        model: process.env.OPENROUTER_MODEL || 'openai/gpt-4.1-mini',
+        model: modelOverride || process.env.OPENROUTER_MODEL || 'openai/gpt-4.1-mini',
         messages,
         systemPrompt,
         contextText,
@@ -247,6 +267,17 @@ async function callProvider(
           'X-Title': 'Risetin Assistant',
         },
       });
+
+    case 'deepseek':
+      return callOpenAiCompatible({
+        provider: 'deepseek',
+        endpoint: 'https://api.deepseek.com/chat/completions',
+        apiKey: process.env.DEEPSEEK_API_KEY,
+        model: modelOverride || process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+        messages,
+        systemPrompt,
+        contextText,
+      });
   }
 }
 
@@ -254,16 +285,22 @@ export async function generateAiWithFailover(params: {
   messages: AiChatMessage[];
   systemPrompt: string;
   contextText: string;
+  providers?: AiProviderRuntimeConfig[];
 }): Promise<AiFailoverResult | null> {
   const attempted: AiProviderId[] = [];
 
-  for (const provider of getProviderOrder()) {
+  const runtimeModels = new Map(
+    (params.providers || []).map((item) => [item.provider, item.model || undefined]),
+  );
+
+  for (const provider of getProviderOrder(params.providers)) {
     const isConfigured =
       (provider === 'anthropic' && Boolean(process.env.ANTHROPIC_API_KEY)) ||
       (provider === 'openai' && Boolean(process.env.OPENAI_API_KEY)) ||
       (provider === 'gemini' && Boolean(process.env.GEMINI_API_KEY)) ||
       (provider === 'groq' && Boolean(process.env.GROQ_API_KEY)) ||
-      (provider === 'openrouter' && Boolean(process.env.OPENROUTER_API_KEY));
+      (provider === 'openrouter' && Boolean(process.env.OPENROUTER_API_KEY)) ||
+      (provider === 'deepseek' && Boolean(process.env.DEEPSEEK_API_KEY));
 
     if (!isConfigured) continue;
 
@@ -275,6 +312,7 @@ export async function generateAiWithFailover(params: {
         params.messages,
         params.systemPrompt,
         params.contextText,
+        runtimeModels.get(provider),
       );
 
       if (text) {

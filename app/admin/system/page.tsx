@@ -20,6 +20,10 @@ type Status = {
   tables: {
     leads: boolean;
     systemParameters: boolean;
+    isoAssessments: boolean;
+    isoQuestions: boolean;
+    isoAnnexControls: boolean;
+    isoAuditLogs: boolean;
   };
 };
 
@@ -106,10 +110,14 @@ export default function AdminSystemPage() {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Link href="/admin/parameters" className="rounded-2xl border border-line bg-white p-4 shadow-sm hover:border-gold-500">
             <Settings2 className="h-5 w-5 text-gold-700" />
             <div className="mt-2 text-sm font-extrabold text-navy-900">Parameter Manager</div>
+          </Link>
+          <Link href="/admin/diagnostics/iso-27001" className="rounded-2xl border border-line bg-white p-4 shadow-sm hover:border-gold-500">
+            <ShieldCheck className="h-5 w-5 text-gold-700" />
+            <div className="mt-2 text-sm font-extrabold text-navy-900">ISO 27001 Diagnostic CMS</div>
           </Link>
           <Link href="/admin/leads" className="rounded-2xl border border-line bg-white p-4 shadow-sm hover:border-gold-500">
             <Database className="h-5 w-5 text-blue-600" />
@@ -145,6 +153,14 @@ export default function AdminSystemPage() {
                   leads: <strong>{status.tables.leads ? 'READY' : 'PENDING'}</strong>
                   <br />
                   system_parameters: <strong>{status.tables.systemParameters ? 'READY' : 'PENDING'}</strong>
+                  <br />
+                  ISO assessments: <strong>{status.tables.isoAssessments ? 'READY' : 'PENDING'}</strong>
+                  <br />
+                  ISO questions: <strong>{status.tables.isoQuestions ? 'READY' : 'PENDING'}</strong>
+                  <br />
+                  Annex A controls: <strong>{status.tables.isoAnnexControls ? 'READY' : 'PENDING'}</strong>
+                  <br />
+                  ISO audit logs: <strong>{status.tables.isoAuditLogs ? 'READY' : 'PENDING'}</strong>
                 </div>
               </div>
 

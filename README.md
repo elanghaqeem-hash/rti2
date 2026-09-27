@@ -60,7 +60,7 @@ http://localhost:3000
 3. **Passive Security Headers Check (`/tools/security-headers-check`):** Passive HTTP header evaluation with strict DNS resolution & anti-SSRF protections.
 4. **Enterprise Solution Finder (`/tools/solution-finder`):** 4-step wizard matching sector challenges to service blueprints.
 5. **Project Estimator & RFQ Builder (`/tools/project-estimator`):** Effort sizing for software builds and VAPT penetration testing scopes.
-6. **ISO 27001 Readiness (`/tools/iso27001-readiness`):** Clauses 4–10 & Annex A readiness checklist.
+6. **ISO/IEC 27001 Readiness (`/tools/iso-27001-readiness`):** Versioned ISO/IEC 27001:2022 + Amd 1:2024 diagnostic with 39-question Quick Scan, Detailed Assessment, 93 Annex A control references, evidence maturity, deterministic scoring, readiness gates, Stage 1/2 preparation indicators, gap register, remediation roadmap, Draft SoA/Risk Assistants, optional consent-gated AI evidence advisory, and PDF reporting. Legacy `/tools/iso27001-readiness` redirects to the canonical route.
 7. **UU PDP Readiness (`/tools/pdp-readiness`):** Data inventory, DPO, DPIA, and incident response readiness.
 8. **Admin Lead Dashboard (`/admin/leads`):** Lead scoring, pipeline statuses, and CSV export.
 9. **Risetin AI Assistant:** Slide-over assistant connected to `/api/chat`, website knowledge-base grounding, safety guardrails, automatic primary + 4-provider AI failover, and direct WhatsApp / Cal.com handoff.
@@ -70,13 +70,14 @@ http://localhost:3000
 Configure the provider secrets in the deployment environment, not in client-side code or committed files:
 
 ```bash
-AI_PROVIDER_ORDER=anthropic,openai,gemini,groq,openrouter
+AI_PROVIDER_ORDER=anthropic,openai,gemini,groq,openrouter,deepseek
 
 ANTHROPIC_API_KEY=...
 OPENAI_API_KEY=...
 GEMINI_API_KEY=...
 GROQ_API_KEY=...
 OPENROUTER_API_KEY=...
+DEEPSEEK_API_KEY=...
 ```
 
 Only configured providers are attempted. If the primary provider fails or times out, the server automatically moves to the next configured provider. If all external providers are unavailable, the assistant uses the local website knowledge-base fallback instead of fabricating an AI response.
@@ -105,6 +106,7 @@ ADMIN_USERNAME=...
 ADMIN_PASSWORD=...
 ADMIN_SESSION_SECRET=...
 RTI_DB_PATH=/var/lib/risetin/rti.sqlite
+RTI_UPLOAD_DIR=/var/lib/risetin/evidence
 RATE_LIMIT_SALT=...
 ```
 
@@ -118,6 +120,12 @@ authenticated Admin opens `/admin/system` and explicitly runs
 
 - `migrations/0001_leads.sql`
 - `migrations/0002_system_parameters.sql`
+- `migrations/0003_iso27001_readiness.sql`
+- `migrations/0004_iso27001_rules.sql`
+- `migrations/0005_iso27001_evidence_rules.sql`
+- `migrations/0006_iso27001_adaptive_questions.sql`
+- `migrations/0007_iso27001_stage_indicators.sql`
+- `migrations/0008_iso27001_persisted_dimensions.sql`
 
 The migration ledger prevents already-applied migrations from being run again.
 
@@ -143,3 +151,14 @@ has been applied.
 `.github/workflows/cloudflare-bootstrap.yml` is manual-only and retained as an
 optional staging placeholder. Do not store RTI production database or admin
 credentials in Cloudflare unless Cloudflare becomes the production runtime again.
+
+
+### ISO/IEC 27001 Readiness production notes
+
+- Admin CMS: `/admin/diagnostics/iso-27001`
+- The published assessment framework is immutable. Clone it to a Draft, edit/review, then publish; historical assessments stay pinned to their original `version_id`.
+- `RTI_UPLOAD_DIR` must be a private, writable server directory outside the public web root. Evidence is never exposed as a public static URL.
+- Public assessment creation, evidence upload, and AI-advisory routes use the server rate-limit layer. Configure the production rate-limit backend before enabling public traffic.
+- AI analysis is optional, requires explicit assessment-level consent, and returns suggestions for user review. It never changes deterministic readiness scoring.
+- Direct text extraction currently supports TXT evidence. PDF/Office/image files are stored and tracked as evidence, but binary content requires a dedicated document parser or approved provider integration before AI can inspect file contents.
+- The system stores no API keys in the browser or SQLite diagnostic configuration. Provider keys remain environment/server secrets.
