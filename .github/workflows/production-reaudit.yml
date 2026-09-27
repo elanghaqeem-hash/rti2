@@ -1,0 +1,24 @@
+name: RTI Production Re-Audit
+
+on:
+  push:
+    branches:
+      - 'audit/production-recheck-20260927'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  external-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run external production audit
+        env:
+          SMOKE_BASE_URL: https://risetin.co.id
+        run: node scripts/production-reaudit.mjs
