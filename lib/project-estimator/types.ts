@@ -126,6 +126,12 @@ export type ProjectEstimate = {
   readinessScore: number;
   team: EstimateTeamItem[];
   factors: string[];
+  recommendations: Array<{
+    serviceId: string;
+    name: string;
+    relationType: 'requires' | 'recommends';
+    reason: string;
+  }>;
   trace: Record<string, unknown>;
   createdAt: string;
 };
