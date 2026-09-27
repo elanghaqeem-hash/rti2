@@ -508,6 +508,18 @@ export function recordPdpReport(
   );
 }
 
+export function getPdpAiPrompt(code = 'executive-analysis') {
+  ensurePdpSeeded();
+  const db = getDatabase();
+  const row = db.prepare(
+    `SELECT prompt_text AS promptText, version
+     FROM pdp_ai_prompts WHERE code = ? AND is_active = 1`,
+  ).get(code) as { promptText?: string; version?: string } | undefined;
+  return row?.promptText
+    ? { promptText: row.promptText, version: row.version || '1.0' }
+    : null;
+}
+
 export function getPdpEvidenceRules() {
   ensurePdpSeeded();
   const db = getDatabase();
