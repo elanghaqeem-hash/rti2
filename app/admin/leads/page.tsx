@@ -14,6 +14,17 @@ import {
   Star,
 } from 'lucide-react';
 
+function csvCell(value: unknown) {
+  let text = String(value ?? '');
+
+  // Prevent spreadsheet formula execution when exported lead data is opened.
+  if (/^[=+\-@\t\r]/.test(text)) {
+    text = `'${text}`;
+  }
+
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
 export default function AdminLeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,10 +102,10 @@ export default function AdminLeadsPage() {
     const rows = filteredLeads.map((l) => [
       l.id,
       l.createdAt,
-      `"${l.name}"`,
-      `"${l.role}"`,
-      `"${l.company}"`,
-      `"${l.sector}"`,
+      l.name,
+      l.role,
+      l.company,
+      l.sector,
       l.email,
       l.whatsapp || '-',
       l.score,
@@ -102,7 +113,10 @@ export default function AdminLeadsPage() {
       l.consentVersion,
     ]);
 
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const csvContent = [
+      headers.map(csvCell).join(','),
+      ...rows.map((row) => row.map(csvCell).join(',')),
+    ].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
