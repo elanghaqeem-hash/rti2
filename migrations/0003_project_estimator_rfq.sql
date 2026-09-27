@@ -364,18 +364,18 @@ INSERT OR IGNORE INTO service_categories (id, slug, name, description, sort_orde
 ('cat-training','training','Training','Cybersecurity, ISO, risk, governance and custom corporate training.',90,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 
 INSERT OR IGNORE INTO services (id,category_id,slug,name,description,base_effort_days,base_price_min,base_price_max,billing_unit,default_duration_min_weeks,default_duration_max_weeks,is_active,created_at,updated_at) VALUES
-('svc-vapt','cat-cyber','vapt','Vulnerability Assessment & Penetration Testing','Web, mobile, API and network VAPT with verification retest.',12,35000000,90000000,'project',2,4,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('svc-soc','cat-cyber','soc-mdr','SOC / MDR','Managed security monitoring, detection and response service.',30,150000000,450000000,'engagement',6,12,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('svc-cyber-gov','cat-grc','cybersecurity-governance','Cybersecurity Governance','Governance framework, policy, risk and control advisory.',25,90000000,220000000,'project',6,10,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('svc-iso27001','cat-iso','iso-27001','ISO/IEC 27001 Implementation Assistance','ISMS gap assessment, implementation assistance and certification preparation.',35,120000000,300000000,'project',10,20,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('svc-pdp','cat-privacy','uu-pdp-readiness','UU PDP Data Protection Readiness','Privacy governance, RoPA, DPIA, DPO advisory and remediation planning.',25,85000000,220000000,'project',6,12,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('svc-webapp','cat-dev','web-application','Enterprise Web Application','Custom responsive enterprise web application.',45,180000000,500000000,'project',10,20,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('svc-mobile','cat-dev','mobile-application','Mobile Application','Native or cross-platform enterprise mobile application.',50,220000000,600000000,'project',12,24,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('svc-integration','cat-dev','system-integration','System Integration','API, middleware and enterprise system integration.',35,150000000,450000000,'project',8,18,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('svc-ai-assistant','cat-ai','ai-assistant','Enterprise AI Assistant','Enterprise AI assistant, knowledge retrieval and workflow integration.',35,160000000,500000000,'project',8,18,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('svc-blueprint','cat-advisory','it-blueprint','IT Strategy & Blueprint','IT strategy, blueprint, architecture and transformation roadmap.',30,125000000,320000000,'project',8,14,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('svc-banking-grc','cat-banking','banking-grc','Banking GRC Implementation','Risk, compliance, ICOFR/RCSA/KRI and related GRC implementation.',40,180000000,500000000,'project',10,20,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('svc-training','cat-training','corporate-training','Custom Corporate Training','Customized corporate training and workshop delivery.',5,15000000,75000000,'batch',1,2,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+('svc-vapt','cat-cyber','vapt','Vulnerability Assessment & Penetration Testing','Web, mobile, API and network VAPT with verification retest.',12,0,0,'project',2,4,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('svc-soc','cat-cyber','soc-mdr','SOC / MDR','Managed security monitoring, detection and response service.',30,0,0,'engagement',6,12,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('svc-cyber-gov','cat-grc','cybersecurity-governance','Cybersecurity Governance','Governance framework, policy, risk and control advisory.',25,0,0,'project',6,10,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('svc-iso27001','cat-iso','iso-27001','ISO/IEC 27001 Implementation Assistance','ISMS gap assessment, implementation assistance and certification preparation.',35,0,0,'project',10,20,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('svc-pdp','cat-privacy','uu-pdp-readiness','UU PDP Data Protection Readiness','Privacy governance, RoPA, DPIA, DPO advisory and remediation planning.',25,0,0,'project',6,12,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('svc-webapp','cat-dev','web-application','Enterprise Web Application','Custom responsive enterprise web application.',45,0,0,'project',10,20,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('svc-mobile','cat-dev','mobile-application','Mobile Application','Native or cross-platform enterprise mobile application.',50,0,0,'project',12,24,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('svc-integration','cat-dev','system-integration','System Integration','API, middleware and enterprise system integration.',35,0,0,'project',8,18,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('svc-ai-assistant','cat-ai','ai-assistant','Enterprise AI Assistant','Enterprise AI assistant, knowledge retrieval and workflow integration.',35,0,0,'project',8,18,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('svc-blueprint','cat-advisory','it-blueprint','IT Strategy & Blueprint','IT strategy, blueprint, architecture and transformation roadmap.',30,0,0,'project',8,14,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('svc-banking-grc','cat-banking','banking-grc','Banking GRC Implementation','Risk, compliance, ICOFR/RCSA/KRI and related GRC implementation.',40,0,0,'project',10,20,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('svc-training','cat-training','corporate-training','Custom Corporate Training','Customized corporate training and workshop delivery.',5,0,0,'batch',1,2,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 
 INSERT OR IGNORE INTO complexity_weights (dimension,label,weight,sort_order,is_active,updated_at) VALUES
 ('scope','Scope Complexity',1.2,10,1,CURRENT_TIMESTAMP),
@@ -396,6 +396,9 @@ INSERT OR IGNORE INTO pricing_parameters (key,label,value,min_value,max_value,is
 ('complexity_multiplier_very_high','Very high complexity multiplier',1.40,0.50,4.00,1,CURRENT_TIMESTAMP),
 ('accelerated_timeline_multiplier','Accelerated timeline multiplier',1.15,1.00,2.00,1,CURRENT_TIMESTAMP),
 ('price_range_spread','Public indicative range spread',0.15,0.05,0.50,1,CURRENT_TIMESTAMP);
+
+-- Commercial values are intentionally not seeded. RTI Admin must calibrate official
+-- service pricing before a public indicative investment can display a currency range.
 
 INSERT OR IGNORE INTO estimator_settings (key,label,value,is_public,updated_at) VALUES
 ('rfq_prefix','RFQ number prefix','RTI-RFQ',0,CURRENT_TIMESTAMP),
