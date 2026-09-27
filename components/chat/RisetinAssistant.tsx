@@ -24,7 +24,7 @@ interface Message {
 
 export const RisetinAssistant: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isLauncherExpanded, setIsLauncherExpanded] = useState(true);
+  const [isLauncherExpanded, setIsLauncherExpanded] = useState(false);
   const [launcherPosition, setLauncherPosition] = useState<{ x: number; y: number } | null>(null);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -51,15 +51,6 @@ export const RisetinAssistant: React.FC = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
-
-  useEffect(() => {
-    if (isOpen) return;
-
-    setIsLauncherExpanded(true);
-    const timer = window.setTimeout(() => setIsLauncherExpanded(false), 4000);
-
-    return () => window.clearTimeout(timer);
-  }, [isOpen]);
 
   useEffect(() => {
     if (!launcherPosition) return;
@@ -210,12 +201,14 @@ export const RisetinAssistant: React.FC = () => {
           onPointerCancel={() => {
             dragStateRef.current = null;
           }}
-          onMouseEnter={() => setIsLauncherExpanded(true)}
+          onMouseEnter={() => {
+            if (window.matchMedia('(hover: hover)').matches) setIsLauncherExpanded(true);
+          }}
           onMouseLeave={() => setIsLauncherExpanded(false)}
           className={`fixed z-40 flex items-center justify-center rounded-full bg-navy-900 text-white shadow-2xl border border-navy-700 hover:bg-navy-700 transition-[width,padding,transform,background-color] duration-300 select-none touch-none cursor-grab active:cursor-grabbing ${
             isLauncherExpanded
               ? 'gap-3 px-4 py-3 min-w-[176px]'
-              : 'w-14 h-14 p-0'
+              : 'w-14 h-14 p-0 sm:w-14 sm:h-14'
           }`}
           style={
             launcherPosition
