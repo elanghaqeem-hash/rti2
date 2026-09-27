@@ -6,6 +6,7 @@ import { EcosystemGraph } from '@/components/diagrams/EcosystemGraph';
 import { LifecycleSeven } from '@/components/diagrams/LifecycleSeven';
 import { ClientsSection } from '@/components/layout/ClientsSection';
 import { BRAND_CONFIG } from '@/lib/config/contact';
+import { getPublicCmsSettings } from '@/lib/admin/settings-store';
 import {
   ArrowRight,
   ShieldCheck,
@@ -22,7 +23,9 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
-export default function HomePage() {
+export default async function HomePage() {
+  const cms = await getPublicCmsSettings();
+
   return (
     <div className="w-full bg-white">
       {/* 1. PRESTIGIOUS BIG 4 EXECUTIVE HERO SECTION */}
@@ -38,14 +41,14 @@ export default function HomePage() {
               {/* Executive Eyebrow Badge */}
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-navy-700/80 border border-gold-500/40 text-gold-300 text-xs font-bold uppercase tracking-[0.2em] shadow-sm">
                 <Sparkles className="w-3.5 h-3.5 text-gold-400" />
-                <span>Technology &bull; Security &bull; Transformation</span>
+                <span>{cms.heroEyebrow}</span>
               </div>
 
               {/* Main Headline */}
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.12]">
-                Technology That Moves{' '}
+                {cms.heroTitle}{' '}
                 <span className="bg-gradient-to-r from-orange-400 via-amber-400 to-yellow-300 bg-clip-text text-transparent">
-                  Business Forward
+                  {cms.heroHighlight}
                 </span>
               </h1>
 
@@ -66,7 +69,7 @@ export default function HomePage() {
 
               {/* Strategic Positioning Paragraph */}
               <p className="text-base sm:text-lg text-slate-300 max-w-2xl leading-relaxed">
-                {BRAND_CONFIG.positioning.id}
+                {cms.positioning || BRAND_CONFIG.positioning.id}
               </p>
 
               {/* Key Trust Checkmarks */}
