@@ -27,27 +27,44 @@ function bool(value: unknown) {
   return Number(value) === 1;
 }
 
-export function getNistAssessmentConfig(): NistAssessmentConfig {
+export function getNistAssessmentConfig(options?: {
+  frameworkVersion?: string;
+  questionnaireVersion?: string;
+}): NistAssessmentConfig {
   const db = getDatabase();
-  const framework = db.prepare(
-    `SELECT code FROM nist_framework_versions
-     WHERE status = 'active'
-     ORDER BY created_at DESC
-     LIMIT 1`,
-  ).get() as { code?: string } | undefined;
+  const framework = options?.frameworkVersion
+    ? db.prepare(
+        `SELECT code FROM nist_framework_versions WHERE code = ? LIMIT 1`,
+      ).get(options.frameworkVersion) as { code?: string } | undefined
+    : db.prepare(
+        `SELECT code FROM nist_framework_versions
+         WHERE status = 'active'
+         ORDER BY created_at DESC
+         LIMIT 1`,
+      ).get() as { code?: string } | undefined;
 
   if (!framework?.code) {
     throw new Error('NIST CSF configuration is not initialized.');
   }
 
-  const version = db.prepare(
-    `SELECT questionnaire_version
-     FROM nist_questions
-     WHERE framework_version = ? AND active = 1
-     GROUP BY questionnaire_version
-     ORDER BY MAX(updated_at) DESC
-     LIMIT 1`,
-  ).get(framework.code) as { questionnaire_version?: string } | undefined;
+  const version = options?.questionnaireVersion
+    ? db.prepare(
+        `SELECT questionnaire_version
+         FROM nist_questions
+         WHERE framework_version = ? AND questionnaire_version = ?
+         GROUP BY questionnaire_version
+         LIMIT 1`,
+      ).get(framework.code, options.questionnaireVersion) as
+        | { questionnaire_version?: string }
+        | undefined
+    : db.prepare(
+        `SELECT questionnaire_version
+         FROM nist_questions
+         WHERE framework_version = ? AND active = 1
+         GROUP BY questionnaire_version
+         ORDER BY MAX(updated_at) DESC
+         LIMIT 1`,
+      ).get(framework.code) as { questionnaire_version?: string } | undefined;
 
   if (!version?.questionnaire_version) {
     throw new Error('NIST questionnaire version is not configured.');
