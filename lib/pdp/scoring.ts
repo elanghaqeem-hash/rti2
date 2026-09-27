@@ -195,9 +195,9 @@ function dpiaScreen(profile: PdpProfile) {
   if (profile.profiling || profile.behavioralAnalytics) reasons.push('Profiling or behavioral analytics is performed.');
   if (profile.biometricData || profile.geneticData) reasons.push('Biometric or genetic data is processed.');
   if (profile.healthData || profile.criminalData) reasons.push('Health or criminal-related data is processed.');
-  if ((profile.dataSubjectCount || 0) >= 100000) reasons.push('Large-scale processing indicator based on declared data-subject volume.');
+  if (profile.largeScaleProcessing) reasons.push('The organization declared a large-scale processing indicator.');
   if (profile.childrenData) reasons.push('Children data is processed.');
-  if (profile.cctv && (profile.dataSubjectCount || 0) >= 10000) reasons.push('Systematic monitoring indicator is present.');
+  if (profile.regularSystematicLargeScaleMonitoring) reasons.push('Regular and systematic large-scale monitoring indicator is present.');
 
   const status =
     reasons.length >= 2
@@ -211,33 +211,34 @@ function dpiaScreen(profile: PdpProfile) {
 
 function dpoScreen(profile: PdpProfile) {
   const reasons: string[] = [];
-  const largeScale =
-    (profile.dataSubjectCount || 0) >= 100000 ||
-    (profile.employeeCount || 0) >= 1000;
 
-  if (/government|public/i.test(profile.industry || '')) {
-    reasons.push('Public-service / government-sector processing indicator is present.');
+  if (profile.publicServiceProcessing) {
+    reasons.push('Public-service processing indicator is present.');
   }
-  if (largeScale && (profile.profiling || profile.behavioralAnalytics || profile.cctv)) {
-    reasons.push('Regular/systematic large-scale monitoring indicator is present.');
+  if (profile.regularSystematicLargeScaleMonitoring) {
+    reasons.push('Regular and systematic large-scale monitoring indicator is present.');
   }
-  if (
-    largeScale &&
-    (profile.healthData || profile.biometricData || profile.geneticData || profile.criminalData)
-  ) {
-    reasons.push('Large-scale processing of specific/high-impact personal data indicator is present.');
+  if (profile.largeScaleSpecificDataProcessing) {
+    reasons.push('Large-scale processing of specific personal data indicator is present.');
   }
-  if (profile.thirdPartyProcessor && largeScale) {
-    reasons.push('Large-scale processor role indicator is present.');
+  if (profile.largeScaleCriminalDataProcessing) {
+    reasons.push('Large-scale processing of criminal-related data indicator is present.');
   }
+
+  const contextualReview =
+    profile.organizationalComplexityHigh ||
+    profile.actsAsProcessor ||
+    profile.largeScaleProcessing ||
+    profile.healthData ||
+    profile.biometricData ||
+    profile.geneticData ||
+    profile.criminalData ||
+    profile.profiling;
 
   const status =
     reasons.length > 0
       ? 'Trigger Identified'
-      : profile.thirdPartyProcessor ||
-          profile.healthData ||
-          profile.biometricData ||
-          profile.profiling
+      : contextualReview
         ? 'Further Legal Review Recommended'
         : 'Trigger Not Evident';
 
