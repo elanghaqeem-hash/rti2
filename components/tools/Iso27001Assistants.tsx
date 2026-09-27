@@ -49,6 +49,7 @@ export function Iso27001Assistants(props: {
 }) {
   const [panel, setPanel] = React.useState<'soa' | 'risk' | null>(null);
   const [soa, setSoa] = React.useState<SoaItem[]>([]);
+  const [applicabilityOptions, setApplicabilityOptions] = React.useState<Array<{ value: string; label: string }>>([]);
   const [risks, setRisks] = React.useState<RiskRow[]>([]);
   const [riskDraft, setRiskDraft] = React.useState({ ...emptyRisk });
   const [busy, setBusy] = React.useState(false);
@@ -65,6 +66,7 @@ export function Iso27001Assistants(props: {
       const data = await response.json().catch(() => null);
       if (!response.ok || !data?.success) throw new Error(data?.error || 'Draft SoA register unavailable.');
       setSoa(data.items || []);
+      setApplicabilityOptions(data.options || []);
       setPanel('soa');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Draft SoA register unavailable.');
@@ -202,9 +204,14 @@ export function Iso27001Assistants(props: {
             <div key={item.controlId} className="rounded-xl border border-line p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div><div className="text-xs font-extrabold text-navy-900">{item.controlRef} · {item.domain}</div><div className="mt-1 text-[11px] text-muted">{item.title}</div></div>
-                <select value={Boolean(item.applicable) ? 'yes' : 'no'} onChange={(e) => patchSoa(index, { applicable: e.target.value === 'yes' })} className="rounded-lg border border-line bg-white px-2 py-1.5 text-[11px] font-bold">
-                  <option value="yes">Applicable</option>
-                  <option value="no">Not Applicable</option>
+                <select
+                  value={Boolean(item.applicable) ? 'applicable' : 'not_applicable'}
+                  onChange={(e) => patchSoa(index, { applicable: e.target.value === 'applicable' })}
+                  className="rounded-lg border border-line bg-white px-2 py-1.5 text-[11px] font-bold"
+                >
+                  {applicabilityOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
                 </select>
               </div>
               <div className="mt-3 grid gap-3 md:grid-cols-3">
