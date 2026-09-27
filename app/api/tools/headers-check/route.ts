@@ -1,10 +1,35 @@
 import { NextResponse } from 'next/server';
 import { validateSafePublicDomain } from '@/lib/security/ssrf';
+import { enforceRateLimit, rateLimitHeaders } from '@/lib/security/request-protection';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
+    const rateLimit = await enforceRateLimit(req, {
+      bucket: 'security-headers-check',
+      limit: 10,
+      windowSeconds: 60,
+    });
+
+    if (!rateLimit.allowed) {
+      const status = rateLimit.reason === 'limit-exceeded' ? 429 : 503;
+      return NextResponse.json(
+        {
+          error:
+            status === 429
+              ? 'Batas pemeriksaan domain tercapai. Silakan coba lagi sebentar.'
+              : 'Proteksi API pemeriksaan domain belum siap.',
+        },
+        {
+          status,
+          headers: {
+            'Cache-Control': 'no-store',
+            ...rateLimitHeaders(rateLimit),
+          },
+        },
+      );
+    }
     const { domain, authorized } = await req.json();
 
     if (!authorized) {
@@ -36,17 +61,28 @@ export async function POST(req: Request) {
     try {
       res = await fetch(targetUrl, {
         method: 'HEAD',
-        redirect: 'follow',
+        redirect: 'manual',
         signal: controller.signal,
         headers: {
           'User-Agent': 'RTI-SecurityHeadersCheck/1.0 (+https://risetin.co.id/security)',
         },
       });
+
+      if (res.status === 405 || res.status === 501) {
+        res = await fetch(targetUrl, {
+          method: 'GET',
+          redirect: 'manual',
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'RTI-SecurityHeadersCheck/1.0 (+https://risetin.co.id/security)',
+          },
+        });
+      }
     } catch {
       // Fallback to GET if HEAD rejected
       res = await fetch(targetUrl, {
         method: 'GET',
-        redirect: 'follow',
+        redirect: 'manual',
         signal: controller.signal,
         headers: {
           'User-Agent': 'RTI-SecurityHeadersCheck/1.0 (+https://risetin.co.id/security)',
@@ -54,6 +90,23 @@ export async function POST(req: Request) {
       });
     } finally {
       clearTimeout(timeout);
+    }
+
+    if (res.status >= 300 && res.status < 400) {
+      return NextResponse.json(
+        {
+          error:
+            'Domain melakukan redirect. Demi mencegah SSRF, redirect tidak diikuti otomatis. Jalankan pemeriksaan ulang menggunakan hostname tujuan akhir.',
+          redirectLocation: res.headers.get('location'),
+        },
+        {
+          status: 409,
+          headers: {
+            'Cache-Control': 'no-store',
+            ...rateLimitHeaders(rateLimit),
+          },
+        },
+      );
     }
 
     const headers = res.headers;
