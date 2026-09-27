@@ -9,6 +9,7 @@ type Dashboard = {
   services: Array<{ id: string; categoryId: string; categoryName: string; slug: string; name: string; description: string; baseEffortDays: number; basePriceMin: number; basePriceMax: number; durationMinWeeks: number; durationMaxWeeks: number; active: boolean }>;
   settings: Array<{ key: string; label: string; value: string; public: boolean }>;
   questions: Array<{ id: string; serviceId: string | null; serviceName: string; key: string; label: string; helpText: string; fieldType: string; required: boolean; dimension: string | null; weight: number; quickMode: boolean; detailedMode: boolean; active: boolean; sortOrder: number }>;
+  questionConditions: Array<{ id: string; questionId: string; sourceQuestionKey: string; operator: string; compareValue: string; active: boolean }>;
   questionOptions: Array<{ id: string; questionId: string; value: string; label: string; score: number; effortMultiplier: number; priceMultiplier: number; sortOrder: number; active: boolean }>;
   rules: Array<{ id: string; serviceId: string | null; serviceName: string; name: string; conditionsJson: string; effectsJson: string; sortOrder: number; active: boolean }>;
   resources: Array<{ id: string; roleKey: string; name: string; internalDayRate: number | null; active: boolean }>;
@@ -27,6 +28,7 @@ export default function EstimatorConfigurationPage() {
   const [service, setService] = useState({ categoryId: '', name: '', slug: '', description: '', baseEffortDays: 5, basePriceMin: 0, basePriceMax: 0, durationMinWeeks: 1, durationMaxWeeks: 2 });
   const [question, setQuestion] = useState({ serviceId: '', key: '', label: '', helpText: '', fieldType: 'radio', required: true, dimension: 'scope', weight: 1, sortOrder: 100, quickMode: true, detailedMode: true });
   const [option, setOption] = useState({ questionId: '', value: '', label: '', score: 3, effortMultiplier: 1, priceMultiplier: 1, sortOrder: 100 });
+  const [condition, setCondition] = useState({ questionId: '', sourceQuestionKey: '', operator: 'equals', compareValue: '' });
   const [rule, setRule] = useState({ serviceId: '', name: '', conditionsJson: '[]', effectsJson: '{"complexityDelta":0,"effortMultiplier":1,"priceMultiplier":1}', sortOrder: 100, active: true });
   const [resource, setResource] = useState({ roleKey: '', name: '', internalDayRate: '' });
   const [assignment, setAssignment] = useState({ serviceId: '', resourceRoleId: '', quantity: 1, effortShare: 0.2 });
@@ -42,6 +44,11 @@ export default function EstimatorConfigurationPage() {
       setService((current) => ({ ...current, categoryId: current.categoryId || body.dashboard.categories?.[0]?.id || '' }));
       setQuestion((current) => ({ ...current, serviceId: current.serviceId || body.dashboard.services?.[0]?.id || '' }));
       setOption((current) => ({ ...current, questionId: current.questionId || body.dashboard.questions?.[0]?.id || '' }));
+      setCondition((current) => ({
+        ...current,
+        questionId: current.questionId || body.dashboard.questions?.[0]?.id || '',
+        sourceQuestionKey: current.sourceQuestionKey || body.dashboard.questions?.[0]?.key || '',
+      }));
       setAssignment((current) => ({
         ...current,
         serviceId: current.serviceId || body.dashboard.services?.[0]?.id || '',
@@ -181,6 +188,25 @@ export default function EstimatorConfigurationPage() {
                   </div>
                   <Action label="Add Option" onClick={() => patch({ action: 'question_option', option }, 'Question option ditambahkan.')} />
                   <div className="mt-4 space-y-2">{selectedQuestionOptions.map((item) => <div key={item.id} className="rounded-lg bg-grey-50 px-3 py-2 text-xs"><strong>{item.label}</strong><span className="ml-2 text-muted">score {item.score} · effort ×{item.effortMultiplier} · price ×{item.priceMultiplier}</span></div>)}</div>
+                </Panel>
+
+                <Panel title="Conditional Visibility">
+                  <Select label="Target question" value={condition.questionId} onChange={(v) => setCondition({ ...condition, questionId: v })} options={data.questions.map((item) => [item.id, `${item.serviceName} · ${item.label}`])} />
+                  <Select label="Source question" value={condition.sourceQuestionKey} onChange={(v) => setCondition({ ...condition, sourceQuestionKey: v })} options={data.questions.map((item) => [item.key, `${item.serviceName} · ${item.label}`])} />
+                  <Select label="Operator" value={condition.operator} onChange={(v) => setCondition({ ...condition, operator: v })} options={['equals','not_equals','includes','gt','gte','lt','lte','truthy','falsy'].map((value) => [value,value])} />
+                  {!['truthy','falsy'].includes(condition.operator) && <Text label="Compare value" value={condition.compareValue} onChange={(v) => setCondition({ ...condition, compareValue: v })} />}
+                  <Action label="Add Condition" onClick={() => patch({ action: 'question_condition', condition }, 'Conditional visibility rule ditambahkan.')} />
+                  <div className="mt-4 space-y-2">
+                    {data.questionConditions.map((item) => {
+                      const target = data.questions.find((q) => q.id === item.questionId);
+                      return (
+                        <div key={item.id} className="rounded-lg bg-grey-50 px-3 py-2 text-xs">
+                          <strong>{target?.label || item.questionId}</strong>
+                          <div className="mt-1 font-mono text-[10px] text-muted">IF {item.sourceQuestionKey} {item.operator} {item.compareValue || ''}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </Panel>
               </div>
             )}
