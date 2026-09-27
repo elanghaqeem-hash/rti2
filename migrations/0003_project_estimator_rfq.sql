@@ -288,6 +288,8 @@ CREATE TABLE IF NOT EXISTS rfq_attachments (
   storage_key TEXT NOT NULL,
   mime_type TEXT,
   file_size INTEGER,
+  sha256 TEXT,
+  scan_status TEXT NOT NULL DEFAULT 'pending' CHECK (scan_status IN ('pending','clean','rejected','error')),
   uploaded_by TEXT,
   created_at TEXT NOT NULL,
   FOREIGN KEY (rfq_id) REFERENCES rfqs(id) ON DELETE CASCADE
