@@ -115,6 +115,7 @@ export type ProjectEstimate = {
   durationMaxWeeks: number;
   priceMin: number;
   priceMax: number;
+  priceConfigured: boolean;
   readinessScore: number;
   team: EstimateTeamItem[];
   factors: string[];
