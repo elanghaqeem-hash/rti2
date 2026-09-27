@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily RTI / Risetin database backup
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+Persistent=true
+Unit=risetin-backup.service
+
+[Install]
+WantedBy=timers.target

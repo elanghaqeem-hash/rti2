@@ -1,0 +1,50 @@
+# Optional alternative to Caddy.
+# Use this only when Nginx + Certbot is preferred on the host.
+# Replace certificate paths if Certbot uses different locations.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name risetin.co.id www.risetin.co.id;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://risetin.co.id$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name risetin.co.id;
+
+    ssl_certificate /etc/letsencrypt/live/risetin.co.id/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/risetin.co.id/privkey.pem;
+
+    client_max_body_size 10m;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name www.risetin.co.id;
+
+    ssl_certificate /etc/letsencrypt/live/risetin.co.id/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/risetin.co.id/privkey.pem;
+
+    return 301 https://risetin.co.id$request_uri;
+}

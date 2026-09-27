@@ -1,0 +1,14 @@
+.git
+.github
+.next
+node_modules
+npm-debug.log*
+.env
+.env.*
+!.env.example
+!.env.production.example
+backups/*
+dist
+*.zip
+*.pdf
+.DS_Store

@@ -1,0 +1,9 @@
+[Unit]
+Description=RTI / Risetin SQLite production backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/risetin
+ExecStart=/opt/risetin/scripts/backup-db.sh

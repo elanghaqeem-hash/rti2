@@ -1,0 +1,71 @@
+name: Build RTI Production Deploy Bundle
+
+on:
+  push:
+    branches:
+      - 'feature/production-deploy-bundle-*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-bundle:
+    name: Verify and package production bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run integrity tests
+        run: npm test
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Production build
+        run: npm run build
+
+      - name: Generate clean SQLite schema template
+        run: node scripts/create-db-template.mjs database/rti.sqlite.template
+
+      - name: Assemble release tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/rti-production
+          rsync -a ./ dist/rti-production/ \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='.next' \
+            --exclude='dist' \
+            --exclude='.env.production' \
+            --exclude='backups/*.sqlite*'
+          {
+            echo "RTI / Risetin Production Deploy Bundle"
+            echo "Repository: ${GITHUB_REPOSITORY}"
+            echo "Branch: ${GITHUB_REF_NAME}"
+            echo "Commit: ${GITHUB_SHA}"
+            echo "Built (UTC): $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > dist/rti-production/BUILD_INFO.txt
+          cd dist
+          zip -qr rti-production-deploy-bundle.zip rti-production
+
+      - name: Upload deploy artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rti-production-deploy-bundle
+          path: dist/rti-production-deploy-bundle.zip
+          if-no-files-found: error
+          retention-days: 7
