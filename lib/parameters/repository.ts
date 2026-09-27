@@ -1,23 +1,11 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import {
   getDefaultParameterOptions,
   type ParameterOption,
 } from '@/lib/parameters/catalog';
-
-type D1Result<T = unknown> = {
-  success?: boolean;
-  results?: T[];
-};
-
-type D1PreparedStatement = {
-  bind: (...values: unknown[]) => D1PreparedStatement;
-  all: <T = unknown>() => Promise<D1Result<T>>;
-  run: () => Promise<D1Result>;
-};
-
-type D1DatabaseLike = {
-  prepare: (query: string) => D1PreparedStatement;
-};
+import {
+  DatabaseUnavailableError,
+  getDatabase,
+} from '@/lib/server/database';
 
 type ParameterRow = {
   group_key: string;
@@ -30,24 +18,9 @@ type ParameterRow = {
 };
 
 export class ParameterDatabaseUnavailableError extends Error {
-  constructor(message = 'Cloudflare D1 binding RTI_DB is not available.') {
+  constructor(message = 'RTI server database is not available or not initialized.') {
     super(message);
     this.name = 'ParameterDatabaseUnavailableError';
-  }
-}
-
-function getDatabase(): D1DatabaseLike {
-  try {
-    const context = getCloudflareContext();
-    const env = context.env as Record<string, unknown>;
-    const database = env.RTI_DB as D1DatabaseLike | undefined;
-    if (!database || typeof database.prepare !== 'function') {
-      throw new ParameterDatabaseUnavailableError();
-    }
-    return database;
-  } catch (error) {
-    if (error instanceof ParameterDatabaseUnavailableError) throw error;
-    throw new ParameterDatabaseUnavailableError();
   }
 }
 
@@ -63,27 +36,41 @@ function rowToOption(row: ParameterRow): ParameterOption {
   };
 }
 
+function parameterDatabase() {
+  try {
+    return getDatabase();
+  } catch (error) {
+    if (error instanceof DatabaseUnavailableError) {
+      throw new ParameterDatabaseUnavailableError(error.message);
+    }
+    throw error;
+  }
+}
+
 export async function listParameterOverrides(
   groupKeys: string[],
 ): Promise<ParameterOption[]> {
   if (groupKeys.length === 0) return [];
-  const database = getDatabase();
-  const placeholders = groupKeys.map(() => '?').join(',');
-  const result = await database
-    .prepare(
-      `SELECT group_key, value, label, description, sort_order, is_active, is_system
-       FROM system_parameters
-       WHERE group_key IN (${placeholders})
-       ORDER BY group_key, sort_order, label`,
-    )
-    .bind(...groupKeys)
-    .all<ParameterRow>();
 
-  if (result.success === false || !Array.isArray(result.results)) {
-    throw new Error('D1 parameter query failed.');
+  try {
+    const database = parameterDatabase();
+    const placeholders = groupKeys.map(() => '?').join(',');
+    const rows = database
+      .prepare(
+        `SELECT group_key, value, label, description, sort_order, is_active, is_system
+         FROM system_parameters
+         WHERE group_key IN (${placeholders})
+         ORDER BY group_key, sort_order, label`,
+      )
+      .all(...groupKeys) as ParameterRow[];
+
+    return rows.map(rowToOption);
+  } catch (error) {
+    if (error instanceof ParameterDatabaseUnavailableError) throw error;
+    throw new ParameterDatabaseUnavailableError(
+      error instanceof Error ? error.message : 'Parameter database query failed.',
+    );
   }
-
-  return result.results.map(rowToOption);
 }
 
 export async function resolveParameterGroups(
@@ -104,6 +91,7 @@ export async function resolveParameterGroups(
   for (const groupKey of groupKeys) {
     const merged = new Map<string, ParameterOption>();
     for (const item of defaults[groupKey] || []) merged.set(item.value, item);
+
     for (const item of overrides.filter((row) => row.group === groupKey)) {
       const base = merged.get(item.value);
       merged.set(item.value, {
@@ -124,35 +112,39 @@ export async function resolveParameterGroups(
 export async function upsertParameterOption(
   option: ParameterOption,
 ): Promise<void> {
-  const database = getDatabase();
-  const now = new Date().toISOString();
+  try {
+    const database = parameterDatabase();
+    const now = new Date().toISOString();
 
-  const result = await database
-    .prepare(
-      `INSERT INTO system_parameters (
-        group_key, value, label, description, sort_order, is_active, is_system, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(group_key, value) DO UPDATE SET
-        label = excluded.label,
-        description = excluded.description,
-        sort_order = excluded.sort_order,
-        is_active = excluded.is_active,
-        is_system = excluded.is_system,
-        updated_at = excluded.updated_at`,
-    )
-    .bind(
-      option.group,
-      option.value,
-      option.label,
-      option.description || null,
-      option.sortOrder,
-      option.active ? 1 : 0,
-      option.system ? 1 : 0,
-      now,
-    )
-    .run();
-
-  if (result.success === false) throw new Error('D1 parameter upsert failed.');
+    database
+      .prepare(
+        `INSERT INTO system_parameters (
+          group_key, value, label, description, sort_order, is_active, is_system, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(group_key, value) DO UPDATE SET
+          label = excluded.label,
+          description = excluded.description,
+          sort_order = excluded.sort_order,
+          is_active = excluded.is_active,
+          is_system = excluded.is_system,
+          updated_at = excluded.updated_at`,
+      )
+      .run(
+        option.group,
+        option.value,
+        option.label,
+        option.description || null,
+        option.sortOrder,
+        option.active ? 1 : 0,
+        option.system ? 1 : 0,
+        now,
+      );
+  } catch (error) {
+    if (error instanceof ParameterDatabaseUnavailableError) throw error;
+    throw new ParameterDatabaseUnavailableError(
+      error instanceof Error ? error.message : 'Parameter database update failed.',
+    );
+  }
 }
 
 export async function deactivateParameterOption(
@@ -167,13 +159,15 @@ export async function deactivateParameterOption(
     return;
   }
 
-  const database = getDatabase();
-  const result = await database
-    .prepare(
-      'DELETE FROM system_parameters WHERE group_key = ? AND value = ?',
-    )
-    .bind(groupKey, value)
-    .run();
-
-  if (result.success === false) throw new Error('D1 parameter delete failed.');
+  try {
+    const database = parameterDatabase();
+    database
+      .prepare('DELETE FROM system_parameters WHERE group_key = ? AND value = ?')
+      .run(groupKey, value);
+  } catch (error) {
+    if (error instanceof ParameterDatabaseUnavailableError) throw error;
+    throw new ParameterDatabaseUnavailableError(
+      error instanceof Error ? error.message : 'Parameter database delete failed.',
+    );
+  }
 }
