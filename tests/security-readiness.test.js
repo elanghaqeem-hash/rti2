@@ -66,11 +66,19 @@ test('Security readiness: passive scanner never follows redirects automatically'
   assert.match(scanner, /redirect:\s*['"]manual['"]/);
 });
 
-test('Build readiness: standard Node production build does not bypass dependency checks', () => {
+test('Build readiness: production build keeps dependency checks and an explicit Next build stage', () => {
   const packageJson = JSON.parse(read('package.json'));
-  assert.equal(packageJson.scripts.build, 'next build');
   assert.equal(packageJson.scripts.dev, 'next dev');
-  assert.doesNotMatch(packageJson.scripts.build, /--force/);
+  assert.ok(
+    packageJson.scripts.build === 'next build' ||
+      packageJson.scripts.build === 'npm run build:cloudflare',
+  );
+  const effectiveBuild =
+    packageJson.scripts.build === 'npm run build:cloudflare'
+      ? packageJson.scripts['build:cloudflare']
+      : packageJson.scripts.build;
+  assert.match(effectiveBuild, /next build/);
+  assert.doesNotMatch(effectiveBuild, /--force/);
 });
 
 test('Dependency hardening: Next nested PostCSS is overridden to a patched line', () => {

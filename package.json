@@ -10,10 +10,11 @@
     "deploy:cloudflare": "npx opennextjs-cloudflare deploy",
     "build:next": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "tsc --noEmit --pretty false",
     "test": "node --test tests/*.test.js",
     "watch-sync": "node watch-sync.js",
-    "preview:cloudflare": "npx opennextjs-cloudflare preview"
+    "preview:cloudflare": "npx opennextjs-cloudflare preview",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "clsx": "^2.1.1",

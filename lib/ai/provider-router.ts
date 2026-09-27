@@ -1,3 +1,4 @@
+import { getDatabase } from '@/lib/server/database';
 export type AiChatMessage = {
   role: 'user' | 'assistant';
   content: string;
@@ -7,6 +8,7 @@ export type AiProviderId =
   | 'anthropic'
   | 'openai'
   | 'gemini'
+  | 'deepseek'
   | 'groq'
   | 'openrouter';
 
@@ -20,6 +22,7 @@ const DEFAULT_PROVIDER_ORDER: AiProviderId[] = [
   'anthropic',
   'openai',
   'gemini',
+  'deepseek',
   'groq',
   'openrouter',
 ];
@@ -27,6 +30,24 @@ const DEFAULT_PROVIDER_ORDER: AiProviderId[] = [
 const PROVIDER_IDS = new Set<AiProviderId>(DEFAULT_PROVIDER_ORDER);
 
 function getProviderOrder(): AiProviderId[] {
+  try {
+    const rows = getDatabase()
+      .prepare(
+        `SELECT value FROM system_parameters
+         WHERE group_key = 'ai.provider_order' AND is_active = 1
+         ORDER BY sort_order, label`,
+      )
+      .all() as Array<{ value: string }>;
+    const databaseOrder = rows
+      .map((row) => String(row.value).trim().toLowerCase())
+      .filter((value): value is AiProviderId => PROVIDER_IDS.has(value as AiProviderId));
+    if (databaseOrder.length > 0) {
+      return Array.from(new Set(databaseOrder));
+    }
+  } catch {
+    // Database-managed provider order is optional; fall back to server environment.
+  }
+
   const configured = (process.env.AI_PROVIDER_ORDER || '')
     .split(',')
     .map((value) => value.trim().toLowerCase())
@@ -114,7 +135,7 @@ async function callAnthropic(
 }
 
 async function callOpenAiCompatible(params: {
-  provider: 'openai' | 'groq' | 'openrouter';
+  provider: 'openai' | 'deepseek' | 'groq' | 'openrouter';
   endpoint: string;
   apiKey?: string;
   model: string;
@@ -222,6 +243,17 @@ async function callProvider(
     case 'gemini':
       return callGemini(messages, systemPrompt, contextText);
 
+    case 'deepseek':
+      return callOpenAiCompatible({
+        provider: 'deepseek',
+        endpoint: 'https://api.deepseek.com/chat/completions',
+        apiKey: process.env.DEEPSEEK_API_KEY,
+        model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+        messages,
+        systemPrompt,
+        contextText,
+      });
+
     case 'groq':
       return callOpenAiCompatible({
         provider: 'groq',
@@ -262,6 +294,7 @@ export async function generateAiWithFailover(params: {
       (provider === 'anthropic' && Boolean(process.env.ANTHROPIC_API_KEY)) ||
       (provider === 'openai' && Boolean(process.env.OPENAI_API_KEY)) ||
       (provider === 'gemini' && Boolean(process.env.GEMINI_API_KEY)) ||
+      (provider === 'deepseek' && Boolean(process.env.DEEPSEEK_API_KEY)) ||
       (provider === 'groq' && Boolean(process.env.GROQ_API_KEY)) ||
       (provider === 'openrouter' && Boolean(process.env.OPENROUTER_API_KEY));
 
