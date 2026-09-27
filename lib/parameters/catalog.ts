@@ -27,6 +27,12 @@ function option(
 
 export const PARAMETER_GROUPS: ParameterGroupDefinition[] = [
   {
+    key: 'iso27001.scalar',
+    label: 'ISO 27001 Readiness - System Settings',
+    description: 'CTA, contact, duration, disclaimer, and other scalar settings for the ISO/IEC 27001 Readiness diagnostic. Values are persisted in system_parameters.',
+    options: [],
+  },
+  {
     key: 'contact.sectors',
     label: 'Sektor / Industri',
     description: 'Digunakan pada form kontak, lead capture, dan diagnostic tools.',
