@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { TurnstileWidget } from '@/components/security/TurnstileWidget';
+import { useParameterGroups } from '@/components/parameters/useParameterOptions';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -33,6 +34,9 @@ export default function ContactPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState('');
   const turnstileRequired = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
+  const parameterGroups = useParameterGroups(['contact.sectors', 'services.primary']);
+  const sectorOptions = parameterGroups['contact.sectors'] || [];
+  const serviceOptions = parameterGroups['services.primary'] || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -300,11 +304,9 @@ export default function ContactPage() {
                           onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
                           className="w-full px-3.5 py-2.5 rounded-lg border border-line text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 bg-white"
                         >
-                          <option value="banking_insurance">Banking & Insurance</option>
-                          <option value="fintech_payments">Fintech & Payments</option>
-                          <option value="government_bumn">Government & BUMN/BUMD</option>
-                          <option value="energy_resources">Energy & Resources</option>
-                          <option value="enterprise_other">Enterprise & Others</option>
+                          {sectorOptions.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -346,14 +348,9 @@ export default function ContactPage() {
                         onChange={(e) => setFormData({ ...formData, serviceInterest: e.target.value })}
                         className="w-full px-3.5 py-2.5 rounded-lg border border-line text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 bg-white"
                       >
-                        <option value="technology-advisory">Technology Advisory & Strategy</option>
-                        <option value="software-development">Custom Software Engineering</option>
-                        <option value="cybersecurity-vapt">Penetration Testing (VAPT)</option>
-                        <option value="cybersecurity-soc">24/7 Managed SOC / Defensive</option>
-                        <option value="technology-support">Managed Cloud & 24/7 Operations</option>
-                        <option value="iso-standards">ISO/IEC 27001 Certification Readiness</option>
-                        <option value="pdp-compliance">UU PDP Compliance & DPIA</option>
-                        <option value="training">Corporate Capability Training</option>
+                        {serviceOptions.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
                       </select>
                     </div>
 
