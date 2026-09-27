@@ -32,7 +32,6 @@ type Group = {
 };
 
 export default function AdminParametersPage() {
-  const [token, setToken] = useState('');
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedKey, setSelectedKey] = useState('');
   const [message, setMessage] = useState('');
@@ -50,7 +49,6 @@ export default function AdminParametersPage() {
     setMessage('');
     try {
       const response = await fetch('/api/admin/parameters', {
-        headers: { 'x-rti-admin-token': token },
         cache: 'no-store',
       });
       const data = await response.json().catch(() => null);
@@ -62,7 +60,6 @@ export default function AdminParametersPage() {
       setGroups(nextGroups);
       setDatabaseConnected(data?.database?.connected === true);
       if (!selectedKey && nextGroups[0]?.key) setSelectedKey(nextGroups[0].key);
-      sessionStorage.setItem('rti_admin_parameter_token', token);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Gagal memuat parameter.');
     } finally {
@@ -71,8 +68,9 @@ export default function AdminParametersPage() {
   };
 
   React.useEffect(() => {
-    const saved = sessionStorage.getItem('rti_admin_parameter_token');
-    if (saved) setToken(saved);
+    load();
+    // Admin layout already guarantees an authenticated admin session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateLocal = (value: string, patch: Partial<OptionRow>) => {
@@ -97,7 +95,6 @@ export default function AdminParametersPage() {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'x-rti-admin-token': token,
       },
       body: JSON.stringify({ option: row }),
     });
@@ -115,7 +112,6 @@ export default function AdminParametersPage() {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
-        'x-rti-admin-token': token,
       },
       body: JSON.stringify({ group: row.group, value: row.value }),
     });
@@ -171,7 +167,13 @@ export default function AdminParametersPage() {
                 Identifier bawaan yang digunakan engine tetap dikunci agar perubahan tampilan tidak merusak scoring atau routing.
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/admin/system"
+                className="rounded-xl border border-line px-4 py-2.5 text-xs font-bold text-navy-900 hover:bg-grey-50"
+              >
+                System Setup
+              </Link>
               <Link
                 href="/admin/leads"
                 className="rounded-xl border border-line px-4 py-2.5 text-xs font-bold text-navy-900 hover:bg-grey-50"
@@ -183,28 +185,21 @@ export default function AdminParametersPage() {
         </div>
 
         <div className="rounded-2xl border border-line bg-white p-5 shadow-sm">
-          <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <div>
-              <label className="mb-1 block text-xs font-bold text-navy-900">Admin Configuration Token</label>
-              <input
-                type="password"
-                value={token}
-                onChange={(event) => setToken(event.target.value)}
-                placeholder="Masukkan RTI_ADMIN_TOKEN"
-                autoComplete="off"
-                className="w-full rounded-xl border border-line px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-gold-500"
-              />
-              <p className="mt-1 text-[10px] text-muted">
-                Token hanya disimpan pada session browser ini dan dikirim sebagai header saat melakukan perubahan.
+              <div className="text-xs font-extrabold text-navy-900">Authenticated Admin Session</div>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted">
+                Perubahan parameter sekarang hanya dapat dilakukan setelah login Admin.
+                Token konfigurasi tidak lagi dimasukkan atau disimpan di browser.
               </p>
             </div>
             <button
               onClick={load}
-              disabled={!token || loading}
-              className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-navy-900 px-5 py-3 text-xs font-extrabold text-white disabled:opacity-40"
+              disabled={loading}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-navy-900 px-5 py-3 text-xs font-extrabold text-white disabled:opacity-40"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Load Parameters
+              Refresh Parameters
             </button>
           </div>
 
@@ -215,7 +210,7 @@ export default function AdminParametersPage() {
                 : 'border-amber-200 bg-amber-50 text-amber-800'
             }`}>
               <Database className="h-4 w-4" />
-              {databaseConnected ? 'RTI_DB Connected' : 'RTI_DB / migration belum tersedia'}
+              {databaseConnected ? 'Server Database Connected' : 'Database / migration belum tersedia'}
             </div>
           )}
 
