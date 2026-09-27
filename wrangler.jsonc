@@ -18,7 +18,7 @@
   // ],
   //
   // The application fails closed with HTTP 503 until RTI_DB exists and
-  // migrations/0001_leads.sql has been applied.
+  // migrations/0001_leads.sql and migrations/0002_system_parameters.sql have been applied.
 
   "assets": {
     "directory": ".open-next/assets",
