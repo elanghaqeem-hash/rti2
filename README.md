@@ -93,17 +93,53 @@ npm test
 
 ---
 
-## 6. Centralized Parameter Manager
+## 6. Production Server & Admin Control
 
-All selectable business field options are managed through a centralized parameter registry.
+RTI production targets a standard Node.js server. Cloudflare is optional for DNS,
+proxy/WAF, Turnstile, or staging, but is not the production application runtime.
+
+Required production server environment:
+
+```bash
+ADMIN_USERNAME=...
+ADMIN_PASSWORD=...
+ADMIN_SESSION_SECRET=...
+RTI_DB_PATH=/var/lib/risetin/rti.sqlite
+RATE_LIMIT_SALT=...
+```
+
+Admin access starts at `/admin-access`. A successful login creates an HttpOnly,
+SameSite=Strict signed session cookie. Protected pages under `/admin/*` require
+the admin session.
+
+Database initialization is deliberately **not automatic during deploy**. An
+authenticated Admin opens `/admin/system` and explicitly runs
+**Initialize / Apply Pending Migrations**. The process applies:
+
+- `migrations/0001_leads.sql`
+- `migrations/0002_system_parameters.sql`
+
+The migration ledger prevents already-applied migrations from being run again.
+
+### Centralized Parameter Manager
 
 - Admin UI: `/admin/parameters`
 - Public read API: `/api/parameters`
 - Admin API: `/api/admin/parameters`
-- Persistent store: Cloudflare D1 table `system_parameters`
-- Migration: `migrations/0002_system_parameters.sql`
-- Admin write protection: server-side secret `RTI_ADMIN_TOKEN`
+- Persistent table: `system_parameters`
+- Admin authorization: signed server-side admin session
+- Browser-side `RTI_ADMIN_TOKEN`: removed
 
-Built-in identifiers used by scoring or routing are immutable. Admins can change labels,
-descriptions, ordering, active/inactive status, and add options to non-logic-bound groups.
-When RTI_DB is unavailable, public forms retain safe catalog defaults; admin writes fail closed.
+Built-in identifiers used by scoring or routing remain immutable. Admin users can
+change labels, descriptions, ordering, active/inactive status, and add options to
+non-logic-bound groups.
+
+If the parameter database has not been initialized, public forms retain their safe
+catalog defaults. Admin write operations fail closed until the database migration
+has been applied.
+
+### Cloudflare
+
+`.github/workflows/cloudflare-bootstrap.yml` is manual-only and retained as an
+optional staging placeholder. Do not store RTI production database or admin
+credentials in Cloudflare unless Cloudflare becomes the production runtime again.
