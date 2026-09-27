@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   getDefaultParameterOptions,
   type ParameterOption,
 } from '@/lib/parameters/catalog';
 
 export function useParameterGroups(groupKeys: string[]) {
-  const stableKey = useMemo(() => groupKeys.join(','), [groupKeys.join(',')]);
+  const stableKey = groupKeys.join(',');
   const [groups, setGroups] = useState<Record<string, ParameterOption[]>>(() =>
     Object.fromEntries(
       groupKeys.map((key) => [key, getDefaultParameterOptions(key).filter((item) => item.active)]),
