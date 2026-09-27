@@ -89,3 +89,21 @@ To verify brand compliance and legal naming integrity:
 ```bash
 npm test
 ```
+
+
+---
+
+## 6. Centralized Parameter Manager
+
+All selectable business field options are managed through a centralized parameter registry.
+
+- Admin UI: `/admin/parameters`
+- Public read API: `/api/parameters`
+- Admin API: `/api/admin/parameters`
+- Persistent store: Cloudflare D1 table `system_parameters`
+- Migration: `migrations/0002_system_parameters.sql`
+- Admin write protection: server-side secret `RTI_ADMIN_TOKEN`
+
+Built-in identifiers used by scoring or routing are immutable. Admins can change labels,
+descriptions, ordering, active/inactive status, and add options to non-logic-bound groups.
+When RTI_DB is unavailable, public forms retain safe catalog defaults; admin writes fail closed.
