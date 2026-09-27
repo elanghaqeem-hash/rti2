@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { PdpReadinessClient } from '@/components/tools/pdp/PdpReadinessClient';
+import PdpReadinessClient from '@/components/tools/pdp/PdpReadinessClient';
 
 export const metadata: Metadata = {
   title: 'UU PDP Data Protection Readiness | Risetin',
