@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { getDatabase } from '@/lib/server/database';
 
 type EntityName =
+  | 'section'
   | 'question'
   | 'control'
   | 'response_option'
@@ -23,6 +24,10 @@ type EntityDefinition = {
 };
 
 const ENTITY: Record<EntityName, EntityDefinition> = {
+  section: {
+    table: 'assessment_sections',
+    columns: ['code','title','domain','sort_order','is_quick'],
+  },
   question: {
     table: 'assessment_questions',
     columns: [
@@ -137,6 +142,16 @@ export function getIsoAdminSnapshot(versionId?: string) {
     FROM assessment_sections WHERE version_id = ? ORDER BY sort_order
   `).all(id);
 
+  const auditLogs = db.prepare(`
+    SELECT id, actor_type AS actorType, actor_id AS actorId, action, object_type AS objectType,
+      object_id AS objectId, old_value AS oldValue, new_value AS newValue, created_at AS createdAt
+    FROM audit_logs
+    WHERE assessment_id IN (SELECT id FROM assessments WHERE version_id = ?)
+       OR (assessment_id IS NULL AND object_type LIKE 'iso27001%')
+    ORDER BY created_at DESC
+    LIMIT 200
+  `).all(id);
+
   const questions = db.prepare(`
     SELECT id, section_id AS sectionId, question_code AS questionCode, clause_ref AS clauseRef,
       domain, question_text AS questionText, purpose, expected_evidence AS expectedEvidence,
@@ -228,6 +243,7 @@ export function getIsoAdminSnapshot(versionId?: string) {
     versions,
     statistics,
     sections,
+    auditLogs,
     questions,
     controls,
     responseOptions,
@@ -288,7 +304,12 @@ export function createIsoAdminEntity(entity: EntityName, versionId: string, inpu
   const normalized = normalizePatch(entity, input);
   const now = new Date().toISOString();
 
-  if (entity === 'question') {
+  if (entity === 'section') {
+    const values: Record<string, unknown> = { id, version_id: versionId, ...normalized };
+    const keys = Object.keys(values);
+    db.prepare(`INSERT INTO assessment_sections (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`)
+      .run(...keys.map((key) => values[key]));
+  } else if (entity === 'question') {
     if (!input.sectionId) throw new Error('sectionId is required for a question.');
     const values: Record<string, unknown> = {
       id,
@@ -315,6 +336,7 @@ export function deleteIsoAdminEntity(entity: EntityName, id: string) {
   const db = getDatabase();
   const definition = ENTITY[entity];
   if (!definition) throw new Error('Unsupported ISO admin entity.');
+  if (entity === 'section') throw new Error('Sections cannot be deleted while questions may reference them; reorder or rename them instead.');
 
   if (['question','control','response_option','maturity_level','report_template'].includes(entity)) {
     db.prepare(`UPDATE ${definition.table} SET status = 'inactive' WHERE id = ?`).run(id);
