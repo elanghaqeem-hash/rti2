@@ -31,6 +31,12 @@ export type QuestionOption = {
   priceMultiplier: number;
 };
 
+export type QuestionCondition = {
+  sourceKey: string;
+  operator: string;
+  compareValue?: string;
+};
+
 export type EstimatorQuestion = {
   id: string;
   serviceId?: string;
@@ -56,6 +62,7 @@ export type EstimatorQuestion = {
   quickMode: boolean;
   detailedMode: boolean;
   options: QuestionOption[];
+  conditions: QuestionCondition[];
 };
 
 export type EstimatorBootstrap = {
