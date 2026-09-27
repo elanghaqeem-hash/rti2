@@ -121,6 +121,7 @@ CREATE INDEX IF NOT EXISTS idx_nist_service_mapping_category
 
 CREATE TABLE IF NOT EXISTS nist_assessments (
   id TEXT PRIMARY KEY,
+  access_token_hash TEXT NOT NULL,
   organization_id TEXT,
   company_name TEXT NOT NULL,
   industry TEXT NOT NULL,
