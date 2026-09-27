@@ -38,3 +38,37 @@ body {
     transition-duration: 0s !important;
   }
 }
+
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  header,
+  footer,
+  body > button,
+  body > div.fixed {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  body {
+    color: #0B1F3A !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  main {
+    overflow: visible !important;
+  }
+
+  a {
+    text-decoration: none !important;
+  }
+}
