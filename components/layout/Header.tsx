@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Sparkles,
   Shield,
+  BarChart3,
   Layers,
   Wrench,
   MessageSquare,
