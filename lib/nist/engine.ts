@@ -123,6 +123,30 @@ function categoryReason(category: NistCategoryConfig, score: number, gap: number
   return `${category.code} (${category.name}) scored ${round(score)} against a configured target of ${round(category.targetScore)}, leaving a ${round(gap)}-point gap.`;
 }
 
+export function getApplicableNistQuestionIds(
+  config: NistAssessmentConfig,
+  answers: NistAnswerRecord[],
+) {
+  const answerByQuestion = new Map(
+    answers.map((answer) => [answer.questionId, answer.answerValue]),
+  );
+  const applicable = new Set(
+    config.questions.filter((question) => question.isCore).map((question) => question.id),
+  );
+
+  for (const rule of config.branchingRules) {
+    const parentAnswer = answerByQuestion.get(rule.parentQuestionId);
+    if (parentAnswer && rule.answerValues.includes(parentAnswer)) {
+      applicable.add(rule.followUpQuestionId);
+    }
+  }
+
+  return config.questions
+    .filter((question) => applicable.has(question.id))
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((question) => question.id);
+}
+
 export function scoreNistAssessment(params: {
   assessmentId: string;
   config: NistAssessmentConfig;
