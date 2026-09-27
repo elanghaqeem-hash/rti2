@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { HexMark } from './HexMark';
 
 interface LogoFullProps {
-  variant?: 'light' | 'dark'; // 'light' has white text (for navy bg), 'dark' has navy text (for light bg)
+  variant?: 'light' | 'dark';
   size?: 'sm' | 'md' | 'lg';
   showLegalSubtext?: boolean;
   className?: string;
@@ -20,63 +20,71 @@ export const LogoFull: React.FC<LogoFullProps> = ({
   const isLight = variant === 'light';
 
   const markSizes = {
-    sm: 28,
-    md: 36,
-    lg: 44,
+    sm: 34,
+    md: 46,
+    lg: 58,
   };
 
-  const textSizes = {
-    sm: 'text-lg',
-    md: 'text-2xl',
-    lg: 'text-3xl',
+  const brandSizes = {
+    sm: 'text-[18px]',
+    md: 'text-[24px]',
+    lg: 'text-[31px]',
   };
 
-  const subTextSizes = {
-    sm: 'text-[9px] tracking-[0.25em]',
-    md: 'text-[11px] tracking-[0.3em]',
-    lg: 'text-[13px] tracking-[0.32em]',
+  const indonesiaSizes = {
+    sm: 'text-[7px] tracking-[0.30em]',
+    md: 'text-[9px] tracking-[0.34em]',
+    lg: 'text-[11px] tracking-[0.36em]',
+  };
+
+  const legalSizes = {
+    sm: 'text-[7px]',
+    md: 'text-[8px]',
+    lg: 'text-[9px]',
   };
 
   const content = (
     <div className={`flex items-center gap-2.5 sm:gap-3 select-none ${className}`}>
       <HexMark size={markSizes[size]} />
-      <div className="flex flex-col justify-center leading-none">
-        <div className="flex items-baseline gap-1">
-          <span
-            className={`font-extrabold tracking-tight font-sans ${textSizes[size]} ${
-              isLight ? 'text-white' : 'text-navy-900'
-            }`}
-          >
-            Rise<span className="text-gold-500">T</span>
-          </span>
-          <span
-            className={`font-semibold uppercase tracking-wider font-sans text-xs ${
-              isLight ? 'text-slate-300' : 'text-navy-700'
-            }`}
-          >
-            INDONESIA
-          </span>
+      <div className="flex min-w-0 flex-col justify-center leading-none">
+        <div
+          className={`font-black tracking-[-0.055em] leading-[0.9] ${brandSizes[size]} ${
+            isLight ? 'text-white' : 'text-[#171717]'
+          }`}
+        >
+          Rise<span className="text-gold-500">T</span>
         </div>
+
+        <div
+          className={`mt-1 font-semibold uppercase whitespace-nowrap ${indonesiaSizes[size]} ${
+            isLight ? 'text-slate-200' : 'text-[#242424]'
+          }`}
+        >
+          Indonesia
+        </div>
+
         {showLegalSubtext && (
-          <span
-            className={`font-semibold uppercase mt-0.5 ${subTextSizes[size]} ${
-              isLight ? 'text-slate-400' : 'text-muted'
-            }`}
+          <div
+            className={`mt-1.5 whitespace-nowrap font-medium tracking-[0.04em] ${
+              legalSizes[size]
+            } ${isLight ? 'text-slate-400' : 'text-muted'}`}
           >
             PT Riset Teknologi Indonesia
-          </span>
+          </div>
         )}
       </div>
     </div>
   );
 
-  if (href) {
-    return (
-      <Link href={href} className="inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 rounded">
-        {content}
-      </Link>
-    );
-  }
+  if (!href) return content;
 
-  return content;
+  return (
+    <Link
+      href={href}
+      aria-label="Riset Teknologi Indonesia"
+      className="inline-flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+    >
+      {content}
+    </Link>
+  );
 };
