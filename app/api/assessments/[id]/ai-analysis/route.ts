@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { generateAiWithFailover } from '@/lib/ai/provider-router';
 import {
   getIsoAiAnalysisContext,
+  getIsoAiProviderRuntimeConfig,
   recordIsoAiAnalysis,
 } from '@/lib/iso27001/repository';
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/security/request-protection';
@@ -36,10 +37,22 @@ export async function POST(
     if (!targetRef) throw new Error('targetRef is required.');
 
     const contextData = getIsoAiAnalysisContext(id, token, targetRef);
+    const providers = getIsoAiProviderRuntimeConfig();
+    if (providers.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'AI analysis is disabled by RTI Admin. Manual evidence review remains available.',
+        },
+        { status: 503, headers: { 'Cache-Control': 'no-store', ...rateLimitHeaders(limit) } },
+      );
+    }
+
     const ai = await generateAiWithFailover({
       systemPrompt:
         'You are RTI ISO/IEC 27001 readiness evidence assistant. Analyze only the supplied assessment context and evidence. Do not change or assign the official deterministic score. Return concise sections: Suggested Observation, Evidence Adequacy, Potential Gap, Recommended Action, and Limitations. Never claim certification or compliance. If evidence content is unavailable, state that limitation explicitly.',
       contextText: JSON.stringify(contextData).slice(0, 50000),
+      providers,
       messages: [
         {
           role: 'user',
