@@ -75,6 +75,8 @@ type ResultPayload = {
     governanceReadiness: number;
     auditReadiness: number;
   };
+  stage1: { label: string; score: number };
+  stage2: { label: string; score: number };
   gates: { completed: number; total: number; items: Array<{ key: string; label: string; complete: boolean }> };
   gaps: { total: number; counts: Record<string, number> };
   disclaimer: string;
@@ -654,6 +656,19 @@ export function Iso27001Readiness() {
               ['High Gaps', String(high)],
               ['Evidence Coverage', result.dimensions.evidenceReadiness.toFixed(1) + '%'],
             ].map(([label, value]) => <div key={label} className="rounded-2xl border border-line bg-white p-4 shadow-sm"><div className="text-[10px] font-bold uppercase tracking-wider text-muted">{label}</div><div className="mt-2 text-2xl font-black text-navy-900">{value}</div></div>)}
+          </section>
+
+          <section className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-line bg-white p-5 shadow-sm">
+              <div className="text-[10px] font-extrabold uppercase tracking-wider text-blue-700">Certification Stage 1 Readiness</div>
+              <div className="mt-2 text-3xl font-black text-navy-900">{result.stage1.score.toFixed(1)}%</div>
+              <p className="mt-2 text-xs leading-relaxed text-muted">{result.stage1.label}. Indicator only; this is not a certification guarantee.</p>
+            </div>
+            <div className="rounded-2xl border border-line bg-white p-5 shadow-sm">
+              <div className="text-[10px] font-extrabold uppercase tracking-wider text-blue-700">Certification Stage 2 Readiness</div>
+              <div className="mt-2 text-3xl font-black text-navy-900">{result.stage2.score.toFixed(1)}%</div>
+              <p className="mt-2 text-xs leading-relaxed text-muted">{result.stage2.label}. Indicator only; operating evidence remains subject to audit validation.</p>
+            </div>
           </section>
 
           <section className="grid gap-6 lg:grid-cols-2">
