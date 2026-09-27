@@ -47,6 +47,9 @@ type PdfReportInput = {
   gatesTotal: number;
   gaps: Array<Record<string, unknown>>;
   roadmap: Array<Record<string, unknown>>;
+  reportTitle: string;
+  headerText: string;
+  footerText: string;
   disclaimer: string;
 };
 
@@ -54,8 +57,8 @@ export function buildIsoReadinessPdf(input: PdfReportInput): Buffer {
   const lines: string[] = [];
   const push = (value = '') => lines.push(...wrap(value));
 
-  push('PT Riset Teknologi Indonesia');
-  push('ISO/IEC 27001 Readiness Assessment');
+  push(input.headerText || 'PT Riset Teknologi Indonesia');
+  push(input.reportTitle || 'ISO/IEC 27001 Readiness Assessment');
   push('');
   push(`Organization: ${input.organizationName}`);
   push(`Assessment ID: ${input.assessmentId}`);
@@ -97,7 +100,7 @@ export function buildIsoReadinessPdf(input: PdfReportInput): Buffer {
   push('DISCLAIMER');
   push(input.disclaimer);
   push('');
-  push('Confidential | Generated through RTI ISO/IEC 27001 Readiness Diagnostic Tool');
+  push(input.footerText || 'Confidential | Generated through RTI ISO/IEC 27001 Readiness Diagnostic Tool');
 
   const lineHeight = 12;
   const pageHeight = 842;
