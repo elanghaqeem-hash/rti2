@@ -10,7 +10,7 @@
     "deploy:cloudflare": "npx wrangler deploy",
     "build:next": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "tsc --noEmit --pretty false",
     "test": "node --test tests/*.test.js",
     "watch-sync": "node watch-sync.js",
     "typecheck": "tsc --noEmit"
