@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { searchKnowledgeBase } from '@/lib/ai/knowledge-base';
+import {
+  generateAiWithFailover,
+  type AiChatMessage,
+} from '@/lib/ai/provider-router';
 import { BRAND_CONFIG } from '@/lib/config/contact';
 
 export const runtime = 'nodejs';
@@ -20,9 +24,9 @@ GAYA
 - Sebut brand sebagai "Risetin". Nama legal "PT Riset Teknologi Indonesia" hanya untuk konteks formal.
 
 BATASAN
-- Jawab hanya berdasarkan konteks knowledge base yang diberikan. Jika tidak ada di konteks, katakan
+- Jawab hanya berdasarkan konteks knowledge base website yang diberikan. Jika tidak ada di konteks, katakan
   terus terang dan tawarkan untuk menghubungkan dengan tim.
-- Jangan mengarang harga, klien, studi kasus, sertifikasi perusahaan, SLA, atau angka statistik.
+- Jangan mengarang harga, klien, studi kasus, sertifikasi perusahaan, SLA, durasi proyek, atau angka statistik.
   Untuk harga, tawarkan Project Estimator atau request quotation.
 - Jangan memberi opini hukum atau kepatuhan final (UU PDP, POJK, BSSN, ISO). Berikan gambaran umum
   dan sarankan assessment.
@@ -35,85 +39,171 @@ KONTAK
 WhatsApp ${BRAND_CONFIG.contact.whatsapp} | ${BRAND_CONFIG.contact.email} | ${BRAND_CONFIG.contact.website}
 ${BRAND_CONFIG.contact.address.fullAddress}`;
 
+const MAX_MESSAGES = 12;
+const MAX_MESSAGE_CHARS = 2000;
+
+function normalizeMessages(value: unknown): AiChatMessage[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter(
+      (message): message is { role: 'user' | 'assistant'; content: unknown } =>
+        Boolean(message) &&
+        typeof message === 'object' &&
+        ((message as any).role === 'user' || (message as any).role === 'assistant'),
+    )
+    .slice(-MAX_MESSAGES)
+    .map((message) => ({
+      role: message.role,
+      content: String(message.content || '').slice(0, MAX_MESSAGE_CHARS),
+    }))
+    .filter((message) => message.content.trim().length > 0);
+}
+
+function localFallback(lowerPrompt: string): string {
+  if (
+    lowerPrompt.includes('halo') ||
+    lowerPrompt.includes('selamat') ||
+    lowerPrompt === 'hi' ||
+    lowerPrompt.startsWith('hi ')
+  ) {
+    return `Halo! Saya Risetin Assistant dari Risetin (PT Riset Teknologi Indonesia). Kami membantu organisasi merancang, membangun, mengamankan, dan mengoperasikan teknologi secara terintegrasi.
+
+Apakah ada tantangan teknologi tertentu atau kebutuhan audit/pengembangan yang sedang dihadapi organisasi Anda saat ini?`;
+  }
+
+  if (
+    lowerPrompt.includes('vapt') ||
+    lowerPrompt.includes('pentest') ||
+    lowerPrompt.includes('cyber')
+  ) {
+    return `Layanan Cybersecurity Risetin mencakup Offensive Security (Penetration Testing/VAPT untuk web, mobile, API, dan network), Defensive Monitoring (Managed SOC), serta Cybersecurity Governance.
+
+Durasi dan effort VAPT bergantung pada jumlah aset, kompleksitas, metode autentikasi, dan ruang lingkup pengujian. Untuk estimasi yang dapat dipertanggungjawabkan, gunakan Project Estimator atau sampaikan jumlah aset dan jenis target yang akan diuji.`;
+  }
+
+  if (
+    lowerPrompt.includes('harga') ||
+    lowerPrompt.includes('biaya') ||
+    lowerPrompt.includes('cost')
+  ) {
+    return `Biaya layanan Risetin disesuaikan dengan skala infrastruktur, jumlah modul, kompleksitas integrasi, dan model keterlibatan (Advisory, Project-Based, atau Managed Service).
+
+Untuk estimasi awal, Anda dapat menggunakan /tools/project-estimator atau menjadwalkan konsultasi awal 30 menit untuk menyusun Request for Quotation (RFQ) resmi.`;
+  }
+
+  if (lowerPrompt.includes('pdp') || lowerPrompt.includes('privasi')) {
+    return `Untuk kesiapan UU Pelindungan Data Pribadi, Risetin menyediakan pendampingan tata kelola dan teknis seperti inventarisasi pemrosesan data, RoPA, DPIA, kontrol keamanan, serta review kesiapan organisasi.
+
+Ini merupakan gambaran umum, bukan nasihat hukum formal. Anda dapat menggunakan /tools/pdp-readiness untuk assessment awal atau berdiskusi dengan tim kami.`;
+  }
+
+  if (
+    lowerPrompt.includes('kontak') ||
+    lowerPrompt.includes('hubungi') ||
+    lowerPrompt.includes('alamat')
+  ) {
+    return `Anda dapat menghubungi Risetin melalui WhatsApp ${BRAND_CONFIG.contact.whatsapp}, email ${BRAND_CONFIG.contact.email}, atau situs ${BRAND_CONFIG.contact.website}. Kantor kami berada di ${BRAND_CONFIG.contact.address.fullAddress}.
+
+Apakah Anda ingin menjadwalkan konsultasi 30 menit dengan tim Risetin?`;
+  }
+
+  return `Terima kasih atas pertanyaan Anda. Risetin mengintegrasikan layanan Technology Advisory, Software Development, Technology Support, Governance & ISO, Cybersecurity, serta Training & Awareness.
+
+Saat koneksi model AI eksternal tidak tersedia, saya tetap dapat membantu berdasarkan knowledge base website Risetin. Untuk kebutuhan yang sangat spesifik, gunakan modul assessment yang relevan atau jadwalkan konsultasi 30 menit dengan tim kami.`;
+}
+
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
+    const body = await req.json().catch(() => null);
+    const messages = normalizeMessages(body?.messages);
 
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json({ error: 'Messages array is required.' }, { status: 400 });
+    if (messages.length === 0) {
+      return NextResponse.json(
+        { error: 'Messages array is required.' },
+        { status: 400 },
+      );
     }
 
-    const lastMessage = messages[messages.length - 1];
-    const userPrompt = String(lastMessage.content || '').slice(0, 2000); // 2000 char rate-limit guard
+    const lastUserMessage = [...messages]
+      .reverse()
+      .find((message) => message.role === 'user');
 
-    // Security check: Guard against explicit illegal hacking requests
+    if (!lastUserMessage) {
+      return NextResponse.json(
+        { error: 'At least one user message is required.' },
+        { status: 400 },
+      );
+    }
+
+    const userPrompt = lastUserMessage.content;
     const lowerPrompt = userPrompt.toLowerCase();
-    const maliciousPatterns = ['hack website', 'serang web', 'cara ddos', 'sql injection orang lain', 'bypass password target'];
+
+    const maliciousPatterns = [
+      'hack website',
+      'serang web',
+      'cara ddos',
+      'sql injection orang lain',
+      'bypass password target',
+    ];
+
     if (maliciousPatterns.some((pattern) => lowerPrompt.includes(pattern))) {
-      const refusal = `Risetin tidak menyediakan bantuan untuk aktivitas peretasan atau eksploitasi sistem pihak lain tanpa otorisasi. Kami hanya menyediakan layanan Penetration Testing (VAPT) dan asesmen keamanan resmi berbasis kontrak legal dan otorisasi tertulis. Apakah Anda ingin menjajaki audit keamanan resmi untuk sistem organisasi Anda?`;
-      return new Response(refusal, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+      const refusal =
+        'Risetin tidak menyediakan bantuan untuk aktivitas peretasan atau eksploitasi sistem pihak lain tanpa otorisasi. Kami hanya menyediakan layanan Penetration Testing (VAPT) dan asesmen keamanan resmi berbasis kontrak legal dan otorisasi tertulis. Apakah Anda ingin menjajaki audit keamanan resmi untuk sistem organisasi Anda?';
+
+      return new Response(refusal, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'X-Risetin-AI-Provider': 'safety-guard',
+        },
+      });
     }
 
-    // Retrieve RAG Context
-    const kbChunks = searchKnowledgeBase(userPrompt);
-    const contextText = kbChunks.map((c) => `[Sumber: ${c.title} - ${c.section}]\n${c.content}`).join('\n\n');
+    const kbChunks = searchKnowledgeBase(userPrompt, 4);
+    const contextText =
+      kbChunks.length > 0
+        ? kbChunks
+            .map(
+              (chunk) =>
+                `[Sumber website: ${chunk.sourceUrl} | ${chunk.title} - ${chunk.section}]\n${chunk.content}`,
+            )
+            .join('\n\n')
+        : 'Tidak ada potongan knowledge base website yang relevan untuk pertanyaan ini. Jangan mengarang fakta.';
 
-    // Check for Anthropic API Key
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const aiResult = await generateAiWithFailover({
+      messages,
+      systemPrompt: SYSTEM_PROMPT,
+      contextText,
+    });
 
-    if (apiKey) {
-      try {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-          },
-          body: JSON.stringify({
-            model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
-            max_tokens: 800,
-            system: `${SYSTEM_PROMPT}\n\n<context>\n${contextText}\n</context>`,
-            messages: messages.map((m: any) => ({
-              role: m.role === 'user' ? 'user' : 'assistant',
-              content: m.content,
-            })),
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const replyText = data.content?.[0]?.text || '';
-          return new Response(replyText, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-        }
-      } catch (anthropicErr) {
-        console.warn('Anthropic API call failed, falling back to local reasoning:', anthropicErr);
-      }
+    if (aiResult) {
+      return new Response(aiResult.text, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'X-Risetin-AI-Provider': aiResult.provider,
+          'X-Risetin-AI-Attempts': String(aiResult.attempted.length),
+        },
+      });
     }
 
-    // Deterministic Local RAG Reasoning Engine (works out-of-the-box without API keys)
-    let reply = '';
-    if (lowerPrompt.includes('halo') || lowerPrompt.includes('selamat') || lowerPrompt.includes('hi')) {
-      reply = `Halo! Saya Risetin Assistant dari Risetin (PT Riset Teknologi Indonesia). Kami membantu organisasi merancang, membangun, mengamankan, dan mengoperasikan teknologi secara terintegrasi.\n\nApakah ada tantangan teknologi tertentu atau kebutuhan audit/pengembangan yang sedang dihadapi organisasi Anda saat ini?`;
-    } else if (lowerPrompt.includes('vapt') || lowerPrompt.includes('pentest') || lowerPrompt.includes('cyber')) {
-      reply = `Layanan Cybersecurity Risetin mencakup Offensive Security (Penetration Testing / VAPT untuk web, mobile, API, dan network), Defensive Monitoring (24/7 Managed SOC), serta Cybersecurity Governance.\n\nSetiap pengujian VAPT kami dilengkapi satu kali verifikasi retest gratis setelah perbaikan selesai. Anda dapat mencoba alat gratis kami di /tools/cyber-quick-check atau mendiskusikan lingkup pengujian dengan tim kami.`;
-    } else if (lowerPrompt.includes('harga') || lowerPrompt.includes('biaya') || lowerPrompt.includes('cost')) {
-      reply = `Biaya layanan di Risetin disesuaikan dengan skala infrastruktur, jumlah modul, kompleksitas integrasi, dan model keterlibatan (Advisory, Project-Based, atau Managed Service).\n\nUntuk estimasi awal, Anda dapat menggunakan modul /tools/project-estimator kami atau menjadwalkan konsultasi awal 30 menit (gratis) untuk mendiskusikan Request for Quotation (RFQ) resmi.`;
-    } else if (lowerPrompt.includes('pdp') || lowerPrompt.includes('privasi')) {
-      reply = `Terkait Undang-Undang Pelindungan Data Pribadi (UU PDP No. 27/2022), Risetin menyediakan pendampingan teknis dan tata kelola: penyusunan RoPA (Record of Processing Activities), pelaksanaan DPIA (Data Protection Impact Assessment), dan audit kepatuhan.\n\nHarap dicatat bahwa ini adalah gambaran umum kesiapan teknologi, bukan nasihat hukum formal. Anda dapat mencoba /tools/pdp-readiness untuk mengevaluasi kesiapan data Anda.`;
-    } else if (lowerPrompt.includes('kontak') || lowerPrompt.includes('hubungi') || lowerPrompt.includes('alamat')) {
-      reply = `Anda dapat menghubungi kami langsung melalui WhatsApp di +62 856-6872-2734, email di admin@risetin.co.id, atau berkunjung ke kantor kami di Graha Mustika Ratu Lt. 7, Jl. Jend. Gatot Subroto Kav. 74-75, Jakarta Selatan 12870.\n\nApakah Anda ingin kami jadwalkan panggilan konsultasi video 30 menit bersama tim arsitektur kami?`;
-    } else {
-      reply = `Terima kasih atas pertanyaan Anda. Di Risetin (PT Riset Teknologi Indonesia), kami mengintegrasikan 6 pilar: Technology Advisory, Software Development, Technology Support, Governance & ISO 27001, Cybersecurity, dan Pelatihan SDM.\n\nUntuk kebutuhan spesifik ini, kami sarankan Anda mencoba modul /tools/maturity-assessment kami atau menjadwalkan konsultasi awal 30 menit bersama prinsipal teknologi kami.`;
-    }
-
-    return new Response(reply, {
+    return new Response(localFallback(lowerPrompt), {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Risetin-AI-Provider': 'local-rag',
       },
     });
   } catch (error) {
-    console.error('Chat API Error:', error);
-    return NextResponse.json({ error: 'Failed to process chat message.' }, { status: 500 });
+    console.error(
+      'Chat API Error:',
+      error instanceof Error ? error.message : String(error),
+    );
+
+    return NextResponse.json(
+      { error: 'Failed to process chat message.' },
+      { status: 500 },
+    );
   }
 }
