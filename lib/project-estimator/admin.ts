@@ -78,6 +78,14 @@ export type EstimatorAdminDashboard = {
     active: boolean;
     sortOrder: number;
   }>;
+  questionConditions: Array<{
+    id: string;
+    questionId: string;
+    sourceQuestionKey: string;
+    operator: string;
+    compareValue: string;
+    active: boolean;
+  }>;
   questionOptions: Array<{
     id: string;
     questionId: string;
@@ -216,6 +224,12 @@ export function getEstimatorAdminDashboard(): EstimatorAdminDashboard {
      ORDER BY question_id, sort_order, label`,
   ).all() as any[];
 
+  const questionConditions = db.prepare(
+    `SELECT id, question_id, source_question_key, operator, compare_value, is_active
+     FROM estimator_question_conditions
+     ORDER BY question_id, id`,
+  ).all() as any[];
+
   const rules = db.prepare(
     `SELECT r.id, r.service_id, COALESCE(s.name, 'Common / all services') AS service_name,
             r.name, r.condition_json, r.effects_json, r.sort_order, r.is_active
@@ -314,6 +328,14 @@ export function getEstimatorAdminDashboard(): EstimatorAdminDashboard {
       detailedMode: Number(row.detailed_mode) === 1,
       active: Number(row.is_active) === 1,
       sortOrder: Number(row.sort_order),
+    })),
+    questionConditions: questionConditions.map((row) => ({
+      id: row.id,
+      questionId: row.question_id,
+      sourceQuestionKey: row.source_question_key,
+      operator: row.operator,
+      compareValue: row.compare_value || '',
+      active: Number(row.is_active) === 1,
     })),
     questionOptions: questionOptions.map((row) => ({
       id: row.id,
@@ -628,6 +650,48 @@ export function updateEstimatorQuestion(params: {
     params.id,
   );
   audit('estimator_question', params.id, 'update', params.actor, before, params);
+}
+
+export function upsertQuestionCondition(params: {
+  id?: string;
+  questionId: string;
+  sourceQuestionKey: string;
+  operator: string;
+  compareValue?: string;
+  active?: boolean;
+  actor: string;
+}) {
+  const allowedOperators = new Set(['equals','not_equals','includes','gt','gte','lt','lte','truthy','falsy']);
+  if (!allowedOperators.has(params.operator)) throw new Error('Unsupported condition operator.');
+  const db = getDatabase();
+  if (!db.prepare('SELECT id FROM estimator_questions WHERE id=?').get(params.questionId)) {
+    throw new Error('Target question not found.');
+  }
+  const sourceKey = params.sourceQuestionKey.trim().slice(0, 180);
+  if (!sourceKey || !db.prepare('SELECT id FROM estimator_questions WHERE question_key=? LIMIT 1').get(sourceKey)) {
+    throw new Error('Source question key not found.');
+  }
+  const id = params.id || `cond-${randomUUID()}`;
+  const before = params.id
+    ? db.prepare('SELECT * FROM estimator_question_conditions WHERE id=?').get(params.id)
+    : null;
+  db.prepare(
+    `INSERT INTO estimator_question_conditions
+      (id, question_id, source_question_key, operator, compare_value, is_active)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       question_id=excluded.question_id, source_question_key=excluded.source_question_key,
+       operator=excluded.operator, compare_value=excluded.compare_value, is_active=excluded.is_active`,
+  ).run(
+    id,
+    params.questionId,
+    sourceKey,
+    params.operator,
+    params.compareValue?.trim().slice(0, 500) || null,
+    params.active === false ? 0 : 1,
+  );
+  audit('question_condition', id, before ? 'update' : 'create', params.actor, before, params);
+  return id;
 }
 
 export function upsertQuestionOption(params: {
