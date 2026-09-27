@@ -8,7 +8,6 @@ Expires: 2027-12-31T23:59:59.000Z
 Preferred-Languages: id, en
 Canonical: https://risetin.co.id/.well-known/security.txt
 Policy: https://risetin.co.id/security
-Hiring: https://risetin.co.id/careers
 Acknowledgments: https://risetin.co.id/security
 `;
 
