@@ -1,5 +1,5 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { NextResponse } from 'next/server';
+import { isAdminRequest } from '@/lib/admin/auth';
 import {
   PARAMETER_GROUP_MAP,
   PARAMETER_GROUPS,
@@ -14,25 +14,9 @@ import {
 
 export const runtime = 'nodejs';
 
-function getAdminSecret(): string {
-  try {
-    const context = getCloudflareContext();
-    const env = context.env as Record<string, unknown>;
-    return String(env.RTI_ADMIN_TOKEN || process.env.RTI_ADMIN_TOKEN || '');
-  } catch {
-    return String(process.env.RTI_ADMIN_TOKEN || '');
-  }
-}
-
-function authorized(req: Request) {
-  const configured = getAdminSecret();
-  const supplied = req.headers.get('x-rti-admin-token') || '';
-  return Boolean(configured && supplied && configured === supplied);
-}
-
 function unauthorized() {
   return NextResponse.json(
-    { success: false, error: 'Admin authorization failed.' },
+    { success: false, error: 'Admin authentication required.' },
     { status: 401, headers: { 'Cache-Control': 'no-store' } },
   );
 }
@@ -66,7 +50,7 @@ function validateOption(value: unknown): ParameterOption {
 }
 
 export async function GET(req: Request) {
-  if (!authorized(req)) return unauthorized();
+  if (!isAdminRequest(req)) return unauthorized();
 
   const groupKeys = PARAMETER_GROUPS.map((group) => group.key);
   let overrides: ParameterOption[] = [];
@@ -79,7 +63,7 @@ export async function GET(req: Request) {
         success: false,
         groups: PARAMETER_GROUPS,
         database: { connected: false },
-        error: 'RTI_DB belum tersedia atau migration parameter belum diterapkan.',
+        error: 'Database server RTI belum tersedia atau migration parameter belum diterapkan.',
       },
       { status: 503, headers: { 'Cache-Control': 'no-store' } },
     );
@@ -112,7 +96,7 @@ export async function GET(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  if (!authorized(req)) return unauthorized();
+  if (!isAdminRequest(req)) return unauthorized();
 
   const body = await req.json().catch(() => null);
   let option: ParameterOption;
@@ -136,7 +120,7 @@ export async function PUT(req: Request) {
     return NextResponse.json(
       {
         success: false,
-        error: 'RTI_DB belum tersedia atau migration parameter belum diterapkan.',
+        error: 'Database server RTI belum tersedia atau migration parameter belum diterapkan.',
       },
       { status: 503, headers: { 'Cache-Control': 'no-store' } },
     );
@@ -144,7 +128,7 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  if (!authorized(req)) return unauthorized();
+  if (!isAdminRequest(req)) return unauthorized();
 
   const body = await req.json().catch(() => null);
   const group = String(body?.group || '').trim();
@@ -167,7 +151,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json(
       {
         success: false,
-        error: 'RTI_DB belum tersedia atau migration parameter belum diterapkan.',
+        error: 'Database server RTI belum tersedia atau migration parameter belum diterapkan.',
       },
       { status: 503, headers: { 'Cache-Control': 'no-store' } },
     );
