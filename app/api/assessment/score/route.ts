@@ -4,6 +4,7 @@ import {
   type AssessmentMode,
   type AssessmentProfile,
 } from '@/lib/assessment/engine';
+import { enforceRateLimit, rateLimitHeaders } from '@/lib/security/request-protection';
 
 export const runtime = 'nodejs';
 
@@ -76,6 +77,30 @@ function normalizeProfile(value: unknown): AssessmentProfile {
 
 export async function POST(req: Request) {
   try {
+    const rateLimit = await enforceRateLimit(req, {
+      bucket: 'assessment-score',
+      limit: 30,
+      windowSeconds: 60,
+    });
+
+    if (!rateLimit.allowed) {
+      const status = rateLimit.reason === 'limit-exceeded' ? 429 : 503;
+      return NextResponse.json(
+        {
+          error:
+            status === 429
+              ? 'Terlalu banyak permintaan assessment. Silakan coba lagi sebentar.'
+              : 'Proteksi API assessment belum siap.',
+        },
+        {
+          status,
+          headers: {
+            ...NO_STORE_HEADERS,
+            ...rateLimitHeaders(rateLimit),
+          },
+        },
+      );
+    }
     const contentLength = Number(req.headers.get('content-length') || 0);
     if (contentLength > 250_000) {
       return NextResponse.json(
