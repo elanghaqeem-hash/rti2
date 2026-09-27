@@ -442,6 +442,7 @@ export function getEstimatorSessionByToken(resumeToken: string) {
           durationMaxWeeks: Number(latestEstimate.duration_max_weeks),
           priceMin: Number(latestEstimate.price_min),
           priceMax: Number(latestEstimate.price_max),
+          priceConfigured: Number(latestEstimate.price_max) > 0,
           readinessScore: Number(latestEstimate.readiness_score),
           team: safeJson(latestEstimate.team_json, []),
           factors: safeJson(latestEstimate.factors_json, []),
@@ -691,8 +692,9 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
     durationMinWeeks,
     Math.round(service.durationMaxWeeks * scale * ruleResult.durationMultiplier * 10) / 10,
   );
-  const priceMin = Math.max(0, Math.round(service.basePriceMin * priceFactor * complexityMultiplier));
-  const priceMax = Math.max(priceMin, Math.round(service.basePriceMax * priceFactor * complexityMultiplier));
+  const priceConfigured = service.basePriceMin > 0 && service.basePriceMax >= service.basePriceMin;
+  const priceMin = priceConfigured ? Math.max(0, Math.round(service.basePriceMin * priceFactor * complexityMultiplier)) : 0;
+  const priceMax = priceConfigured ? Math.max(priceMin, Math.round(service.basePriceMax * priceFactor * complexityMultiplier)) : 0;
   const projectSize = sizeFromEffort(effortDays);
 
   const profileCompleteness =
@@ -753,6 +755,7 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
     durationMaxWeeks,
     priceMin,
     priceMax,
+    priceConfigured,
     readinessScore,
     JSON.stringify(team),
     JSON.stringify(factors.slice(0, 6)),
@@ -872,9 +875,13 @@ function createDeterministicRfqContent(sessionId: string, estimate: ProjectEstim
       .filter(({ question }) => question.complexityDimension === 'security')
       .map(({ question, answer }) => answerLabel(question, answer))
       .join('; ') || 'Apply RTI secure delivery baseline and project-specific controls.',
-    commercialRequirement: session.budget_expectation
-      ? `Customer budget indication: ${session.budget_expectation}. Indicative estimate: IDR ${estimate.priceMin.toLocaleString('id-ID')} – IDR ${estimate.priceMax.toLocaleString('id-ID')}.`
-      : `Indicative estimate: IDR ${estimate.priceMin.toLocaleString('id-ID')} – IDR ${estimate.priceMax.toLocaleString('id-ID')}. Final quotation is subject to RTI review.`,
+    commercialRequirement: estimate.priceConfigured
+      ? session.budget_expectation
+        ? `Customer budget indication: ${session.budget_expectation}. Indicative estimate: IDR ${estimate.priceMin.toLocaleString('id-ID')} – IDR ${estimate.priceMax.toLocaleString('id-ID')}.`
+        : `Indicative estimate: IDR ${estimate.priceMin.toLocaleString('id-ID')} – IDR ${estimate.priceMax.toLocaleString('id-ID')}. Final quotation is subject to RTI review.`
+      : session.budget_expectation
+        ? `Customer budget indication: ${session.budget_expectation}. RTI indicative pricing is pending internal commercial calibration and review.`
+        : 'RTI indicative pricing is pending internal commercial calibration and review.',
     missingInformation,
   };
 }
@@ -906,6 +913,7 @@ export async function createRfqDraft(params: {
     durationMaxWeeks: Number(estimateRow.duration_max_weeks),
     priceMin: Number(estimateRow.price_min),
     priceMax: Number(estimateRow.price_max),
+    priceConfigured: Number(estimateRow.price_max) > 0,
     readinessScore: Number(estimateRow.readiness_score),
     team: safeJson(estimateRow.team_json, []),
     factors: safeJson(estimateRow.factors_json, []),
