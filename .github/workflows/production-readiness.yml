@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   test-and-build:
-    name: Test and Cloudflare Build
+    name: Test and Production Build
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -42,5 +42,5 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
-      - name: Build Cloudflare production artifact
+      - name: Build production server artifact
         run: npm run build
