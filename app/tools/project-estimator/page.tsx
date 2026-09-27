@@ -674,6 +674,22 @@ export default function ProjectEstimatorPage() {
                   <div className="mt-3 space-y-2 text-xs text-muted">{estimate.factors.length ? estimate.factors.map((factor) => <div key={factor}>• {factor}</div>) : <div>No high-complexity factor was selected.</div>}</div>
                 </div>
               </div>
+              {estimate.recommendations?.length > 0 && (
+                <div className="mt-5 rounded-2xl border border-line p-5">
+                  <h3 className="text-sm font-extrabold text-navy-900">Recommended RTI Services</h3>
+                  <p className="mt-1 text-xs text-muted">Related services are driven by Admin-managed service dependencies and do not change the selected project scope automatically.</p>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    {estimate.recommendations.map((item) => (
+                      <div key={`${item.serviceId}:${item.relationType}`} className="rounded-xl bg-grey-50 p-4">
+                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-gold-700">{item.relationType}</div>
+                        <div className="mt-1 text-sm font-extrabold text-navy-900">{item.name}</div>
+                        <p className="mt-1 text-xs leading-relaxed text-muted">{item.reason}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <label className="mt-5 flex items-start gap-2 rounded-xl border border-line p-4 text-xs text-navy-900">
                 <input type="checkbox" checked={useAi} onChange={(e) => setUseAi(e.target.checked)} className="mt-0.5" />
                 <span><strong>AI-assisted RFQ note</strong><br /><span className="text-muted">Optional. AI may improve narrative clarity but cannot change approved pricing parameters or invent customer requirements.</span></span>
