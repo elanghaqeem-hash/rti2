@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import type { Lead } from '@/lib/scoring/leads';
 import { BRAND_CONFIG } from '@/lib/config/contact';
+import { useParameterOptions } from '@/components/parameters/useParameterOptions';
 import {
   AlertTriangle,
   Database,
@@ -32,6 +34,7 @@ export default function AdminLeadsPage() {
   const [dataError, setDataError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const leadStatusOptions = useParameterOptions('admin.lead_statuses');
 
   const fetchLeads = async () => {
     setLoading(true);
@@ -78,7 +81,7 @@ export default function AdminLeadsPage() {
       lead.email.toLowerCase().includes(search.toLowerCase()) ||
       (lead.role || '').toLowerCase().includes(search.toLowerCase());
 
-    const matchesStatus = statusFilter === 'ALL' || lead.status === statusFilter;
+    const matchesStatus = statusFilter === '' || statusFilter === 'ALL' || lead.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -146,6 +149,12 @@ export default function AdminLeadsPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link
+              href="/admin/parameters"
+              className="px-3 py-2.5 rounded-xl border border-line text-xs font-bold text-navy-900 hover:bg-grey-50"
+            >
+              Manage Parameters
+            </Link>
             <div
               className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold ${
                 databaseConnected
@@ -214,12 +223,10 @@ export default function AdminLeadsPage() {
               disabled={!databaseConnected}
               className="px-3 py-2 rounded-lg border border-line text-xs font-semibold text-navy-900 bg-white disabled:bg-grey-50 disabled:cursor-not-allowed"
             >
-              <option value="ALL">All Statuses</option>
-              <option value="Qualified">Qualified (Score &ge; 70)</option>
-              <option value="New">New</option>
-              <option value="Meeting">Meeting Booked</option>
-              <option value="Proposal">Proposal</option>
-              <option value="Won">Won</option>
+              <option value="">All Statuses</option>
+              {leadStatusOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
             </select>
           </div>
         </div>
