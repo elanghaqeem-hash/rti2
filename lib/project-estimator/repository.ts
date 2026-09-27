@@ -454,6 +454,16 @@ export function getEstimatorSessionByToken(resumeToken: string) {
      WHERE pe.session_id=? ORDER BY pe.version DESC LIMIT 1`,
   ).get(row.id) as any;
 
+  const latestRfq = db.prepare(
+    `SELECT r.id, r.rfq_number, r.session_id, r.estimate_id, r.current_version,
+            r.status, r.created_at, r.updated_at, rv.content_json
+     FROM rfqs r
+     JOIN rfq_versions rv ON rv.rfq_id=r.id AND rv.version=r.current_version
+     WHERE r.session_id=?
+     ORDER BY r.updated_at DESC
+     LIMIT 1`,
+  ).get(row.id) as any;
+
   return {
     sessionId: row.id,
     resumeToken,
@@ -478,6 +488,19 @@ export function getEstimatorSessionByToken(resumeToken: string) {
           team: safeJson(latestEstimate.team_json, []),
           factors: safeJson(latestEstimate.factors_json, []),
           createdAt: latestEstimate.created_at,
+        }
+      : null,
+    rfq: latestRfq
+      ? {
+          id: latestRfq.id,
+          rfqNumber: latestRfq.rfq_number,
+          sessionId: latestRfq.session_id,
+          estimateId: latestRfq.estimate_id,
+          version: Number(latestRfq.current_version),
+          status: latestRfq.status,
+          content: safeJson<RfqContent>(latestRfq.content_json, {} as RfqContent),
+          createdAt: latestRfq.created_at,
+          updatedAt: latestRfq.updated_at,
         }
       : null,
   };
