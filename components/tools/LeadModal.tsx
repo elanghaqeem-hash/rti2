@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { BRAND_CONFIG } from '@/lib/config/contact';
 import { TurnstileWidget } from '@/components/security/TurnstileWidget';
+import { useParameterOptions } from '@/components/parameters/useParameterOptions';
 import {
   X,
   FileText,
@@ -41,6 +42,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
   const [submitError, setSubmitError] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
   const turnstileRequired = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
+  const sectorOptions = useParameterOptions('contact.sectors');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,6 +174,22 @@ export const LeadModal: React.FC<LeadModalProps> = ({
                     className="w-full px-3 py-2 rounded-lg border border-line text-xs focus:outline-none focus:ring-2 focus:ring-gold-500"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-navy-900 mb-1">
+                  Sector / Industry *
+                </label>
+                <select
+                  required
+                  value={formData.sector}
+                  onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-line text-xs bg-white focus:outline-none focus:ring-2 focus:ring-gold-500"
+                >
+                  {sectorOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
