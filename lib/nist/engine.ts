@@ -297,7 +297,7 @@ export function scoreNistAssessment(params: {
         title: `Strengthen ${category.categoryName}`,
         priority,
         effort,
-        impact: priority === 'Critical' || priority === 'High' ? 'High' : 'Medium',
+        impact: (priority === 'Critical' || priority === 'High' ? 'High' : 'Medium') as NistRecommendation['impact'],
         suggestedTimeline: recommendationTimeline(priority),
         reason:
           mapping?.reasonTemplate ||
