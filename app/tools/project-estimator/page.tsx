@@ -31,6 +31,16 @@ import type {
   SessionProfile,
 } from '@/lib/project-estimator/types';
 
+type RfqAttachment = {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  sha256: string;
+  scanStatus: string;
+  createdAt: string;
+};
+
 const defaultProfile = {
   companyName: '',
   industry: '',
@@ -120,6 +130,8 @@ export default function ProjectEstimatorPage() {
   const [savedAt, setSavedAt] = useState('');
   const [estimate, setEstimate] = useState<(Omit<ProjectEstimate, 'trace'>) | null>(null);
   const [rfq, setRfq] = useState<RfqRecord | null>(null);
+  const [attachments, setAttachments] = useState<RfqAttachment[]>([]);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [consent, setConsent] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState('');
   const turnstileRequired = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
@@ -166,8 +178,22 @@ export default function ProjectEstimatorPage() {
         setBudgetExpectation(data.input.budgetExpectation || '');
         setProfile({ ...defaultProfile, ...(data.input.profile || {}) });
         setAnswers(data.input.answers || {});
-        if (data.estimate) {
-          setEstimate(data.estimate);
+        if (data.estimate) setEstimate(data.estimate);
+        if (data.rfq) {
+          setRfq(data.rfq);
+          setStep(6);
+          fetch(`/api/v1/project-estimator/rfq/${data.rfq.id}/attachments`, {
+            cache: 'no-store',
+            headers: { 'X-RTI-Resume-Token': token },
+          })
+            .then(async (attachmentResponse) => {
+              const attachmentData = await attachmentResponse.json().catch(() => null);
+              if (!cancelled && attachmentResponse.ok) {
+                setAttachments(Array.isArray(attachmentData?.attachments) ? attachmentData.attachments : []);
+              }
+            })
+            .catch(() => undefined);
+        } else if (data.estimate) {
           setStep(5);
         } else {
           setStep(4);
@@ -369,11 +395,35 @@ export default function ProjectEstimatorPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || 'RFQ could not be generated.');
       setRfq(data.rfq);
+      setAttachments([]);
       setStep(6);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'RFQ generation failed.');
     } finally {
       setWorking(false);
+    }
+  };
+
+  const uploadAttachment = async (file: File | null) => {
+    if (!file || !rfq || !resumeToken) return;
+    setUploadingAttachment(true);
+    setMessage('');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('resumeToken', resumeToken);
+      const response = await fetch(`/api/v1/project-estimator/rfq/${rfq.id}/attachments`, {
+        method: 'POST',
+        body: form,
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || 'Supporting document could not be uploaded.');
+      setAttachments(Array.isArray(data?.attachments) ? data.attachments : []);
+      setMessage('Supporting document uploaded and security-checked.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Supporting document upload failed.');
+    } finally {
+      setUploadingAttachment(false);
     }
   };
 
@@ -677,6 +727,47 @@ export default function ProjectEstimatorPage() {
                 <strong>Timeline:</strong> {rfq.content.timelineExpectation}<br />
                 <strong>Commercial:</strong> {rfq.content.commercialRequirement}
               </div>
+
+              <RfqSection title="Supporting Documents">
+                <div className="space-y-3">
+                  {attachments.length > 0 ? (
+                    <div className="space-y-2">
+                      {attachments.map((attachment) => (
+                        <div key={attachment.id} className="flex flex-col gap-1 rounded-xl bg-grey-50 px-3 py-2.5 text-xs sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="truncate font-bold text-navy-900">{attachment.fileName}</div>
+                            <div className="text-[10px] text-muted">
+                              {(attachment.fileSize / 1024 / 1024).toFixed(2)} MB · {attachment.scanStatus}
+                            </div>
+                          </div>
+                          <div className="font-mono text-[9px] text-muted">{attachment.sha256.slice(0, 12)}…</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted">No supporting documents uploaded.</p>
+                  )}
+                  {rfq.status === 'draft' && (
+                    <label className="block rounded-xl border border-dashed border-line p-4 text-xs text-navy-900 print:hidden">
+                      <span className="font-extrabold">Upload supporting document</span>
+                      <span className="mt-1 block text-[11px] text-muted">
+                        PDF, DOCX, XLSX, PNG or JPEG. Production upload is accepted only when RTI secure storage and malware scanning are configured.
+                      </span>
+                      <input
+                        type="file"
+                        accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg"
+                        disabled={uploadingAttachment}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] || null;
+                          void uploadAttachment(file);
+                          event.currentTarget.value = '';
+                        }}
+                        className="mt-3 block w-full text-xs"
+                      />
+                    </label>
+                  )}
+                </div>
+              </RfqSection>
 
               {rfq.status === 'draft' && (
                 <div className="mt-6 border-t border-line pt-5 print:hidden">
