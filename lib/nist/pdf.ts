@@ -2,6 +2,7 @@ import type {
   NistAssessmentRecord,
   NistAssessmentResult,
 } from '@/lib/nist/types';
+import { BRAND_CONFIG } from '@/lib/config/contact';
 
 type PdfLine = {
   text: string;
@@ -95,7 +96,14 @@ function buildLines(
   lines.push({ text: `Framework: ${assessment.frameworkVersion}`, size: 9 });
   lines.push({ text: `Questionnaire: ${assessment.questionnaireVersion}`, size: 9 });
   lines.push({ text: `Scoring model: ${assessment.scoringModelVersion}`, size: 9 });
+  lines.push({ text: 'Report version: NIST-CSF-2.0-QC-v1.0', size: 9 });
   lines.push({ text: `Assessment date: ${assessment.completedAt || assessment.startedAt}`, size: 9 });
+
+  lines.push({ text: 'ORGANIZATION PROFILE', bold: true, size: 14, gapBefore: 22 });
+  lines.push({ text: `Industry: ${assessment.organization.industry}`, size: 10 });
+  lines.push({ text: `Organization size: ${assessment.organization.companySize}`, size: 10 });
+  if (assessment.organization.country) lines.push({ text: `Country: ${assessment.organization.country}`, size: 10 });
+  if (assessment.organization.region) lines.push({ text: `Region: ${assessment.organization.region}`, size: 10 });
 
   lines.push({ text: 'EXECUTIVE POSTURE', bold: true, size: 14, gapBefore: 24 });
   lines.push({ text: `RTI Cyber Readiness Score: ${result.overallScore}/100`, bold: true, size: 13 });
@@ -109,6 +117,13 @@ function buildLines(
   if (result.weakestFunction) {
     lines.push({ text: `Lowest Function: ${result.weakestFunction.functionName} (${result.weakestFunction.score})`, size: 11 });
   }
+
+  lines.push({ text: 'EXECUTIVE SUMMARY', bold: true, size: 14, gapBefore: 22 });
+  addWrapped(
+    lines,
+    `The self-assessment produced an RTI Cyber Readiness Score of ${result.overallScore}/100 with the configured interpretation "${result.riskRating}". Evidence confidence is ${result.confidenceScore}%. ${result.strongestFunction ? `The highest-scoring Function is ${result.strongestFunction.functionName} at ${result.strongestFunction.score}.` : ''} ${result.weakestFunction ? `The lowest-scoring Function is ${result.weakestFunction.functionName} at ${result.weakestFunction.score}.` : ''} Priority actions should focus on the largest validated gaps and should be confirmed against supporting evidence before assurance or compliance conclusions are made.`,
+    { size: 9, max: 92 },
+  );
 
   lines.push({ text: 'NIST CSF 2.0 FUNCTION POSTURE', bold: true, size: 14, gapBefore: 22 });
   for (const item of result.functionScores) {
@@ -171,6 +186,22 @@ function buildLines(
     addWrapped(lines, `Expected outcome: ${item.expectedOutcome}`, { size: 9, max: 92 });
   }
 
+  lines.push({ text: 'RECOMMENDED RTI SERVICES', bold: true, size: 14, gapBefore: 22 });
+  const serviceNames = Array.from(
+    new Set(
+      result.recommendations
+        .map((item) => item.serviceName)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
+  if (serviceNames.length === 0) {
+    lines.push({ text: 'No RTI service is mapped to the current priority findings.', size: 9 });
+  } else {
+    for (const serviceName of serviceNames.slice(0, 10)) {
+      lines.push({ text: `- ${serviceName}`, size: 9 });
+    }
+  }
+
   lines.push({ text: 'METHODOLOGY & LIMITATIONS', bold: true, size: 14, gapBefore: 22 });
   addWrapped(lines, result.methodologyDisclaimer, { size: 9, max: 92 });
   addWrapped(
@@ -183,6 +214,12 @@ function buildLines(
     'Benchmarking is not shown unless sufficient anonymized comparison data is available. No synthetic industry benchmark is presented as actual market data.',
     { size: 9, max: 92, gapBefore: 6 },
   );
+
+  lines.push({ text: 'CONTACT RTI', bold: true, size: 14, gapBefore: 22 });
+  lines.push({ text: BRAND_CONFIG.legalName, bold: true, size: 10 });
+  lines.push({ text: `Email: ${BRAND_CONFIG.contact.email}`, size: 9 });
+  lines.push({ text: `WhatsApp: ${BRAND_CONFIG.contact.whatsapp}`, size: 9 });
+  lines.push({ text: `Website: ${BRAND_CONFIG.contact.website}`, size: 9 });
 
   return lines;
 }
