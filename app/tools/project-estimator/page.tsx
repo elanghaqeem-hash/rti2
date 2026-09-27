@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { TurnstileWidget } from '@/components/security/TurnstileWidget';
+import { useParameterGroups } from '@/components/parameters/useParameterOptions';
 import {
   ArrowLeft,
   ArrowRight,
@@ -29,30 +30,6 @@ import type {
   SessionInput,
   SessionProfile,
 } from '@/lib/project-estimator/types';
-
-const objectives = [
-  'Regulatory requirement',
-  'Cybersecurity improvement',
-  'Compliance',
-  'Operational efficiency',
-  'System development',
-  'Modernization',
-  'Audit finding',
-  'Risk mitigation',
-  'Digital transformation',
-  'Certification',
-  'Automation',
-  'Data protection',
-  'Resilience',
-  'Training',
-  'Advisory',
-];
-
-const industries = [
-  'Banking','Insurance','Securities','Multifinance','Fintech','Payment','Government',
-  'BUMN','BUMD','Healthcare','Manufacturing','Energy','Mining','Oil & Gas',
-  'Telecom','Technology','Education','Retail','Logistics','Hospitality','Other',
-];
 
 const defaultProfile = {
   companyName: '',
@@ -86,6 +63,17 @@ function questionVisible(question: EstimatorQuestion, mode: 'quick' | 'detailed'
 }
 
 export default function ProjectEstimatorPage() {
+  const parameterGroups = useParameterGroups([
+    'assessment.industries',
+    'assessment.company_sizes',
+    'project.business_objectives',
+    'contact.preferred_channels',
+  ]);
+  const industries = parameterGroups['assessment.industries'] || [];
+  const companySizes = parameterGroups['assessment.company_sizes'] || [];
+  const objectives = parameterGroups['project.business_objectives'] || [];
+  const preferredChannels = parameterGroups['contact.preferred_channels'] || [];
+
   const [bootstrap, setBootstrap] = useState<EstimatorBootstrap | null>(null);
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState<'quick' | 'detailed'>('quick');
@@ -473,7 +461,7 @@ export default function ProjectEstimatorPage() {
                 <Field label="Company / institution *" value={profile.companyName} onChange={(v) => setProfile({ ...profile, companyName: v })} />
                 <label className="text-xs font-bold text-navy-900">Industry *
                   <select value={profile.industry} onChange={(e) => setProfile({ ...profile, industry: e.target.value })} className="mt-1 w-full rounded-xl border border-line px-3 py-3 text-sm font-medium">
-                    <option value="">Select industry</option>{industries.map((i) => <option key={i}>{i}</option>)}
+                    <option value="">Select industry</option>{industries.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                   </select>
                 </label>
                 <Field label="Contact name *" value={profile.contactName} onChange={(v) => setProfile({ ...profile, contactName: v })} />
@@ -481,11 +469,7 @@ export default function ProjectEstimatorPage() {
                 <label className="text-xs font-bold text-navy-900">Company size
                   <select value={profile.companySize || ''} onChange={(e) => setProfile({ ...profile, companySize: e.target.value })} className="mt-1 w-full rounded-xl border border-line px-3 py-3 text-sm font-medium">
                     <option value="">Select scale</option>
-                    <option value="1-50">1–50 employees</option>
-                    <option value="51-250">51–250 employees</option>
-                    <option value="251-1000">251–1,000 employees</option>
-                    <option value="1001-5000">1,001–5,000 employees</option>
-                    <option value="5000+">5,000+ employees</option>
+                    {companySizes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                   </select>
                 </label>
                 <Field label="Number of employees" type="number" value={profile.employeeCount} onChange={(v) => setProfile({ ...profile, employeeCount: v ? Number(v) : undefined })} />
@@ -499,9 +483,7 @@ export default function ProjectEstimatorPage() {
                 <Field label="Website" value={profile.website} onChange={(v) => setProfile({ ...profile, website: v })} />
                 <label className="text-xs font-bold text-navy-900">Preferred communication
                   <select value={profile.preferredChannel || 'email'} onChange={(e) => setProfile({ ...profile, preferredChannel: e.target.value })} className="mt-1 w-full rounded-xl border border-line px-3 py-3 text-sm font-medium">
-                    <option value="email">Email</option>
-                    <option value="whatsapp">WhatsApp</option>
-                    <option value="phone">Phone</option>
+                    {preferredChannels.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                   </select>
                 </label>
               </div>
@@ -519,7 +501,7 @@ export default function ProjectEstimatorPage() {
               <div className="mt-6 text-xs font-bold text-navy-900">Business objectives</div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {objectives.map((objective) => (
-                  <button key={objective} onClick={() => toggleObjective(objective)} className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${selectedObjectives.includes(objective) ? 'border-navy-900 bg-navy-900 text-white' : 'border-line text-navy-900 hover:border-gold-500'}`}>{objective}</button>
+                  <button key={objective.value} onClick={() => toggleObjective(objective.value)} className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${selectedObjectives.includes(objective.value) ? 'border-navy-900 bg-navy-900 text-white' : 'border-line text-navy-900 hover:border-gold-500'}`}>{objective.label}</button>
                 ))}
               </div>
             </div>
