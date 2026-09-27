@@ -8,7 +8,8 @@ export type AiProviderId =
   | 'openai'
   | 'gemini'
   | 'groq'
-  | 'openrouter';
+  | 'openrouter'
+  | 'deepseek';
 
 export type AiFailoverResult = {
   text: string;
@@ -22,6 +23,7 @@ const DEFAULT_PROVIDER_ORDER: AiProviderId[] = [
   'gemini',
   'groq',
   'openrouter',
+  'deepseek',
 ];
 
 const PROVIDER_IDS = new Set<AiProviderId>(DEFAULT_PROVIDER_ORDER);
@@ -114,7 +116,7 @@ async function callAnthropic(
 }
 
 async function callOpenAiCompatible(params: {
-  provider: 'openai' | 'groq' | 'openrouter';
+  provider: 'openai' | 'groq' | 'openrouter' | 'deepseek';
   endpoint: string;
   apiKey?: string;
   model: string;
@@ -247,6 +249,17 @@ async function callProvider(
           'X-Title': 'Risetin Assistant',
         },
       });
+
+    case 'deepseek':
+      return callOpenAiCompatible({
+        provider: 'deepseek',
+        endpoint: 'https://api.deepseek.com/chat/completions',
+        apiKey: process.env.DEEPSEEK_API_KEY,
+        model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+        messages,
+        systemPrompt,
+        contextText,
+      });
   }
 }
 
@@ -263,7 +276,8 @@ export async function generateAiWithFailover(params: {
       (provider === 'openai' && Boolean(process.env.OPENAI_API_KEY)) ||
       (provider === 'gemini' && Boolean(process.env.GEMINI_API_KEY)) ||
       (provider === 'groq' && Boolean(process.env.GROQ_API_KEY)) ||
-      (provider === 'openrouter' && Boolean(process.env.OPENROUTER_API_KEY));
+      (provider === 'openrouter' && Boolean(process.env.OPENROUTER_API_KEY)) ||
+      (provider === 'deepseek' && Boolean(process.env.DEEPSEEK_API_KEY));
 
     if (!isConfigured) continue;
 
