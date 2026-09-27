@@ -38,6 +38,20 @@ CREATE TABLE IF NOT EXISTS nist_categories (
     REFERENCES nist_functions(framework_version, code)
 );
 
+CREATE TABLE IF NOT EXISTS nist_subcategories (
+  framework_version TEXT NOT NULL,
+  code TEXT NOT NULL,
+  category_code TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  weight REAL NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+  PRIMARY KEY (framework_version, code),
+  FOREIGN KEY (framework_version, category_code)
+    REFERENCES nist_categories(framework_version, code)
+);
+
 CREATE TABLE IF NOT EXISTS nist_questions (
   id TEXT PRIMARY KEY,
   framework_version TEXT NOT NULL,
@@ -244,6 +258,21 @@ CREATE TABLE IF NOT EXISTS nist_roadmap_items (
   created_at TEXT NOT NULL,
   FOREIGN KEY (assessment_id) REFERENCES nist_assessments(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS nist_generated_reports (
+  id TEXT PRIMARY KEY,
+  assessment_id TEXT NOT NULL,
+  report_version TEXT NOT NULL,
+  framework_version TEXT NOT NULL,
+  questionnaire_version TEXT NOT NULL,
+  scoring_model_version TEXT NOT NULL,
+  generated_at TEXT NOT NULL,
+  generated_by TEXT NOT NULL,
+  FOREIGN KEY (assessment_id) REFERENCES nist_assessments(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_nist_reports_assessment
+  ON nist_generated_reports(assessment_id, generated_at DESC);
 
 CREATE TABLE IF NOT EXISTS nist_audit_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
