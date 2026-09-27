@@ -98,6 +98,26 @@ function safePercent(value: number) {
   return Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
 }
 
+function getApplicableQuestions(
+  config: NistAssessmentConfig,
+  answers: Record<string, NistAnswerRecord>,
+) {
+  const applicable = new Set(
+    config.questions.filter((question) => question.isCore).map((question) => question.id),
+  );
+
+  for (const rule of config.branchingRules || []) {
+    const parentAnswer = answers[rule.parentQuestionId]?.answerValue;
+    if (parentAnswer && rule.answerValues.includes(parentAnswer)) {
+      applicable.add(rule.followUpQuestionId);
+    }
+  }
+
+  return config.questions
+    .filter((question) => applicable.has(question.id))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
 function FunctionRadar({ result }: { result: NistAssessmentResult }) {
   const values = result.functionScores.slice(0, 6);
   const size = 260;
@@ -339,7 +359,8 @@ export default function CyberQuickCheckPage() {
         return;
       }
 
-      const firstUnanswered = cfg.questions.findIndex(
+      const resumableQuestions = getApplicableQuestions(cfg, restored);
+      const firstUnanswered = resumableQuestions.findIndex(
         (question) => !restored[question.id],
       );
       setCurrentIndex(firstUnanswered >= 0 ? firstUnanswered : 0);
@@ -421,19 +442,24 @@ export default function CyberQuickCheckPage() {
     }
   };
 
-  const currentQuestion = config?.questions[currentIndex];
+  const applicableQuestions = useMemo(
+    () => (config ? getApplicableQuestions(config, answers) : []),
+    [config, answers],
+  );
+  const currentQuestion = applicableQuestions[currentIndex];
   const currentAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
-  const answeredCount = Object.keys(answers).length;
-  const progress = config?.questions.length
-    ? Math.round((answeredCount / config.questions.length) * 100)
+  const answeredCount = applicableQuestions.filter(
+    (question) => Boolean(answers[question.id]),
+  ).length;
+  const progress = applicableQuestions.length
+    ? Math.round((answeredCount / applicableQuestions.length) * 100)
     : 0;
   const remainingMinutes = useMemo(() => {
-    if (!config) return 5;
-    const remaining = config.questions
+    const remaining = applicableQuestions
       .slice(currentIndex)
       .reduce((sum, question) => sum + question.estimatedSeconds, 0);
     return Math.max(1, Math.ceil(remaining / 60));
-  }, [config, currentIndex]);
+  }, [applicableQuestions, currentIndex]);
 
   const saveAnswer = async (
     answerValue: string,
@@ -515,11 +541,11 @@ export default function CyberQuickCheckPage() {
 
   const nextQuestion = async () => {
     if (!config || !currentQuestion || !currentAnswer) return;
-    if (currentIndex >= config.questions.length - 1) {
+    if (currentIndex >= applicableQuestions.length - 1) {
       await completeAssessment();
       return;
     }
-    setCurrentIndex((index) => Math.min(index + 1, config.questions.length - 1));
+    setCurrentIndex((index) => Math.min(index + 1, applicableQuestions.length - 1));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -570,7 +596,7 @@ export default function CyberQuickCheckPage() {
   };
 
   const previousFunctionCode =
-    config && currentIndex > 0 ? config.questions[currentIndex - 1]?.functionCode : null;
+    currentIndex > 0 ? applicableQuestions[currentIndex - 1]?.functionCode : null;
   const beginsFunction =
     currentQuestion && currentQuestion.functionCode !== previousFunctionCode;
   const currentFunction = config?.functions.find(
@@ -941,7 +967,7 @@ export default function CyberQuickCheckPage() {
         <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="sticky top-0 z-20 -mx-4 border-b border-line bg-grey-50/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border">
             <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-wider text-muted">
-              <span>{answeredCount} of {config.questions.length} answered</span>
+              <span>{answeredCount} of {applicableQuestions.length} applicable answered</span>
               <span>{progress}% · ≈ {remainingMinutes} min remaining</span>
             </div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
@@ -967,7 +993,7 @@ export default function CyberQuickCheckPage() {
                 {currentQuestion.categoryCode}
               </div>
               <div className="font-mono text-[10px] text-muted">
-                Question {currentIndex + 1} / {config.questions.length}
+                Question {currentIndex + 1} / {applicableQuestions.length}
               </div>
             </div>
 
@@ -1072,7 +1098,7 @@ export default function CyberQuickCheckPage() {
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gold-500 px-6 py-2.5 text-xs font-extrabold text-navy-900 hover:bg-gold-300 disabled:opacity-40"
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  {currentIndex === config.questions.length - 1
+                  {currentIndex === applicableQuestions.length - 1
                     ? 'View My Cyber Posture'
                     : 'Next'}
                   <ArrowRight className="h-4 w-4" />
