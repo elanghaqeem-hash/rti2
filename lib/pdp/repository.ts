@@ -281,7 +281,7 @@ export function loadPdpAssessment(assessmentId: string, token: string) {
             numeric_value AS numericValue, text_value AS textValue,
             confidence, evidence_status AS evidenceStatus
      FROM pdp_responses WHERE assessment_id = ?`,
-  ).all(assessmentId);
+  ).all(assessmentId) as unknown as PdpResponseInput[];
 
   return {
     ...assessment,
