@@ -84,10 +84,10 @@ export default function HomePage() {
               {/* Action Buttons */}
               <div className="pt-2 flex flex-col sm:flex-row items-center gap-4">
                 <Link
-                  href="/tools/maturity-assessment"
+                  href="/assessment"
                   className="w-full sm:w-auto px-7 py-4 rounded-xl bg-gold-500 hover:bg-gold-300 text-navy-900 font-extrabold text-sm transition-all shadow-[0_10px_30px_-10px_rgba(228,161,27,0.5)] flex items-center justify-center gap-2 group"
                 >
-                  <span>Request an Assessment</span>
+                  <span>Start Free Maturity Assessment</span>
                   <ArrowRight className="w-4 h-4 text-navy-900 group-hover:translate-x-1 transition-transform" />
                 </Link>
 
@@ -136,7 +136,7 @@ export default function HomePage() {
                 <BarChart3 className="w-4 h-4" />
               </div>
               <div>
-                <span className="text-xs font-bold text-white block">10-Domain Diagnostic</span>
+                <span className="text-xs font-bold text-white block">20-Domain Diagnostic</span>
                 <span className="text-[11px] text-slate-400">Instant radar benchmarks</span>
               </div>
             </div>
@@ -258,21 +258,21 @@ export default function HomePage() {
                   <BarChart3 className="w-5 h-5" />
                 </div>
                 <div className="text-xs font-bold uppercase tracking-wider text-gold-600 mb-1">
-                  10 Domains &bull; 10 Mins
+                  20 Domains &bull; 5–10 Mins
                 </div>
                 <h3 className="text-lg font-extrabold text-navy-900 mb-2">
                   Technology & Cyber Maturity Assessment
                 </h3>
                 <p className="text-xs text-muted leading-relaxed">
-                  Evaluate current vs. target maturity across IT Governance, Architecture, Cyber, Data, and Regulatory Readiness with instant radar benchmarks.
+                  Assess technology, cybersecurity, governance, resilience, privacy, cloud, AI governance, and people capability with server-verified scoring and a prioritized roadmap.
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-line/60">
                 <Link
-                  href="/tools/maturity-assessment"
+                  href="/assessment"
                   className="inline-flex items-center gap-2 text-xs font-bold text-navy-900 group-hover:text-blue-600 transition"
                 >
-                  Start Assessment &rarr;
+                  Start Free Maturity Assessment &rarr;
                 </Link>
               </div>
             </div>
@@ -363,10 +363,10 @@ export default function HomePage() {
             </Link>
 
             <Link
-              href="/tools/maturity-assessment"
+              href="/assessment"
               className="px-6 py-3.5 rounded-xl bg-navy-700 hover:bg-navy-500 text-white font-semibold text-sm transition border border-navy-500"
             >
-              Request an Assessment
+              Start Free Maturity Assessment
             </Link>
 
             <Link
