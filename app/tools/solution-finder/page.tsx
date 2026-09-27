@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useParameterGroups } from '@/components/parameters/useParameterOptions';
 import {
   Compass,
   CheckCircle2,
@@ -16,9 +17,19 @@ export default function SolutionFinderPage() {
   const [step, setStep] = useState(1);
   const [sector, setSector] = useState('banking_insurance');
   const [challenges, setChallenges] = useState<string[]>([]);
-  const [scale, setScale] = useState('enterprise_large');
+  const [scale, setScale] = useState('scale_enterprise');
   const [urgency, setUrgency] = useState('immediate');
   const [completed, setCompleted] = useState(false);
+  const parameterGroups = useParameterGroups([
+    'solution.sectors',
+    'solution.challenges',
+    'solution.scale',
+    'solution.urgency',
+  ]);
+  const sectorOptions = parameterGroups['solution.sectors'] || [];
+  const challengeOptions = parameterGroups['solution.challenges'] || [];
+  const scaleOptions = parameterGroups['solution.scale'] || [];
+  const urgencyOptions = parameterGroups['solution.urgency'] || [];
 
   const toggleChallenge = (c: string) => {
     if (challenges.includes(c)) {
@@ -28,14 +39,6 @@ export default function SolutionFinderPage() {
     }
   };
 
-  const CHALLENGE_OPTIONS = [
-    { id: 'app_modernization', label: 'Legacy Core Modernization & Slow Development Releases' },
-    { id: 'audit_regulatory', label: 'Mandatory Regulatory Audit Pressure (OJK / BI / BSSN / UU PDP)' },
-    { id: 'cyber_vulnerabilities', label: 'Recent Cyber Incidents or Unverified Attack Surface Exposure' },
-    { id: 'system_instability', label: 'Frequent Infrastructure Downtime & High Incident Resolution Times' },
-    { id: 'no_clear_roadmap', label: 'Absence of Multi-Year IT Master Plan & Architecture Direction' },
-    { id: 'workforce_gap', label: 'Internal Developer Security Habits & Cyber Awareness Gaps' },
-  ];
 
   return (
     <div className="w-full bg-white min-h-screen">
@@ -76,19 +79,13 @@ export default function SolutionFinderPage() {
                     Which sector describes your organization best?
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {[
-                      { id: 'banking_insurance', label: 'Banking & Financial Services' },
-                      { id: 'fintech_payments', label: 'Fintech & Payment Gateway' },
-                      { id: 'government_bumn', label: 'Government & BUMN / BUMD' },
-                      { id: 'energy_resources', label: 'Energy, Natural Resources & Utilities' },
-                      { id: 'enterprise_commercial', label: 'Diversified Conglomerate / Corporate' },
-                    ].map((s) => (
+                    {sectorOptions.map((s) => (
                       <button
-                        key={s.id}
+                        key={s.value}
                         type="button"
-                        onClick={() => setSector(s.id)}
+                        onClick={() => setSector(s.value)}
                         className={`p-4 rounded-xl border text-left font-bold text-xs sm:text-sm transition-all ${
-                          sector === s.id
+                          sector === s.value
                             ? 'bg-navy-900 text-white border-navy-900 shadow'
                             : 'bg-grey-50 border-line text-navy-900 hover:bg-white'
                         }`}
@@ -107,13 +104,13 @@ export default function SolutionFinderPage() {
                     What are your primary technology challenges right now? (Select all that apply)
                   </h3>
                   <div className="space-y-2.5">
-                    {CHALLENGE_OPTIONS.map((c) => {
-                      const isSelected = challenges.includes(c.id);
+                    {challengeOptions.map((c) => {
+                      const isSelected = challenges.includes(c.value);
                       return (
                         <button
-                          key={c.id}
+                          key={c.value}
                           type="button"
-                          onClick={() => toggleChallenge(c.id)}
+                          onClick={() => toggleChallenge(c.value)}
                           className={`w-full p-4 rounded-xl border text-left transition-all flex items-start gap-3 ${
                             isSelected
                               ? 'bg-beige-50 border-gold-500 shadow-sm'
@@ -146,18 +143,13 @@ export default function SolutionFinderPage() {
                     What is your approximate organizational size / user base?
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {[
-                      { id: 'scale_growing', label: 'Growing Tier (< 250 Employees / Regional)' },
-                      { id: 'scale_mid', label: 'Mid-Market (250 – 1,000 Employees)' },
-                      { id: 'scale_enterprise', label: 'Large Enterprise (1,000 – 5,000 Employees)' },
-                      { id: 'scale_conglomerate', label: 'Mission-Critical / National Institution' },
-                    ].map((sc) => (
+                    {scaleOptions.map((sc) => (
                       <button
-                        key={sc.id}
+                        key={sc.value}
                         type="button"
-                        onClick={() => setScale(sc.id)}
+                        onClick={() => setScale(sc.value)}
                         className={`p-4 rounded-xl border text-left font-bold text-xs sm:text-sm transition-all ${
-                          scale === sc.id
+                          scale === sc.value
                             ? 'bg-navy-900 text-white border-navy-900 shadow'
                             : 'bg-grey-50 border-line text-navy-900 hover:bg-white'
                         }`}
@@ -176,17 +168,13 @@ export default function SolutionFinderPage() {
                     What is your execution horizon / urgency?
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {[
-                      { id: 'immediate', label: 'Immediate (< 30 Days)' },
-                      { id: 'quarterly', label: 'This Quarter (1 – 3 Months)' },
-                      { id: 'planning', label: 'Strategic Planning (3 – 6 Months)' },
-                    ].map((u) => (
+                    {urgencyOptions.map((u) => (
                       <button
-                        key={u.id}
+                        key={u.value}
                         type="button"
-                        onClick={() => setUrgency(u.id)}
+                        onClick={() => setUrgency(u.value)}
                         className={`p-4 rounded-xl border text-left font-bold text-xs transition-all ${
-                          urgency === u.id
+                          urgency === u.value
                             ? 'bg-navy-900 text-white border-navy-900 shadow'
                             : 'bg-grey-50 border-line text-navy-900 hover:bg-white'
                         }`}
