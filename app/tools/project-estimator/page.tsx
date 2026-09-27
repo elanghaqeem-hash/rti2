@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { TurnstileWidget } from '@/components/security/TurnstileWidget';
 import {
   ArrowLeft,
   ArrowRight,
@@ -95,6 +96,8 @@ export default function ProjectEstimatorPage() {
   const [estimate, setEstimate] = useState<(Omit<ProjectEstimate, 'trace'>) | null>(null);
   const [rfq, setRfq] = useState<RfqRecord | null>(null);
   const [consent, setConsent] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileRequired = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
   const [useAi, setUseAi] = useState(false);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
@@ -247,12 +250,16 @@ export default function ProjectEstimatorPage() {
       setMessage('Privacy consent is required before RFQ submission.');
       return;
     }
+    if (turnstileRequired && !turnstileToken) {
+      setMessage('Complete the security verification before RFQ submission.');
+      return;
+    }
     setWorking(true);
     try {
       const response = await fetch(`/api/v1/project-estimator/rfq/${rfq.id}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consent }),
+        body: JSON.stringify({ consent, turnstileToken }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || 'RFQ could not be submitted.');
@@ -489,9 +496,12 @@ export default function ProjectEstimatorPage() {
                     <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" />
                     <span>I confirm that the information is authorized for submission to RTI and consent to processing for project qualification, proposal preparation and follow-up.</span>
                   </label>
+                  <div className="mt-4 max-w-sm">
+                    <TurnstileWidget onTokenChange={setTurnstileToken} />
+                  </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button onClick={saveRfq} disabled={working} className="inline-flex items-center gap-2 rounded-xl border border-line px-4 py-3 text-xs font-bold text-navy-900"><Save className="h-4 w-4" /> Save RFQ Version</button>
-                    <button onClick={submitRfq} disabled={working || !consent} className="inline-flex items-center gap-2 rounded-xl bg-gold-500 px-5 py-3 text-xs font-extrabold text-navy-900 disabled:opacity-40"><Send className="h-4 w-4" /> Submit to RTI</button>
+                    <button onClick={submitRfq} disabled={working || !consent || (turnstileRequired && !turnstileToken)} className="inline-flex items-center gap-2 rounded-xl bg-gold-500 px-5 py-3 text-xs font-extrabold text-navy-900 disabled:opacity-40"><Send className="h-4 w-4" /> Submit to RTI</button>
                   </div>
                 </div>
               )}
