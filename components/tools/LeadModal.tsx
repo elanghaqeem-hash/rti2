@@ -76,6 +76,10 @@ export const LeadModal: React.FC<LeadModalProps> = ({
           email: formData.email,
           whatsapp: formData.whatsapp,
           needSummary: `Completed ${toolName}. Diagnostic payload: ${JSON.stringify(summaryData)}`,
+          leadSignals:
+            summaryData?.leadSignals && typeof summaryData.leadSignals === 'object'
+              ? summaryData.leadSignals
+              : undefined,
           consent: formData.consent,
           turnstileToken,
         }),
