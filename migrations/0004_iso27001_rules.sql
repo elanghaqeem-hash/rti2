@@ -21,13 +21,14 @@ CREATE TABLE IF NOT EXISTS gap_severity_rules (
   maximum_response INTEGER NOT NULL,
   severity TEXT NOT NULL CHECK (severity IN ('Critical','High','Medium','Low')),
   sort_order INTEGER NOT NULL,
-  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1))
+  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+  UNIQUE(version_id, severity)
 );
 
 CREATE TABLE IF NOT EXISTS roadmap_phase_rules (
   id TEXT PRIMARY KEY,
   version_id TEXT NOT NULL REFERENCES assessment_versions(id) ON DELETE CASCADE,
-  severity TEXT NOT NULL UNIQUE,
+  severity TEXT NOT NULL,
   phase TEXT NOT NULL,
   priority INTEGER NOT NULL,
   is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1))
