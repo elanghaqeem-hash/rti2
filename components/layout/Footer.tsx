@@ -233,7 +233,7 @@ export const Footer: React.FC = () => {
             </span>
           </div>
           <div>
-            &copy; {currentYear} {BRAND_CONFIG.legalName}. All rights reserved. Brand modern: {BRAND_CONFIG.brandName} ({BRAND_CONFIG.acronym}).
+            &copy; {currentYear} {BRAND_CONFIG.legalName}. All rights reserved.
           </div>
         </div>
       </div>
