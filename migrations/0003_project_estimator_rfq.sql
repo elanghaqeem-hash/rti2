@@ -342,6 +342,7 @@ CREATE TABLE IF NOT EXISTS estimator_audit_logs (
   created_at TEXT NOT NULL
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_estimator_sessions_token_hash ON estimator_sessions(secure_token_hash) WHERE secure_token_hash IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_estimator_sessions_updated ON estimator_sessions(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_project_estimates_session ON project_estimates(session_id, version DESC);
 CREATE INDEX IF NOT EXISTS idx_rfqs_status_created ON rfqs(status, created_at DESC);
