@@ -508,6 +508,28 @@ export function recordPdpReport(
   );
 }
 
+export function getPdpEvidenceRules() {
+  ensurePdpSeeded();
+  const db = getDatabase();
+  const rows = db.prepare(
+    `SELECT code, extensions_json AS extensionsJson, mime_types_json AS mimeTypesJson,
+            max_bytes AS maxBytes
+     FROM pdp_evidence_types WHERE is_active = 1 ORDER BY code`,
+  ).all() as Array<{
+    code: string;
+    extensionsJson: string;
+    mimeTypesJson: string;
+    maxBytes: number | null;
+  }>;
+
+  return rows.map((row) => ({
+    code: row.code,
+    extensions: safeJson<string[]>(row.extensionsJson, []),
+    mimeTypes: safeJson<string[]>(row.mimeTypesJson, []),
+    maxBytes: Number(row.maxBytes || 10 * 1024 * 1024),
+  }));
+}
+
 export function getPdpScoringConfig() {
   ensurePdpSeeded();
   const db = getDatabase();
