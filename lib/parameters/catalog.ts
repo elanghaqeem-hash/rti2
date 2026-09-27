@@ -330,6 +330,20 @@ export const PARAMETER_GROUPS: ParameterGroupDefinition[] = [
     ],
   },
   {
+    key: 'ai.provider_order',
+    label: 'AI - Provider Priority',
+    description: 'Urutan provider AI server-side. Atur sort order untuk primary dan fallback; API key tetap disimpan sebagai secret server.',
+    logicBound: true,
+    options: [
+      option('anthropic', 'Anthropic Claude', 10),
+      option('openai', 'OpenAI', 20),
+      option('gemini', 'Google Gemini', 30),
+      option('deepseek', 'DeepSeek', 40),
+      option('groq', 'Groq', 50),
+      option('openrouter', 'OpenRouter', 60),
+    ],
+  },
+  {
     key: 'nist.technology_context',
     label: 'NIST Quick Check - Technology Context',
     description: 'Konteks teknologi organisasi yang dapat dipilih pada profil NIST Cyber Quick Check.',
