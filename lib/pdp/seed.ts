@@ -521,6 +521,99 @@ export function ensurePdpSeeded() {
       );
     });
 
+    const scoringStatement = db.prepare(
+      `INSERT OR IGNORE INTO pdp_scoring_parameters
+        (key, label, numeric_value, description, is_active, updated_at)
+       VALUES (?, ?, ?, ?, 1, ?)`,
+    );
+    [
+      ['answer.yes', 'Answer score — Yes', 1.0, 'Fully implemented answer factor.'],
+      ['answer.partial', 'Answer score — Partially', 0.6, 'Partially implemented answer factor.'],
+      ['answer.planned', 'Answer score — Planned', 0.35, 'Planned but not operating answer factor.'],
+      ['answer.unknown', 'Answer score — Unknown', 0.15, 'Unknown answer factor.'],
+      ['answer.no', 'Answer score — No', 0.0, 'Not implemented answer factor.'],
+      ['confidence.confirmed', 'Confidence — Confirmed', 1.0, 'Confirmed confidence factor.'],
+      ['confidence.partial', 'Confidence — Partially Confirmed', 0.85, 'Partial confidence factor.'],
+      ['confidence.unverified', 'Confidence — Not Verified', 0.7, 'Unverified confidence factor.'],
+      ['evidence.verified', 'Evidence — Verified', 1.0, 'Verified evidence factor.'],
+      ['evidence.available', 'Evidence — Available', 0.95, 'Evidence available but not independently verified.'],
+      ['evidence.not_available', 'Evidence — Not Available', 0.8, 'Self-declared answer without supporting evidence.'],
+      ['evidence.not_required', 'Evidence — Not Required', 1.0, 'Evidence not required for this control.'],
+      ['criticality.Low', 'Criticality factor — Low', 0.85, 'Low criticality weighting.'],
+      ['criticality.Medium', 'Criticality factor — Medium', 1.0, 'Medium criticality weighting.'],
+      ['criticality.High', 'Criticality factor — High', 1.15, 'High criticality weighting.'],
+      ['criticality.Critical', 'Criticality factor — Critical', 1.3, 'Critical control weighting.'],
+      ['risk.critical_threshold', 'Risk threshold — Critical', 20, 'Likelihood x impact threshold for Critical.'],
+      ['risk.high_threshold', 'Risk threshold — High', 15, 'Likelihood x impact threshold for High.'],
+      ['risk.medium_threshold', 'Risk threshold — Medium', 8, 'Likelihood x impact threshold for Medium.'],
+      ['roadmap.critical_days', 'Roadmap Critical horizon', 30, 'Target upper day boundary for immediate/critical remediation.'],
+      ['roadmap.high_days', 'Roadmap High horizon', 90, 'Target upper day boundary for short-term remediation.'],
+      ['roadmap.medium_days', 'Roadmap Medium horizon', 180, 'Target upper day boundary for medium-term remediation.'],
+    ].forEach((row) => scoringStatement.run(row[0], row[1], row[2], row[3], timestamp));
+
+    const maturityStatement = db.prepare(
+      `INSERT OR IGNORE INTO pdp_maturity_levels
+        (level, label, min_score, max_score, description, is_active, updated_at)
+       VALUES (?, ?, ?, ?, ?, 1, ?)`,
+    );
+    [
+      [0, 'Not Established', 0, 19.999, 'Capability is not established or cannot be evidenced.'],
+      [1, 'Initial', 20, 39.999, 'Activities are mostly ad hoc or reactive.'],
+      [2, 'Developing', 40, 59.999, 'Controls are being developed but are not consistently operating.'],
+      [3, 'Defined', 60, 74.999, 'Processes are defined, documented, and formally implemented.'],
+      [4, 'Managed', 75, 89.999, 'Controls are measured, monitored, and actively managed.'],
+      [5, 'Optimized', 90, 100, 'Capabilities are integrated and continuously improved; this is not a compliance certification.'],
+    ].forEach((row) => maturityStatement.run(row[0], row[1], row[2], row[3], row[4], timestamp));
+
+    const evidenceTypeStatement = db.prepare(
+      `INSERT OR IGNORE INTO pdp_evidence_types
+        (code, label, extensions_json, mime_types_json, max_bytes, is_active, updated_at)
+       VALUES (?, ?, ?, ?, ?, 1, ?)`,
+    );
+    [
+      ['pdf', 'PDF Document', ['.pdf'], ['application/pdf']],
+      ['office-doc', 'Word Document', ['.doc','.docx'], ['application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document']],
+      ['office-sheet', 'Spreadsheet', ['.xls','.xlsx'], ['application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']],
+      ['office-slide', 'Presentation', ['.ppt','.pptx'], ['application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation']],
+      ['image', 'Image Evidence', ['.png','.jpg','.jpeg'], ['image/png','image/jpeg']],
+      ['text', 'Text Document', ['.txt'], ['text/plain']],
+    ].forEach((row) =>
+      evidenceTypeStatement.run(
+        row[0],
+        row[1],
+        JSON.stringify(row[2]),
+        JSON.stringify(row[3]),
+        10 * 1024 * 1024,
+        timestamp,
+      ),
+    );
+
+    db.prepare(
+      `INSERT OR IGNORE INTO pdp_ai_prompts
+        (code, label, prompt_text, version, is_active, updated_at)
+       VALUES ('executive-analysis', 'Executive Privacy Analysis',
+       'Analyze only the structured assessment and approved regulatory context. Separate Fact, Assessment Result, AI Analysis, Recommendation, and Requires Human Validation. Never declare final legal compliance and never invent article references.',
+       '1.0', 1, ?)`,
+    ).run(timestamp);
+
+    db.prepare(
+      `INSERT OR IGNORE INTO pdp_report_templates
+        (code, label, config_json, version, is_active, updated_at)
+       VALUES ('executive-pdf', 'Executive PDP Readiness Report',
+       ?, '1.0', 1, ?)`,
+    ).run(
+      JSON.stringify({
+        sections: [
+          'cover','confidentiality','executive_summary','organization_profile',
+          'scope_methodology','domain_results','risk_heatmap','regulatory_gaps',
+          'critical_findings','dpia','dpo','ropa','data_subject_rights',
+          'breach_response','cross_border','third_party','quick_wins',
+          'roadmap','supporting_documents','rti_advisory','disclaimer',
+        ],
+      }),
+      timestamp,
+    );
+
     db.exec('COMMIT;');
   } catch (error) {
     db.exec('ROLLBACK;');
