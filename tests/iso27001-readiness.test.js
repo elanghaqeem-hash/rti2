@@ -15,6 +15,7 @@ const migrationNames = [
   '0006_iso27001_adaptive_questions.sql',
   '0007_iso27001_stage_indicators.sql',
   '0008_iso27001_persisted_dimensions.sql',
+  '0009_iso27001_applicability_parameters.sql',
 ];
 
 function migratedDb() {
