@@ -1113,6 +1113,17 @@ export function getIsoResults(assessmentId: string, token: string) {
     ctaParameterKey: string | null;
   }>;
 
+  const reportTemplate = db.prepare(`
+    SELECT name, header_text AS headerText, footer_text AS footerText,
+      disclaimer_text AS disclaimerText
+    FROM report_templates
+    WHERE version_id = ? AND status = 'active'
+    ORDER BY id
+    LIMIT 1
+  `).get(String(assessment.version_id)) as
+    | { name: string; headerText: string; footerText: string; disclaimerText: string }
+    | undefined;
+
   const serviceRecommendations = serviceMappings
     .filter((mapping) =>
       gaps.some((gap) =>
@@ -1148,6 +1159,7 @@ export function getIsoResults(assessmentId: string, token: string) {
     gaps,
     roadmap,
     serviceRecommendations,
+    reportTemplate: reportTemplate || null,
     settings: settingMap(),
   };
 }
