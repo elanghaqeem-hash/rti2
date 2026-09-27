@@ -5,6 +5,7 @@ import { getDatabase, getDatabasePath } from '@/lib/server/database';
 const MIGRATIONS = [
   '0001_leads.sql',
   '0002_system_parameters.sql',
+  '0003_nist_cyber_quick_check.sql',
 ] as const;
 
 export interface MigrationStatus {
@@ -15,6 +16,8 @@ export interface MigrationStatus {
   tables: {
     leads: boolean;
     systemParameters: boolean;
+    nistAssessments: boolean;
+    nistQuestions: boolean;
   };
 }
 
@@ -59,6 +62,8 @@ export function getMigrationStatus(): MigrationStatus {
     tables: {
       leads: tableExists('leads'),
       systemParameters: tableExists('system_parameters'),
+      nistAssessments: tableExists('nist_assessments'),
+      nistQuestions: tableExists('nist_questions'),
     },
   };
 }
