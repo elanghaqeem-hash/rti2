@@ -63,7 +63,7 @@ export async function POST(req: Request) {
 
     const result = scorePdpAssessment({
       questions: assessment.questions,
-      responses: assessment.responses as PdpResponseInput[],
+      responses: assessment.responses,
       profile: assessment.profile,
       scoring: getPdpScoringConfig(),
     });
