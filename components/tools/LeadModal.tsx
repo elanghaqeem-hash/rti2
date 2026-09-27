@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { BRAND_CONFIG } from '@/lib/config/contact';
+import { TurnstileWidget } from '@/components/security/TurnstileWidget';
 import {
   X,
   FileText,
@@ -38,6 +39,8 @@ export const LeadModal: React.FC<LeadModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileRequired = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +50,11 @@ export const LeadModal: React.FC<LeadModalProps> = ({
       setSubmitError(
         'Mohon setujui ketentuan Pelindungan Data Pribadi (UU PDP) untuk menerima laporan.'
       );
+      return;
+    }
+
+    if (turnstileRequired && !turnstileToken) {
+      setSubmitError('Mohon selesaikan verifikasi keamanan sebelum mengirim formulir.');
       return;
     }
 
@@ -67,6 +75,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
           whatsapp: formData.whatsapp,
           needSummary: `Completed ${toolName}. Diagnostic payload: ${JSON.stringify(summaryData)}`,
           consent: formData.consent,
+          turnstileToken,
         }),
       });
 
@@ -212,10 +221,14 @@ export const LeadModal: React.FC<LeadModalProps> = ({
                 </label>
               </div>
 
+              <div className="pt-2">
+                <TurnstileWidget onTokenChange={setTurnstileToken} />
+              </div>
+
               <div className="pt-3">
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || (turnstileRequired && !turnstileToken)}
                   className="w-full py-3 rounded-xl bg-gold-500 hover:bg-gold-300 text-navy-900 font-extrabold text-xs transition shadow flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {loading ? 'Checking Secure Storage...' : 'Generate & Download Executive Report'}
@@ -230,7 +243,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
               Report Dispatched & Available
             </h3>
             <p className="text-xs text-muted max-w-sm mx-auto leading-relaxed">
-              Your executive summary report has been compiled and emailed to <strong>{formData.email}</strong>.
+              Your request has been received for <strong>{formData.email}</strong>. The report delivery status will follow the response returned by the production lead service.
             </p>
 
             <div className="p-4 bg-beige-50 rounded-xl border border-beige-200 text-left">
