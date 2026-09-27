@@ -1,0 +1,170 @@
+name: RTI Cloudflare Bootstrap
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/cloudflare-bootstrap.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rti-cloudflare-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  provision:
+    name: Provision RTI D1, migrations, binding and admin secret
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      RTI_ADMIN_TOKEN: ${{ secrets.RTI_ADMIN_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          missing=0
+          for key in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID RTI_ADMIN_TOKEN; do
+            if [ -z "${!key}" ]; then
+              echo "::error::Required GitHub Actions secret $key is not configured."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Locate or create RTI D1 database
+        id: d1
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.141.0 d1 list --json > /tmp/d1-list.json
+          DB_ID="$(node - <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('/tmp/d1-list.json', 'utf8'));
+          const row = Array.isArray(data) ? data.find((item) => item.name === 'rti-production') : null;
+          process.stdout.write(row?.uuid || row?.id || '');
+          NODE
+          )"
+
+          if [ -z "$DB_ID" ]; then
+            echo "Creating Cloudflare D1 database rti-production..."
+            npx --yes wrangler@4.141.0 d1 create rti-production --location apac
+            npx --yes wrangler@4.141.0 d1 list --json > /tmp/d1-list.json
+            DB_ID="$(node - <<'NODE'
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('/tmp/d1-list.json', 'utf8'));
+            const row = Array.isArray(data) ? data.find((item) => item.name === 'rti-production') : null;
+            process.stdout.write(row?.uuid || row?.id || '');
+            NODE
+            )"
+          fi
+
+          if [ -z "$DB_ID" ]; then
+            echo "::error::Unable to resolve D1 database id for rti-production."
+            exit 1
+          fi
+
+          echo "database_id=$DB_ID" >> "$GITHUB_OUTPUT"
+          echo "D1 database resolved successfully."
+
+      - name: Persist RTI_DB binding in wrangler.jsonc
+        env:
+          RTI_D1_DATABASE_ID: ${{ steps.d1.outputs.database_id }}
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = 'wrangler.jsonc';
+          let source = fs.readFileSync(path, 'utf8');
+          const id = process.env.RTI_D1_DATABASE_ID;
+          if (!id) throw new Error('Missing RTI_D1_DATABASE_ID');
+
+          const block = `  "d1_databases": [
+            {
+              "binding": "RTI_DB",
+              "database_name": "rti-production",
+              "database_id": "${id}"
+            }
+          ],
+
+          `;
+
+          const activeBinding = /"d1_databases"\s*:\s*\[[\s\S]*?\]\s*,/m;
+          if (activeBinding.test(source)) {
+            source = source.replace(activeBinding, block.trimEnd());
+          } else {
+            const assetsMarker = '  "assets": {';
+            if (!source.includes(assetsMarker)) throw new Error('wrangler assets marker not found');
+            source = source.replace(assetsMarker, block + assetsMarker);
+          }
+
+          fs.writeFileSync(path, source);
+          NODE
+
+      - name: Apply lead migration
+        run: npx --yes wrangler@4.141.0 d1 execute rti-production --remote --file=migrations/0001_leads.sql --yes
+
+      - name: Apply parameter migration
+        run: npx --yes wrangler@4.141.0 d1 execute rti-production --remote --file=migrations/0002_system_parameters.sql --yes
+
+      - name: Verify parameter table
+        shell: bash
+        run: |
+          npx --yes wrangler@4.141.0 d1 execute rti-production --remote --command="SELECT name FROM sqlite_master WHERE type='table' AND name='system_parameters';" --json > /tmp/verify.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const raw = JSON.parse(fs.readFileSync('/tmp/verify.json', 'utf8'));
+          const text = JSON.stringify(raw);
+          if (!text.includes('system_parameters')) {
+            throw new Error('system_parameters table verification failed');
+          }
+          console.log('system_parameters table verified.');
+          NODE
+
+      - name: Install RTI admin secret on Worker
+        shell: bash
+        run: |
+          printf '%s' "$RTI_ADMIN_TOKEN" | npx --yes wrangler@4.141.0 secret put RTI_ADMIN_TOKEN --name rti2
+
+      - name: Build Cloudflare artifact
+        run: npm ci && npm run build
+
+      - name: Deploy Worker with RTI_DB binding
+        run: npx --yes wrangler@4.141.0 deploy
+
+      - name: Commit resolved D1 binding
+        shell: bash
+        run: |
+          if git diff --quiet -- wrangler.jsonc; then
+            echo "wrangler.jsonc already contains the production binding."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add wrangler.jsonc
+          git commit -m "chore: bind production RTI_DB [skip ci]"
+          git push
+
+      - name: Provisioning summary
+        shell: bash
+        run: |
+          {
+            echo "## RTI Cloudflare provisioning complete"
+            echo "- D1 database: `rti-production`"
+            echo "- Worker binding: `RTI_DB`"
+            echo "- Applied: `0001_leads.sql`"
+            echo "- Applied: `0002_system_parameters.sql`"
+            echo "- Worker secret: `RTI_ADMIN_TOKEN` configured"
+            echo "- Worker: `rti2` deployed"
+          } >> "$GITHUB_STEP_SUMMARY"
