@@ -107,7 +107,13 @@ async function callAnthropic(
 }
 
 async function callOpenAiCompatible(params: {
-  provider: 'openai' | 'groq' | 'openrouter';
+  provider:
+    | 'openai'
+    | 'groq'
+    | 'openrouter'
+    | 'deepseek'
+    | 'mistral'
+    | 'xai';
   endpoint: string;
   config: AiProviderSettings;
   messages: AiChatMessage[];
@@ -268,6 +274,39 @@ async function callProvider(
             process.env.NEXT_PUBLIC_SITE_URL || 'https://risetin.co.id',
           'X-Title': 'Risetin Assistant',
         },
+      });
+
+    case 'deepseek':
+      return callOpenAiCompatible({
+        provider: 'deepseek',
+        endpoint: 'https://api.deepseek.com/chat/completions',
+        config,
+        messages,
+        systemPrompt,
+        contextText,
+        timeoutMs,
+      });
+
+    case 'mistral':
+      return callOpenAiCompatible({
+        provider: 'mistral',
+        endpoint: 'https://api.mistral.ai/v1/chat/completions',
+        config,
+        messages,
+        systemPrompt,
+        contextText,
+        timeoutMs,
+      });
+
+    case 'xai':
+      return callOpenAiCompatible({
+        provider: 'xai',
+        endpoint: 'https://api.x.ai/v1/chat/completions',
+        config,
+        messages,
+        systemPrompt,
+        contextText,
+        timeoutMs,
       });
   }
 }
