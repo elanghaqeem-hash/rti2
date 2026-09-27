@@ -4,6 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { NextResponse } from 'next/server';
 import {
+  getPdpEvidenceRules,
   recordPdpEvidence,
   verifyPdpAssessmentAccess,
   logPdpEvent,
@@ -12,23 +13,6 @@ import { enforceRateLimit, rateLimitHeaders } from '@/lib/security/request-prote
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const ALLOWED_MIME = new Set([
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'image/png',
-  'image/jpeg',
-  'text/plain',
-]);
-
-const ALLOWED_EXT = new Set([
-  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.png', '.jpg', '.jpeg', '.txt',
-]);
 
 function tokenFrom(req: Request) {
   const header = req.headers.get('authorization') || '';
@@ -137,17 +121,25 @@ export async function POST(req: Request) {
     );
   }
 
-  if (file.size <= 0 || file.size > maxBytes()) {
+  const originalName = safeName(file.name || 'evidence');
+  const extension = path.extname(originalName).toLowerCase();
+  const evidenceRules = getPdpEvidenceRules();
+  const matchingRule = evidenceRules.find(
+    (rule) =>
+      rule.extensions.includes(extension) &&
+      rule.mimeTypes.includes(file.type),
+  );
+  const configuredMax = matchingRule?.maxBytes || maxBytes();
+  const effectiveMax = Math.min(maxBytes(), configuredMax);
+
+  if (file.size <= 0 || file.size > effectiveMax) {
     return NextResponse.json(
       { success: false, error: 'File is empty or exceeds the evidence size limit.' },
       { status: 413, headers: { 'Cache-Control': 'no-store', ...rateLimitHeaders(limited) } },
     );
   }
 
-  const originalName = safeName(file.name || 'evidence');
-  const extension = path.extname(originalName).toLowerCase();
-
-  if (!ALLOWED_EXT.has(extension) || !ALLOWED_MIME.has(file.type)) {
+  if (!matchingRule) {
     return NextResponse.json(
       { success: false, error: 'Unsupported evidence file type.' },
       { status: 415, headers: { 'Cache-Control': 'no-store', ...rateLimitHeaders(limited) } },
