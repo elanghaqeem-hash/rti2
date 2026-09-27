@@ -63,6 +63,7 @@ export type EstimatorBootstrap = {
   services: EstimatorService[];
   questions: EstimatorQuestion[];
   dimensions: Array<{ key: string; label: string; weight: number }>;
+  publicSettings: Record<string, string>;
 };
 
 export type SessionProfile = {
