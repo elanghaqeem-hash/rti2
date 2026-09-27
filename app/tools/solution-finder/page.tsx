@@ -266,6 +266,9 @@ export default function SolutionFinderPage() {
   const [diagnosing, setDiagnosing] = useState(false);
   const [result, setResult] = useState<FinderDiagnosticResult | null>(null);
   const [showLead, setShowLead] = useState(false);
+  const [leadIntent, setLeadIntent] = useState<'consultation' | 'proposal'>(
+    'consultation',
+  );
 
   const [organization, setOrganization] = useState<FinderAssessmentInput['organization']>({
     companyName: '',
@@ -1341,6 +1344,7 @@ export default function SolutionFinderPage() {
                 type="button"
                 onClick={() => {
                   trackEvent('request_consultation');
+                  setLeadIntent('consultation');
                   setShowLead(true);
                 }}
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-navy-900 px-4 py-3 text-xs font-extrabold text-white hover:bg-navy-700"
@@ -1360,6 +1364,7 @@ export default function SolutionFinderPage() {
                 type="button"
                 onClick={() => {
                   trackEvent('request_proposal');
+                  setLeadIntent('proposal');
                   setShowLead(true);
                 }}
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-xs font-extrabold text-navy-900 hover:bg-grey-50"
@@ -1393,6 +1398,23 @@ export default function SolutionFinderPage() {
                 priority: item.priority,
               })),
               topPriorities: result.topPriorities.slice(0, 5),
+              leadSignals: {
+                urgency:
+                  Math.max(
+                    0,
+                    ...result.pressureScores.map((item) => item.urgency * 20),
+                  ),
+                severity:
+                  Math.max(
+                    0,
+                    ...result.pressureScores.map((item) => item.severity * 20),
+                  ),
+                identifiedGaps: result.capabilityGaps.length,
+                timeline: targetTimeline,
+                regulated: organization.regulatedStatus === 'yes',
+                requestProposal: leadIntent === 'proposal',
+                requestConsultation: leadIntent === 'consultation',
+              },
             }}
             onClose={() => setShowLead(false)}
             onSuccess={() => trackEvent('email_results')}
