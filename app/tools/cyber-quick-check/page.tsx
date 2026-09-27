@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { NIST_QUESTIONS, NistQuestion } from '@/lib/data/nist-questions';
 import { LeadModal } from '@/components/tools/LeadModal';
+import { useParameterOptions } from '@/components/parameters/useParameterOptions';
 import {
   ShieldAlert,
   CheckCircle2,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 
 export default function CyberQuickCheckPage() {
+  const answerOptions = useParameterOptions('cyber_quick.answer_scale');
   const [answers, setAnswers] = useState<Record<string, 'yes' | 'partial' | 'no'>>({});
   const [submitted, setSubmitted] = useState(false);
   const [showLeadModal, setShowLeadModal] = useState(false);
@@ -108,44 +110,42 @@ export default function CyberQuickCheckPage() {
                       </p>
 
                       <div className="grid grid-cols-3 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleAnswer(q.id, 'yes')}
-                          className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                            currentAns === 'yes'
+                        {answerOptions.map((option) => {
+                          const Icon =
+                            option.value === 'yes'
+                              ? CheckCircle2
+                              : option.value === 'partial'
+                                ? AlertCircle
+                                : XCircle;
+                          const selectedClass =
+                            option.value === 'yes'
                               ? 'bg-emerald-600 text-white shadow'
-                              : 'bg-white border border-line text-navy-900 hover:bg-emerald-50'
-                          }`}
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Yes / Full</span>
-                        </button>
+                              : option.value === 'partial'
+                                ? 'bg-gold-500 text-navy-900 shadow'
+                                : 'bg-rose-600 text-white shadow';
+                          const hoverClass =
+                            option.value === 'yes'
+                              ? 'hover:bg-emerald-50'
+                              : option.value === 'partial'
+                                ? 'hover:bg-gold-50'
+                                : 'hover:bg-rose-50';
 
-                        <button
-                          type="button"
-                          onClick={() => handleAnswer(q.id, 'partial')}
-                          className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                            currentAns === 'partial'
-                              ? 'bg-gold-500 text-navy-900 shadow'
-                              : 'bg-white border border-line text-navy-900 hover:bg-gold-50'
-                          }`}
-                        >
-                          <AlertCircle className="w-3.5 h-3.5" />
-                          <span>Partial</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleAnswer(q.id, 'no')}
-                          className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                            currentAns === 'no'
-                              ? 'bg-rose-600 text-white shadow'
-                              : 'bg-white border border-line text-navy-900 hover:bg-rose-50'
-                          }`}
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                          <span>No / Unsure</span>
-                        </button>
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => handleAnswer(q.id, option.value as 'yes' | 'partial' | 'no')}
+                              className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                                currentAns === option.value
+                                  ? selectedClass
+                                  : `bg-white border border-line text-navy-900 ${hoverClass}`
+                              }`}
+                            >
+                              <Icon className="w-3.5 h-3.5" />
+                              <span>{option.label}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   );
