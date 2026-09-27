@@ -254,6 +254,7 @@ CREATE TABLE IF NOT EXISTS project_estimates (
   readiness_score INTEGER NOT NULL,
   team_json TEXT NOT NULL DEFAULT '[]',
   factors_json TEXT NOT NULL DEFAULT '[]',
+  recommendations_json TEXT NOT NULL DEFAULT '[]',
   trace_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL,
   UNIQUE(session_id, version),
