@@ -16,7 +16,7 @@ import { useParameterGroups } from '@/components/parameters/useParameterOptions'
 export default function ConsultationPage() {
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
-  const [topic, setTopic] = useState('Konsultasi Teknologi & Cybersecurity');
+  const [topic, setTopic] = useState('technology-cybersecurity');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const parameterGroups = useParameterGroups(['consultation.topics', 'consultation.time_slots']);
@@ -28,12 +28,14 @@ export default function ConsultationPage() {
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
 
+    const topicLabel = topicOptions.find((option) => option.value === topic)?.label || topic;
+
     const message = [
       'Halo Risetin, saya ingin mengajukan jadwal konsultasi awal 30 menit.',
       '',
       `Nama: ${name}`,
       `Perusahaan: ${company || '-'}`,
-      `Topik: ${topic}`,
+      `Topik: ${topicLabel}`,
       `Tanggal pilihan: ${date}`,
       `Waktu pilihan: ${time}`,
       '',
@@ -120,7 +122,7 @@ export default function ConsultationPage() {
                 className="w-full rounded-xl border border-line bg-white px-3.5 py-3 text-sm outline-none focus:ring-2 focus:ring-gold-500"
               >
                 {topicOptions.map((option) => (
-                  <option key={option.value} value={option.label}>{option.label}</option>
+                  <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
             </div>
