@@ -10,6 +10,7 @@ const MIGRATIONS = [
   '0005_iso27001_evidence_rules.sql',
   '0006_iso27001_adaptive_questions.sql',
   '0007_iso27001_stage_indicators.sql',
+  '0008_iso27001_persisted_dimensions.sql',
 ] as const;
 
 export interface MigrationStatus {
