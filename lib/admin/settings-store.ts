@@ -6,6 +6,9 @@ export const AI_PROVIDER_IDS = [
   'gemini',
   'groq',
   'openrouter',
+  'deepseek',
+  'mistral',
+  'xai',
 ] as const;
 
 export type AiProviderId = (typeof AI_PROVIDER_IDS)[number];
@@ -144,6 +147,21 @@ export function getDefaultAdminSettings(): AdminSettings {
           model:
             process.env.OPENROUTER_MODEL || 'openai/gpt-4.1-mini',
           apiKey: process.env.OPENROUTER_API_KEY || '',
+        },
+        deepseek: {
+          enabled: Boolean(process.env.DEEPSEEK_API_KEY),
+          model: process.env.DEEPSEEK_MODEL || 'deepseek-flash',
+          apiKey: process.env.DEEPSEEK_API_KEY || '',
+        },
+        mistral: {
+          enabled: Boolean(process.env.MISTRAL_API_KEY),
+          model: process.env.MISTRAL_MODEL || 'mistral-large-latest',
+          apiKey: process.env.MISTRAL_API_KEY || '',
+        },
+        xai: {
+          enabled: Boolean(process.env.XAI_API_KEY),
+          model: process.env.XAI_MODEL || 'grok-4.7',
+          apiKey: process.env.XAI_API_KEY || '',
         },
       },
     },
