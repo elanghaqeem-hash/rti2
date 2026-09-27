@@ -255,6 +255,53 @@ CREATE TABLE IF NOT EXISTS pdp_service_mappings (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS pdp_scoring_parameters (
+  key TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  numeric_value REAL NOT NULL,
+  description TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS pdp_maturity_levels (
+  level INTEGER PRIMARY KEY CHECK (level BETWEEN 0 AND 5),
+  label TEXT NOT NULL,
+  min_score REAL NOT NULL,
+  max_score REAL NOT NULL,
+  description TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS pdp_evidence_types (
+  code TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  extensions_json TEXT NOT NULL DEFAULT '[]',
+  mime_types_json TEXT NOT NULL DEFAULT '[]',
+  max_bytes INTEGER,
+  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS pdp_ai_prompts (
+  code TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  prompt_text TEXT NOT NULL,
+  version TEXT NOT NULL DEFAULT '1.0',
+  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS pdp_report_templates (
+  code TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  config_json TEXT NOT NULL DEFAULT '{}',
+  version TEXT NOT NULL DEFAULT '1.0',
+  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS pdp_report_versions (
   id TEXT PRIMARY KEY,
   assessment_id TEXT NOT NULL,
