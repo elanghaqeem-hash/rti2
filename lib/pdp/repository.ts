@@ -679,5 +679,254 @@ export function updateAdminPdpEntity(entity: string, payload: Record<string, unk
     return Number(result.changes) > 0;
   }
 
+
+  if (entity === 'industry') {
+    const result = db.prepare(
+      `UPDATE pdp_industry_packs SET label = ?, description = ?, config_json = ?,
+              is_active = ?, sort_order = ?, updated_at = ? WHERE id = ?`,
+    ).run(
+      String(payload.label || '').slice(0, 240),
+      String(payload.description || '').slice(0, 1000) || null,
+      String(payload.configJson || '{}').slice(0, 8000),
+      payload.active === false ? 0 : 1,
+      Math.trunc(Number(payload.sortOrder) || 0),
+      timestamp,
+      String(payload.id || ''),
+    );
+    return Number(result.changes) > 0;
+  }
+
+  if (entity === 'scoringParameter') {
+    const result = db.prepare(
+      `UPDATE pdp_scoring_parameters SET label = ?, numeric_value = ?,
+              description = ?, is_active = ?, updated_at = ? WHERE key = ?`,
+    ).run(
+      String(payload.label || '').slice(0, 240),
+      Number(payload.numericValue),
+      String(payload.description || '').slice(0, 1000) || null,
+      payload.active === false ? 0 : 1,
+      timestamp,
+      String(payload.key || ''),
+    );
+    return Number(result.changes) > 0;
+  }
+
+  if (entity === 'maturityLevel') {
+    const level = Math.trunc(Number(payload.level));
+    const result = db.prepare(
+      `UPDATE pdp_maturity_levels SET label = ?, min_score = ?, max_score = ?,
+              description = ?, is_active = ?, updated_at = ? WHERE level = ?`,
+    ).run(
+      String(payload.label || '').slice(0, 240),
+      Math.max(0, Math.min(100, Number(payload.minScore))),
+      Math.max(0, Math.min(100, Number(payload.maxScore))),
+      String(payload.description || '').slice(0, 1000) || null,
+      payload.active === false ? 0 : 1,
+      timestamp,
+      level,
+    );
+    return Number(result.changes) > 0;
+  }
+
+  if (entity === 'evidenceType') {
+    const result = db.prepare(
+      `UPDATE pdp_evidence_types SET label = ?, extensions_json = ?,
+              mime_types_json = ?, max_bytes = ?, is_active = ?, updated_at = ?
+       WHERE code = ?`,
+    ).run(
+      String(payload.label || '').slice(0, 240),
+      String(payload.extensionsJson || '[]').slice(0, 4000),
+      String(payload.mimeTypesJson || '[]').slice(0, 4000),
+      Math.max(1024, Math.min(25 * 1024 * 1024, Number(payload.maxBytes) || 10 * 1024 * 1024)),
+      payload.active === false ? 0 : 1,
+      timestamp,
+      String(payload.code || ''),
+    );
+    return Number(result.changes) > 0;
+  }
+
+  if (entity === 'aiPrompt') {
+    const result = db.prepare(
+      `UPDATE pdp_ai_prompts SET label = ?, prompt_text = ?, version = ?,
+              is_active = ?, updated_at = ? WHERE code = ?`,
+    ).run(
+      String(payload.label || '').slice(0, 240),
+      String(payload.promptText || '').slice(0, 12000),
+      String(payload.version || '1.0').slice(0, 40),
+      payload.active === false ? 0 : 1,
+      timestamp,
+      String(payload.code || ''),
+    );
+    return Number(result.changes) > 0;
+  }
+
+  if (entity === 'reportTemplate') {
+    const result = db.prepare(
+      `UPDATE pdp_report_templates SET label = ?, config_json = ?, version = ?,
+              is_active = ?, updated_at = ? WHERE code = ?`,
+    ).run(
+      String(payload.label || '').slice(0, 240),
+      String(payload.configJson || '{}').slice(0, 12000),
+      String(payload.version || '1.0').slice(0, 40),
+      payload.active === false ? 0 : 1,
+      timestamp,
+      String(payload.code || ''),
+    );
+    return Number(result.changes) > 0;
+  }
+
   return false;
+}
+
+export function createAdminPdpEntity(entity: string, payload: Record<string, unknown>) {
+  ensurePdpSeeded();
+  const db = getDatabase();
+  const timestamp = now();
+
+  if (entity === 'question') {
+    const id = randomUUID();
+    const code = String(payload.code || '').trim().slice(0, 120);
+    const domainId = String(payload.domainId || '').trim().slice(0, 120);
+    const questionText = String(payload.questionText || '').trim().slice(0, 2000);
+    if (!code || !domainId || !questionText) throw new Error('Code, domain, and question text are required.');
+
+    db.prepare(
+      `INSERT INTO pdp_questions (
+        id, question_set_id, domain_id, code, subdomain, question_text, question_help,
+        regulation_reference, article_reference, control_objective, risk_statement,
+        recommended_evidence, weight, criticality, answer_type, answer_options_json,
+        branching_rule_json, industry_applicability_json, organization_size_json,
+        risk_trigger_json, dpo_trigger_json, dpia_trigger_json, cross_border_trigger_json,
+        profile_requirements_json, is_quick, sort_order, version, effective_date, status, updated_at
+      ) VALUES (
+        ?, 'pdp-question-set-v1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'choice',
+        ?, '{}', '[]', '[]', '{}', '{}', '{}', '{}', ?, ?, ?, ?, ?, 'active', ?
+      )`,
+    ).run(
+      id,
+      domainId,
+      code,
+      String(payload.subdomain || '').slice(0, 240) || null,
+      questionText,
+      String(payload.questionHelp || '').slice(0, 2000) || null,
+      String(payload.regulationReference || 'UU No. 27 Tahun 2022').slice(0, 300),
+      String(payload.articleReference || '').slice(0, 160) || null,
+      String(payload.controlObjective || '').slice(0, 2000) || null,
+      String(payload.riskStatement || '').slice(0, 2000) || null,
+      String(payload.recommendedEvidence || '').slice(0, 1000) || null,
+      Math.max(0.1, Math.min(10, Number(payload.weight) || 1)),
+      ['Low','Medium','High','Critical'].includes(String(payload.criticality))
+        ? String(payload.criticality)
+        : 'Medium',
+      String(payload.answerOptionsJson || '["yes","partial","planned","unknown","no","na"]').slice(0, 2000),
+      String(payload.profileRequirementsJson || '{}').slice(0, 4000),
+      payload.isQuick ? 1 : 0,
+      Math.trunc(Number(payload.sortOrder) || 10000),
+      String(payload.version || '1.0').slice(0, 40),
+      String(payload.effectiveDate || '').slice(0, 40) || null,
+      timestamp,
+    );
+    return id;
+  }
+
+  if (entity === 'domain') {
+    const id = randomUUID();
+    const code = String(payload.code || '').trim().slice(0, 40);
+    const name = String(payload.name || '').trim().slice(0, 300);
+    if (!code || !name) throw new Error('Domain code and name are required.');
+    db.prepare(
+      `INSERT INTO pdp_domains
+        (id, code, name, description, weight, sort_order, is_active, version, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+    ).run(
+      id,
+      code,
+      name,
+      String(payload.description || '').slice(0, 2000),
+      Math.max(0.1, Math.min(10, Number(payload.weight) || 1)),
+      Math.trunc(Number(payload.sortOrder) || 1000),
+      String(payload.version || '1.0').slice(0, 40),
+      timestamp,
+    );
+    return id;
+  }
+
+  if (entity === 'regulation') {
+    const id = randomUUID();
+    const title = String(payload.title || '').trim().slice(0, 500);
+    const referenceCode = String(payload.referenceCode || '').trim().slice(0, 200);
+    if (!title || !referenceCode) throw new Error('Regulation title and reference code are required.');
+    db.prepare(
+      `INSERT INTO pdp_regulations (
+        id, title, reference_code, version, effective_date, status, source_url,
+        last_reviewed_at, reviewed_by, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)`,
+    ).run(
+      id,
+      title,
+      referenceCode,
+      String(payload.version || '1.0').slice(0, 80),
+      String(payload.effectiveDate || '').slice(0, 40) || null,
+      String(payload.sourceUrl || '').slice(0, 1000) || null,
+      timestamp,
+      String(payload.reviewedBy || 'RTI Admin').slice(0, 200),
+      timestamp,
+      timestamp,
+    );
+    return id;
+  }
+
+  if (entity === 'industry') {
+    const id = randomUUID();
+    const code = String(payload.code || '').trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').slice(0, 120);
+    const label = String(payload.label || '').trim().slice(0, 240);
+    if (!code || !label) throw new Error('Industry code and label are required.');
+    db.prepare(
+      `INSERT INTO pdp_industry_packs
+        (id, code, label, description, config_json, is_active, sort_order, updated_at)
+       VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
+    ).run(
+      id,
+      code,
+      label,
+      String(payload.description || '').slice(0, 1000) || null,
+      String(payload.configJson || '{}').slice(0, 8000),
+      Math.trunc(Number(payload.sortOrder) || 1000),
+      timestamp,
+    );
+    return id;
+  }
+
+  throw new Error('Unsupported PDP admin entity.');
+}
+
+export function deactivateAdminPdpEntity(entity: string, id: string) {
+  ensurePdpSeeded();
+  const db = getDatabase();
+  const timestamp = now();
+
+  const map: Record<string, { table: string; key: string; active: string }> = {
+    question: { table: 'pdp_questions', key: 'id', active: 'status' },
+    domain: { table: 'pdp_domains', key: 'id', active: 'is_active' },
+    regulation: { table: 'pdp_regulations', key: 'id', active: 'status' },
+    industry: { table: 'pdp_industry_packs', key: 'id', active: 'is_active' },
+    scoringParameter: { table: 'pdp_scoring_parameters', key: 'key', active: 'is_active' },
+    maturityLevel: { table: 'pdp_maturity_levels', key: 'level', active: 'is_active' },
+    evidenceType: { table: 'pdp_evidence_types', key: 'code', active: 'is_active' },
+    aiPrompt: { table: 'pdp_ai_prompts', key: 'code', active: 'is_active' },
+    reportTemplate: { table: 'pdp_report_templates', key: 'code', active: 'is_active' },
+  };
+  const target = map[entity];
+  if (!target) throw new Error('Unsupported PDP admin entity.');
+
+  if (target.active === 'status') {
+    const result = db.prepare(
+      'UPDATE ' + target.table + " SET status = 'inactive', updated_at = ? WHERE " + target.key + ' = ?',
+    ).run(timestamp, id);
+    return Number(result.changes) > 0;
+  }
+  const result = db.prepare(
+    'UPDATE ' + target.table + ' SET ' + target.active + ' = 0, updated_at = ? WHERE ' + target.key + ' = ?',
+  ).run(timestamp, id);
+  return Number(result.changes) > 0;
 }
