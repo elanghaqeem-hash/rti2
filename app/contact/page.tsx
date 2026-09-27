@@ -187,15 +187,13 @@ export default function ContactPage() {
                       </div>
 
                       <div className="mt-4 space-y-2.5">
-                        <a
+                        <Link
                           href={BRAND_CONFIG.contact.bookingUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-navy-900 px-4 py-3 text-xs sm:text-sm font-extrabold text-white transition hover:bg-navy-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
+                          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-navy-900 px-4 py-3 text-center text-xs sm:text-sm font-extrabold text-white transition hover:bg-navy-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
                         >
-                          <Calendar className="h-4 w-4 text-gold-400" />
-                          Pilih Jadwal Konsultasi
-                        </a>
+                          <Calendar className="h-4 w-4 shrink-0 text-gold-400" />
+                          <span>Jadwalkan Pertemuan Tatap Muka / Virtual</span>
+                        </Link>
 
                         <a
                           href={BRAND_CONFIG.contact.whatsappUrl}
@@ -209,7 +207,7 @@ export default function ContactPage() {
                       </div>
 
                       <p className="mt-3 text-center text-[10px] text-muted">
-                        Form pemilihan jadwal konsultasi akan terbuka di tab baru.
+                        Anda akan diarahkan ke halaman penjadwalan RTI yang aman dan responsif.
                       </p>
                     </div>
                   </div>
