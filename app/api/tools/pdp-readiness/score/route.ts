@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import {
+  getPdpScoringConfig,
   loadPdpAssessment,
   savePdpResponses,
   savePdpResult,
@@ -64,6 +65,7 @@ export async function POST(req: Request) {
       questions: assessment.questions,
       responses: assessment.responses as PdpResponseInput[],
       profile: assessment.profile,
+      scoring: getPdpScoringConfig(),
     });
 
     savePdpResult(assessmentId, token, result);
