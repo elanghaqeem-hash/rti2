@@ -148,7 +148,13 @@ export default function AdminLeadsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/admin/system"
+              className="px-3 py-2.5 rounded-xl border border-line text-xs font-bold text-navy-900 hover:bg-grey-50"
+            >
+              System Setup
+            </Link>
             <Link
               href="/admin/parameters"
               className="px-3 py-2.5 rounded-xl border border-line text-xs font-bold text-navy-900 hover:bg-grey-50"
