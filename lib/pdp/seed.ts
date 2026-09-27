@@ -570,14 +570,14 @@ export function ensurePdpSeeded() {
         (code, label, extensions_json, mime_types_json, max_bytes, is_active, updated_at)
        VALUES (?, ?, ?, ?, ?, 1, ?)`,
     );
-    [
+    ([
       ['pdf', 'PDF Document', ['.pdf'], ['application/pdf']],
       ['office-doc', 'Word Document', ['.doc','.docx'], ['application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document']],
       ['office-sheet', 'Spreadsheet', ['.xls','.xlsx'], ['application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']],
       ['office-slide', 'Presentation', ['.ppt','.pptx'], ['application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation']],
       ['image', 'Image Evidence', ['.png','.jpg','.jpeg'], ['image/png','image/jpeg']],
       ['text', 'Text Document', ['.txt'], ['text/plain']],
-    ].forEach((row) =>
+    ] as const).forEach((row) =>
       evidenceTypeStatement.run(
         row[0],
         row[1],
