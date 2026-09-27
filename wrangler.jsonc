@@ -6,19 +6,9 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
 
-  // Production lead persistence:
-  // After creating the D1 database, add the binding below with the real database_id:
-  //
-  // "d1_databases": [
-  //   {
-  //     "binding": "RTI_DB",
-  //     "database_name": "rti-production",
-  //     "database_id": "<CLOUDFLARE_D1_DATABASE_UUID>"
-  //   }
-  // ],
-  //
-  // The application fails closed with HTTP 503 until RTI_DB exists and
-  // migrations/0001_leads.sql and migrations/0002_system_parameters.sql have been applied.
+  // OPTIONAL STAGING CONFIGURATION ONLY.
+  // RTI production now targets a standard Node.js server and uses RTI_DB_PATH.
+  // Do not place production database/admin secrets in this file.
 
   "assets": {
     "directory": ".open-next/assets",
