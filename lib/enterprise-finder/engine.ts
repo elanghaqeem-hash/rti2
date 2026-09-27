@@ -170,60 +170,6 @@ function expectedDuration(complexity: FinderDiagnosticResult['engagementComplexi
   return '2–8 Weeks';
 }
 
-function recommendationDelivery(
-  input: FinderAssessmentInput,
-  primary: FinderRecommendation[],
-  locale: FinderLocale,
-) {
-  const pref = input.deliveryPreference;
-  const missingCapabilities = Object.values(input.technology.capabilities).filter(
-    (status) => status === 'not_implemented' || status === 'unknown',
-  ).length;
-
-  if (
-    pref === 'hybrid' ||
-    (missingCapabilities >= 5 &&
-      primary.some((item) => item.deliveryModel === 'Managed Service'))
-  ) {
-    return {
-      model: 'Hybrid Advisory + Project / Managed Service',
-      reason: text(
-        locale,
-        'Kombinasi advisory dan delivery berkelanjutan disarankan karena terdapat gap kapabilitas yang memerlukan desain, implementasi, dan operating support secara bertahap.',
-        'A hybrid advisory and delivery model is recommended because the capability gaps require phased design, implementation, and operating support.',
-      ),
-    };
-  }
-
-  const selected =
-    optionLabel(
-      {
-        ...({} as FinderConfig),
-      },
-      '',
-      '',
-    ) && pref;
-
-  const normalized: Record<string, string> = {
-    advisory: 'Advisory',
-    project: 'Project-based',
-    managed_service: 'Managed Service',
-    assessment: 'Assessment',
-    training: 'Training',
-    technology_implementation: 'Technology Implementation',
-    staff_augmentation: 'Staff Augmentation',
-  };
-
-  return {
-    model: normalized[pref] || primary[0]?.deliveryModel || 'Advisory',
-    reason: text(
-      locale,
-      'Model ini selaras dengan preferensi engagement, tingkat urgensi, dan pola gap yang teridentifikasi pada assessment.',
-      'This model aligns with the engagement preference, urgency, and the gap pattern identified in the assessment.',
-    ),
-  };
-}
-
 function buildQuickWins(
   input: FinderAssessmentInput,
   pressureScores: FinderPressureScore[],
