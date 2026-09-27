@@ -15,7 +15,6 @@ function scanDirectory(dir, fileList = []) {
         scanDirectory(fullPath, fileList);
       }
     } else if (/\.(js|jsx|ts|tsx|json|md|html)$/.test(entry.name)) {
-      // Exclude this test file itself so checking the constant doesn't self-flag
       if (!entry.name.includes('brand-compliance.test')) {
         fileList.push(fullPath);
       }
@@ -50,5 +49,34 @@ test('Brand Compliance: Legal config file contains exact legal name "PT Riset Te
   assert.ok(
     content.includes(REQUIRED_LEGAL_STRING),
     `Contact config must contain "${REQUIRED_LEGAL_STRING}"`
+  );
+});
+
+test('Data Integrity: lead module must not contain volatile storage or sample lead records', () => {
+  const leadModulePath = path.join(process.cwd(), 'lib', 'scoring', 'leads.ts');
+  const content = fs.readFileSync(leadModulePath, 'utf8');
+
+  assert.equal(
+    /const\s+leadsStore\s*:/i.test(content),
+    false,
+    'Lead module must not use an in-memory leadsStore as persistence.'
+  );
+  assert.equal(
+    /lead_sample_|realistic sample leads|Bank Mitraniaga|Finansial Solusi Nusantara/i.test(content),
+    false,
+    'Lead module must not ship sample/fake lead records.'
+  );
+});
+
+test('Data Integrity: lead API must fail closed while database persistence is unavailable', () => {
+  const apiPath = path.join(process.cwd(), 'app', 'api', 'leads', 'route.ts');
+  const content = fs.readFileSync(apiPath, 'utf8');
+
+  assert.ok(content.includes('status: 503'), 'Lead API must return 503 while DB is unavailable.');
+  assert.ok(content.includes('leads: []'), 'Lead API must return an empty lead collection without DB.');
+  assert.equal(
+    /saveLead\(|getLeads\(/.test(content),
+    false,
+    'Lead API must not call non-database persistence functions.'
   );
 });

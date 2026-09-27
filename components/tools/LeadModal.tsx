@@ -8,8 +8,6 @@ import {
   FileText,
   Calendar,
   CheckCircle2,
-  Lock,
-  ArrowRight,
 } from 'lucide-react';
 
 interface LeadModalProps {
@@ -39,11 +37,16 @@ export const LeadModal: React.FC<LeadModalProps> = ({
 
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError('');
+
     if (!formData.consent) {
-      alert('Mohon setujui ketentuan Pelindungan Data Pribadi (UU PDP) untuk menerima laporan.');
+      setSubmitError(
+        'Mohon setujui ketentuan Pelindungan Data Pribadi (UU PDP) untuk menerima laporan.'
+      );
       return;
     }
 
@@ -67,15 +70,22 @@ export const LeadModal: React.FC<LeadModalProps> = ({
         }),
       });
 
-      if (res.ok) {
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.success === true) {
         setSubmitted(true);
         onSuccess();
       } else {
-        alert('Gagal mengirim data. Silakan coba kembali.');
+        setSubmitError(
+          data?.error ||
+            'Data belum dapat dikirim karena penyimpanan database belum tersedia.'
+        );
       }
     } catch (err) {
       console.error(err);
-      alert('Kendala jaringan.');
+      setSubmitError(
+        'Koneksi ke layanan data gagal. Tidak ada data yang disimpan sebagai fallback.'
+      );
     } finally {
       setLoading(false);
     }
@@ -104,6 +114,12 @@ export const LeadModal: React.FC<LeadModalProps> = ({
             <p className="text-xs text-muted mt-1 leading-relaxed">
               Enter your professional details below to generate and dispatch your customized executive report and roadmap gaps.
             </p>
+
+            {submitError && (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
+                {submitError}
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
               <div>
@@ -177,7 +193,6 @@ export const LeadModal: React.FC<LeadModalProps> = ({
                 </div>
               </div>
 
-              {/* UU PDP Consent Checkbox */}
               <div className="pt-2">
                 <label className="flex items-start gap-2 text-[11px] text-muted cursor-pointer">
                   <input
@@ -203,7 +218,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
                   disabled={loading}
                   className="w-full py-3 rounded-xl bg-gold-500 hover:bg-gold-300 text-navy-900 font-extrabold text-xs transition shadow flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  {loading ? 'Generating Report...' : 'Generate & Download Executive Report'}
+                  {loading ? 'Checking Secure Storage...' : 'Generate & Download Executive Report'}
                 </button>
               </div>
             </form>
