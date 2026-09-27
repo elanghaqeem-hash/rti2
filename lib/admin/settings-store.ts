@@ -358,11 +358,18 @@ function mergeWithDefaults(
     }),
   ) as Record<AiProviderId, AiProviderSettings>;
 
-  const providerOrder = Array.isArray(persisted.ai?.providerOrder)
+  const persistedProviderOrder = Array.isArray(persisted.ai?.providerOrder)
     ? persisted.ai!.providerOrder.filter((id): id is AiProviderId =>
         AI_PROVIDER_IDS.includes(id as AiProviderId),
       )
-    : defaults.ai.providerOrder;
+    : [];
+
+  const providerOrder = Array.from(
+    new Set([
+      ...persistedProviderOrder,
+      ...AI_PROVIDER_IDS,
+    ]),
+  );
 
   return {
     version: 1,
@@ -377,7 +384,7 @@ function mergeWithDefaults(
     ai: {
       providerOrder:
         providerOrder.length > 0
-          ? Array.from(new Set(providerOrder))
+          ? providerOrder
           : defaults.ai.providerOrder,
       timeoutMs:
         typeof persisted.ai?.timeoutMs === 'number'
