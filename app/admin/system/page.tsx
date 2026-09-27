@@ -20,6 +20,8 @@ type Status = {
   tables: {
     leads: boolean;
     systemParameters: boolean;
+    nistAssessments: boolean;
+    nistQuestions: boolean;
   };
 };
 
@@ -106,7 +108,7 @@ export default function AdminSystemPage() {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Link href="/admin/parameters" className="rounded-2xl border border-line bg-white p-4 shadow-sm hover:border-gold-500">
             <Settings2 className="h-5 w-5 text-gold-700" />
             <div className="mt-2 text-sm font-extrabold text-navy-900">Parameter Manager</div>
@@ -114,6 +116,10 @@ export default function AdminSystemPage() {
           <Link href="/admin/leads" className="rounded-2xl border border-line bg-white p-4 shadow-sm hover:border-gold-500">
             <Database className="h-5 w-5 text-blue-600" />
             <div className="mt-2 text-sm font-extrabold text-navy-900">Lead Database</div>
+          </Link>
+          <Link href="/admin/nist" className="rounded-2xl border border-line bg-white p-4 shadow-sm hover:border-gold-500">
+            <ShieldCheck className="h-5 w-5 text-blue-700" />
+            <div className="mt-2 text-sm font-extrabold text-navy-900">NIST Cyber Quick Check Admin</div>
           </Link>
           <button onClick={load} className="rounded-2xl border border-line bg-white p-4 text-left shadow-sm hover:border-gold-500">
             <RefreshCw className={`h-5 w-5 text-emerald-600 ${loading ? 'animate-spin' : ''}`} />
@@ -145,6 +151,10 @@ export default function AdminSystemPage() {
                   leads: <strong>{status.tables.leads ? 'READY' : 'PENDING'}</strong>
                   <br />
                   system_parameters: <strong>{status.tables.systemParameters ? 'READY' : 'PENDING'}</strong>
+                  <br />
+                  nist_assessments: <strong>{status.tables.nistAssessments ? 'READY' : 'PENDING'}</strong>
+                  <br />
+                  nist_questions: <strong>{status.tables.nistQuestions ? 'READY' : 'PENDING'}</strong>
                 </div>
               </div>
 
