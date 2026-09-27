@@ -129,11 +129,12 @@ const initialScope = {
 function applies(item: Item, profile: typeof initialProfile) {
   if (!item.applicabilityRule) return true;
   try {
-    const rule = JSON.parse(item.applicabilityRule) as { field?: keyof typeof initialProfile; equals?: unknown; notEmpty?: boolean };
+    const rule = JSON.parse(item.applicabilityRule) as { field?: keyof typeof initialProfile; equals?: unknown; notEquals?: unknown; notEmpty?: boolean };
     if (!rule.field) return true;
     const value = profile[rule.field];
     if (rule.notEmpty) return String(value || '').trim().length > 0;
     if (Object.prototype.hasOwnProperty.call(rule, 'equals')) return value === rule.equals;
+    if (Object.prototype.hasOwnProperty.call(rule, 'notEquals')) return value !== rule.notEquals;
     return true;
   } catch {
     return true;
