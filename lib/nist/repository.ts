@@ -176,6 +176,30 @@ export function getNistAssessmentConfig(options?: {
     minConfidence: num(row.min_confidence),
   }));
 
+  const branchingRules = (db.prepare(
+    `SELECT id, parent_question_id, answer_values_json, follow_up_question_id, sort_order
+     FROM nist_branching_rules
+     WHERE active = 1
+     ORDER BY sort_order, id`,
+  ).all() as any[]).map((row) => {
+    let answerValues: string[] = [];
+    try {
+      const parsed = JSON.parse(String(row.answer_values_json || '[]'));
+      if (Array.isArray(parsed)) {
+        answerValues = parsed.map((value) => String(value));
+      }
+    } catch {
+      answerValues = [];
+    }
+    return {
+      id: String(row.id),
+      parentQuestionId: String(row.parent_question_id),
+      answerValues,
+      followUpQuestionId: String(row.follow_up_question_id),
+      sortOrder: num(row.sort_order),
+    };
+  });
+
   const serviceMappings = (db.prepare(
     `SELECT id, category_code, service_code, service_name, service_url,
             reason_template, priority_order
@@ -204,6 +228,7 @@ export function getNistAssessmentConfig(options?: {
     evidenceOptions,
     scoringThresholds,
     tierRules,
+    branchingRules,
     serviceMappings,
   };
 }
