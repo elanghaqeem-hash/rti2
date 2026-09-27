@@ -68,10 +68,10 @@ export default function ToolsHubPage() {
     },
     {
       title: 'ISO/IEC 27001 Readiness Checklist',
-      slug: 'iso27001-readiness',
+      slug: 'iso-27001-readiness',
       tag: 'ISMS Certification Prep',
-      time: '7 Mins',
-      desc: 'Self-evaluate against Clauses 4–10 and Annex A control themes (Organizational, People, Physical, Technological) before formal stage audits.',
+      time: '7–10 Mins',
+      desc: 'Assess ISO/IEC 27001:2022 readiness across Clauses 4–10, Annex A, evidence, readiness gates, gap analysis, and remediation roadmap.'
       icon: FileCheck,
       badgeColor: 'bg-amber-50 text-amber-700',
     },
