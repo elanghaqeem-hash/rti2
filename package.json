@@ -5,14 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "npm install --no-save --package-lock=false @opennextjs/cloudflare@1.20.6 wrangler@4.142.0 && next build && npx opennextjs-cloudflare build --skipNextBuild",
-    "build:cloudflare": "npm run build",
+    "build": "next build",
+    "build:cloudflare": "npm install --no-save --package-lock=false @opennextjs/cloudflare@1.20.6 wrangler@4.142.0 && next build && npx opennextjs-cloudflare build --skipNextBuild",
     "deploy:cloudflare": "npx wrangler deploy",
     "build:next": "next build",
     "start": "next start",
     "lint": "next lint",
     "test": "node --test tests/*.test.js",
-    "watch-sync": "node watch-sync.js"
+    "watch-sync": "node watch-sync.js",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "clsx": "^2.1.1",
