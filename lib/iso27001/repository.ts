@@ -614,9 +614,12 @@ function targetApplies(target: TargetRow, assessment: Record<string, unknown>) {
       value = Number(value) === 1;
     }
 
-    if (rule.notEmpty) return String(value ?? '').trim().length > 0;
-    if (Object.prototype.hasOwnProperty.call(rule, 'equals')) return value === rule.equals;
-    if (Object.prototype.hasOwnProperty.call(rule, 'notEquals')) return value !== rule.notEquals;
+    if (rule.notEmpty && String(value ?? '').trim().length === 0) return false;
+    const normalized = typeof value === 'string' ? value.trim().toLowerCase() : value;
+    const normalizedEquals = typeof rule.equals === 'string' ? rule.equals.trim().toLowerCase() : rule.equals;
+    const normalizedNotEquals = typeof rule.notEquals === 'string' ? rule.notEquals.trim().toLowerCase() : rule.notEquals;
+    if (Object.prototype.hasOwnProperty.call(rule, 'equals') && normalized !== normalizedEquals) return false;
+    if (Object.prototype.hasOwnProperty.call(rule, 'notEquals') && normalized === normalizedNotEquals) return false;
     return true;
   } catch {
     return true;
