@@ -1571,3 +1571,20 @@ export function deleteIsoEvidence(
   audit(assessmentId, String(assessment.organization_id), 'evidence.deleted', 'evidence_file', evidenceId);
   return { evidenceId, deleted: true };
 }
+
+
+export function getIsoAiProviderRuntimeConfig() {
+  const db = getDatabase();
+  const allowed = new Set(['anthropic','openai','gemini','groq','openrouter','deepseek']);
+  return (db.prepare(`
+    SELECT provider_key AS provider, model_name AS model
+    FROM ai_provider_configuration
+    WHERE is_enabled = 1
+    ORDER BY priority, provider_key
+  `).all() as Array<{ provider: string; model: string | null }>)
+    .filter((row) => allowed.has(row.provider))
+    .map((row) => ({
+      provider: row.provider as 'anthropic' | 'openai' | 'gemini' | 'groq' | 'openrouter' | 'deepseek',
+      model: row.model || undefined,
+    }));
+}
