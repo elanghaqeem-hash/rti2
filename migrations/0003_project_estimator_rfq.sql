@@ -467,6 +467,8 @@ INSERT OR IGNORE INTO estimator_questions (id,service_id,question_key,label,help
 ('q-dev-integrations','svc-webapp','integration_complexity','Integration complexity','Consider APIs, core systems, payments, ERP and legacy platforms.','radio',1,'integration',1.2,110,1,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
 ('q-dev-users','svc-webapp','user_scale','Expected user scale','Approximate active user population.','radio',1,'scope',0.8,120,1,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
 ('q-dev-ai','svc-webapp','ai_requirement','AI or advanced analytics requirement','Select if AI/RAG/ML is within scope.','radio',0,'technology',0.9,130,0,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('q-dev-cloud','svc-webapp','cloud_required','Is cloud deployment in scope?','Enable to capture the target cloud environment.','checkbox',0,'technology',0.4,140,0,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('q-dev-cloud-provider','svc-webapp','cloud_provider','Target cloud provider','Shown only when cloud deployment is selected.','dropdown',1,'technology',0.5,150,0,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
 ('q-iso-size','svc-iso27001','organization_scale','Organization / ISMS scope size','Approximate scope of people and locations.','radio',1,'organization',1.0,100,1,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
 ('q-iso-maturity','svc-iso27001','isms_maturity','Current ISMS maturity','Select the closest current state.','radio',1,'regulatory',1.0,110,1,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
 ('q-iso-target','svc-iso27001','certification_target','Certification target urgency','Select target horizon.','radio',1,'timeline',1.0,120,1,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
@@ -497,6 +499,11 @@ INSERT OR IGNORE INTO estimator_question_options (id,question_id,value,label,sco
 ('qo-dai-1','q-dev-ai','none','No AI requirement',2,1.00,1.00,10,1),
 ('qo-dai-2','q-dev-ai','rag','AI assistant / enterprise RAG',4,1.20,1.25,20,1),
 ('qo-dai-3','q-dev-ai','ml','Custom ML / predictive pipeline',5,1.40,1.50,30,1),
+('qo-dcp-1','q-dev-cloud-provider','aws','AWS',3,1.00,1.00,10,1),
+('qo-dcp-2','q-dev-cloud-provider','azure','Microsoft Azure',3,1.00,1.00,20,1),
+('qo-dcp-3','q-dev-cloud-provider','gcp','Google Cloud',3,1.00,1.00,30,1),
+('qo-dcp-4','q-dev-cloud-provider','private','Private cloud / on-premises cloud',4,1.10,1.10,40,1),
+('qo-dcp-5','q-dev-cloud-provider','other','Other / to be confirmed',3,1.00,1.00,50,1),
 ('qo-is-1','q-iso-size','small','Single site / <100 employees',2,0.80,0.85,10,1),
 ('qo-is-2','q-iso-size','medium','100–500 employees / several functions',3,1.00,1.00,20,1),
 ('qo-is-3','q-iso-size','large','500+ / multi-site / complex scope',5,1.35,1.40,30,1),
@@ -515,3 +522,9 @@ INSERT OR IGNORE INTO estimator_question_options (id,question_id,value,label,sco
 ('qo-tc-1','q-training-custom','standard','Standard syllabus',2,0.90,0.90,10,1),
 ('qo-tc-2','q-training-custom','custom','Customized to organization',4,1.15,1.20,20,1),
 ('qo-tc-3','q-training-custom','lab','Customized + hands-on lab/case',5,1.30,1.35,30,1);
+
+
+INSERT OR IGNORE INTO estimator_question_conditions
+  (id, question_id, source_question_key, operator, compare_value, is_active)
+VALUES
+  ('cond-dev-cloud-provider','q-dev-cloud-provider','cloud_required','equals','true',1);
