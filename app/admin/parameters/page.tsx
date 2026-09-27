@@ -175,6 +175,12 @@ export default function AdminParametersPage() {
                 System Setup
               </Link>
               <Link
+                href="/admin/pdp-readiness"
+                className="rounded-xl border border-line px-4 py-2.5 text-xs font-bold text-navy-900 hover:bg-grey-50"
+              >
+                PDP Readiness CMS
+              </Link>
+              <Link
                 href="/admin/leads"
                 className="rounded-xl border border-line px-4 py-2.5 text-xs font-bold text-navy-900 hover:bg-grey-50"
               >
