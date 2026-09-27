@@ -2,6 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { IsoEvidenceAiAssistant } from '@/components/tools/IsoEvidenceAiAssistant';
+import { Iso27001Assistants } from '@/components/tools/Iso27001Assistants';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -85,6 +87,7 @@ type ResultPayload = {
 type DetailPayload = {
   gaps: Array<Record<string, unknown>>;
   roadmap: Array<Record<string, unknown>>;
+  serviceRecommendations?: Array<{ matchKey: string; serviceName: string; ctaParameterKey?: string | null }>;
   settings: Record<string, string>;
 };
 
@@ -611,6 +614,16 @@ export function Iso27001Readiness() {
 
             <label className="mt-4 block text-xs font-bold text-navy-900">Evidence note<textarea rows={2} value={draft.evidenceNote} onChange={(e) => setDraft((x) => ({ ...x, evidenceNote: e.target.value }))} className="mt-1 w-full rounded-xl border border-line px-3 py-3 text-sm font-normal" placeholder={current.expectedEvidence || 'Describe available evidence.'} /></label>
             <label className="mt-4 block text-xs font-bold text-navy-900">Comment / current condition<textarea rows={3} value={draft.comment} onChange={(e) => setDraft((x) => ({ ...x, comment: e.target.value }))} className="mt-1 w-full rounded-xl border border-line px-3 py-3 text-sm font-normal" /></label>
+
+            <IsoEvidenceAiAssistant
+              assessmentId={assessmentId}
+              accessToken={accessToken}
+              targetRef={current.id}
+              enabled={aiConsent}
+              onBeforeAnalyze={() => save(false)}
+              onAccept={(text) => setDraft((existing) => ({ ...existing, comment: text }))}
+            />
+
             {current.riskIfMissing && <div className="mt-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-950"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><div><strong>Risk if missing:</strong> {current.riskIfMissing}</div></div>}
           </section>
 
@@ -686,7 +699,9 @@ export function Iso27001Readiness() {
             {Object.keys(phases).length === 0 ? <p className="mt-3 text-xs text-muted">No roadmap items are available.</p> : <div className="mt-4 grid gap-4 md:grid-cols-2">{Object.entries(phases).map(([phase, rows]) => <div key={phase} className="rounded-xl border border-line bg-grey-50 p-4"><div className="text-xs font-extrabold uppercase tracking-wider text-gold-700">{phase}</div><div className="mt-3 space-y-2">{rows.slice(0, 8).map((row) => <div key={String(row.id)} className="flex items-start gap-2 text-xs leading-relaxed text-navy-900"><ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600" /><span>{String(row.actionText)}</span></div>)}</div></div>)}</div>}
           </section>
 
-          <section className="rounded-2xl border border-navy-800 bg-navy-900 p-6 text-white shadow-sm sm:p-8">
+          <Iso27001Assistants assessmentId={assessmentId} accessToken={accessToken} />
+
+                    <section className="rounded-2xl border border-navy-800 bg-navy-900 p-6 text-white shadow-sm sm:p-8">
             <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center"><div><div className="text-xs font-extrabold uppercase tracking-wider text-gold-300">Engage RTI</div><h2 className="mt-2 text-2xl font-black">Turn the diagnostic into an evidence-based certification preparation plan.</h2><p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-300">Discuss gap assessment, ISMS implementation, internal audit readiness, awareness, risk treatment or technical control validation with RTI.</p></div><div className="flex flex-col gap-2"><Link href={consultationUrl} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gold-500 px-5 py-3 text-xs font-extrabold text-navy-900">Discuss Your Readiness <ArrowRight className="h-4 w-4" /></Link>{whatsapp && <a href={'https://wa.me/' + whatsapp} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-600 px-5 py-3 text-xs font-bold text-white">Talk to RTI Consultant</a>}</div></div>
           </section>
 
