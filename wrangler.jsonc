@@ -6,20 +6,14 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
 
-  // OPTIONAL STAGING CONFIGURATION ONLY.
-  // RTI production now targets a standard Node.js server and uses RTI_DB_PATH.
-  // Do not place production database/admin secrets in this file.
+  // Cloudflare/OpenNext staging configuration.
+  // Production may still target the standard Node.js deployment path.
+  // The OpenNext build generates .open-next/worker.js before Wrangler deploys.
 
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
-  "services": [
-    {
-      "binding": "WORKER_SELF_REFERENCE",
-      "service": "rti2"
-    }
-  ],
   "images": {
     "binding": "IMAGES"
   },
