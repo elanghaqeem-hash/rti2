@@ -33,7 +33,7 @@ export default function AdminLeadsPage() {
   const [databaseConnected, setDatabaseConnected] = useState(false);
   const [dataError, setDataError] = useState('');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('');
   const leadStatusOptions = useParameterOptions('admin.lead_statuses');
 
   const fetchLeads = async () => {
