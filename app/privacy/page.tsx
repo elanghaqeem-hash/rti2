@@ -40,7 +40,7 @@ export default function PrivacyPage() {
               <p><strong>Nama Entitas Legal:</strong> {BRAND_CONFIG.legalName}</p>
               <p><strong>Brand / Merek:</strong> {BRAND_CONFIG.brandName} ({BRAND_CONFIG.acronym})</p>
               <p><strong>Alamat Resmi:</strong> {BRAND_CONFIG.contact.address.fullAddress}</p>
-              <p><strong>Email Kontak DPO:</strong> dpo@risetin.co.id / {BRAND_CONFIG.contact.email}</p>
+              <p><strong>Email Kontak Privasi:</strong> {BRAND_CONFIG.contact.email}</p>
             </div>
           </div>
 
@@ -60,7 +60,7 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-extrabold text-navy-900">3. Dasar Hukum dan Tujuan Pemrosesan</h2>
             <p>Sesuai Pasal 20 UU PDP, pemrosesan data dilakukan berdasarkan:</p>
             <ul className="list-disc pl-5 space-y-1 text-muted">
-              <li><strong>Persetujuan Eksplisit (Consent):</strong> Saat Anda mengisi formulir penilaian maturity, formulir RFQ kontak, atau interaksi AI Assistant dengan mencentang kotak persetujuan.</li>
+              <li><strong>Persetujuan Eksplisit (Consent):</strong> Saat Anda mengirim formulir RFQ atau formulir tindak lanjut hasil diagnostic yang memuat kotak persetujuan. Assessment gratis dapat dijalankan tanpa mengirim evidence file ke server.</li>
               <li><strong>Pelaksanaan Perjanjian (Contractual Necessity):</strong> Untuk menyusun proposal, kontrak NDA, dan delivery layanan konsultasi teknologi.</li>
               <li><strong>Kewajiban Hukum (Legal Obligation):</strong> Kepatuhan terhadap pelaporan peraturan perundang-undangan Republik Indonesia.</li>
               <li><strong>Kepentingan yang Sah (Legitimate Interest):</strong> Menjaga keamanan siber infrastruktur dan integritas sistem dari upaya serangan siber.</li>
@@ -87,7 +87,7 @@ export default function PrivacyPage() {
               ))}
             </div>
             <p className="text-xs text-muted mt-2">
-              Untuk melaksanakan hak-hak di atas, hubungi Pejabat Pelindungan Data Pribadi (DPO) kami melalui email:{' '}
+              Untuk mengajukan permintaan terkait hak subjek data, hubungi kanal privasi resmi kami melalui email:{' '}
               <a href={`mailto:${BRAND_CONFIG.contact.email}`} className="text-blue-600 underline font-bold">
                 {BRAND_CONFIG.contact.email}
               </a>.
@@ -98,10 +98,13 @@ export default function PrivacyPage() {
           <div className="space-y-3">
             <h2 className="text-xl font-extrabold text-navy-900">5. Standar Keamanan & Retensi Data</h2>
             <p>
-              Sebagai konsultan teknologi dan keamanan siber, {BRAND_CONFIG.legalName} menerapkan enkripsi transit (TLS 1.3), enkripsi at-rest (AES-256), kontrol akses berbasis peran (RBAC), dan pemantauan keamanan berkala.
+              Situs menerapkan kontrol keamanan yang dapat diverifikasi pada aplikasi, termasuk HTTPS pada deployment production, security headers, pembatasan akses area admin, rate limiting pada API publik, dan verifikasi bot pada formulir lead. Kredensial dan API key disimpan sebagai secret deployment dan tidak boleh ditempatkan pada kode client.
             </p>
             <p className="text-xs text-muted">
-              Data lead dan hasil asesmen disimpan selama maksimal 12 (dua belas) bulan untuk keperluan tindak lanjut konsultasi, setelah itu dimusnahkan secara aman kecuali terdapat kontrak kemitraan aktif. Log percakapan AI anonim dibersihkan otomatis setelah 30 hari.
+              Penyimpanan data lead hanya boleh diaktifkan setelah backend database production, kontrol akses, dan kebijakan retensi telah dikonfigurasi. Sistem tidak menggunakan data dummy atau penyimpanan sementara sebagai pengganti database. Ketentuan retensi operasional akan mengikuti tujuan pemrosesan, kewajiban hukum, dan konfigurasi layanan yang benar-benar aktif.
+            </p>
+            <p className="text-xs text-muted">
+              Pengguna AI Assistant diminta tidak memasukkan password, kredensial, data rekening, data nasabah, atau data pribadi sensitif ke dalam percakapan.
             </p>
           </div>
         </div>

@@ -5,6 +5,7 @@ import {
   type AiChatMessage,
 } from '@/lib/ai/provider-router';
 import { BRAND_CONFIG } from '@/lib/config/contact';
+import { enforceRateLimit, rateLimitHeaders } from '@/lib/security/request-protection';
 
 export const runtime = 'nodejs';
 
@@ -115,6 +116,31 @@ Saat koneksi model AI eksternal tidak tersedia, saya tetap dapat membantu berdas
 
 export async function POST(req: Request) {
   try {
+    const rateLimit = await enforceRateLimit(req, {
+      bucket: 'chat',
+      limit: 20,
+      windowSeconds: 60,
+    });
+
+    if (!rateLimit.allowed) {
+      const status =
+        rateLimit.reason === 'limit-exceeded' ? 429 : 503;
+      return NextResponse.json(
+        {
+          error:
+            status === 429
+              ? 'Terlalu banyak permintaan. Silakan coba lagi sebentar.'
+              : 'Proteksi API belum siap. Hubungi administrator.',
+        },
+        {
+          status,
+          headers: {
+            'Cache-Control': 'no-store',
+            ...rateLimitHeaders(rateLimit),
+          },
+        },
+      );
+    }
     const body = await req.json().catch(() => null);
     const messages = normalizeMessages(body?.messages);
 
