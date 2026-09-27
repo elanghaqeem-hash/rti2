@@ -1,6 +1,10 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { NextResponse } from 'next/server';
 import {
   createPdpAssessment,
+  deletePdpAssessment,
+  listPdpEvidenceStorageNames,
   loadPdpAssessment,
   savePdpResponses,
 } from '@/lib/pdp/repository';
@@ -221,6 +225,70 @@ export async function PUT(req: Request) {
   } catch (error) {
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Unable to save assessment.' },
+      { status: 503, headers: { 'Cache-Control': 'no-store', ...rateLimitHeaders(limited) } },
+    );
+  }
+}
+
+
+export async function DELETE(req: Request) {
+  const limited = await rateLimit(req, 'pdp-delete', 6);
+  if (!limited.allowed) {
+    return NextResponse.json(
+      { success: false, error: 'Delete request is temporarily unavailable.' },
+      {
+        status: limited.reason === 'limit-exceeded' ? 429 : 503,
+        headers: { 'Cache-Control': 'no-store', ...rateLimitHeaders(limited) },
+      },
+    );
+  }
+
+  const body = await req.json().catch(() => null);
+  const assessmentId = String(body?.assessmentId || '').slice(0, 80);
+  const token = tokenFrom(req);
+
+  if (!assessmentId || !token) {
+    return NextResponse.json(
+      { success: false, error: 'Assessment id and resume token are required.' },
+      { status: 400, headers: { 'Cache-Control': 'no-store', ...rateLimitHeaders(limited) } },
+    );
+  }
+
+  try {
+    const evidenceRows = listPdpEvidenceStorageNames(assessmentId, token);
+    if (!evidenceRows) {
+      return NextResponse.json(
+        { success: false, error: 'Assessment not found or resume token is invalid.' },
+        { status: 404, headers: { 'Cache-Control': 'no-store', ...rateLimitHeaders(limited) } },
+      );
+    }
+
+    const deleted = deletePdpAssessment(assessmentId, token);
+    if (!deleted) {
+      return NextResponse.json(
+        { success: false, error: 'Assessment could not be deleted.' },
+        { status: 409, headers: { 'Cache-Control': 'no-store', ...rateLimitHeaders(limited) } },
+      );
+    }
+
+    const configuredRoot = String(process.env.PDP_EVIDENCE_DIR || '').trim();
+    const root = configuredRoot
+      ? path.resolve(configuredRoot)
+      : process.env.NODE_ENV === 'production'
+        ? ''
+        : path.join(process.cwd(), 'data', 'pdp-evidence');
+
+    if (root && evidenceRows.length > 0) {
+      fs.rmSync(path.join(root, assessmentId), { recursive: true, force: true });
+    }
+
+    return NextResponse.json(
+      { success: true, deleted: true },
+      { headers: { 'Cache-Control': 'no-store', ...rateLimitHeaders(limited) } },
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : 'Unable to delete assessment.' },
       { status: 503, headers: { 'Cache-Control': 'no-store', ...rateLimitHeaders(limited) } },
     );
   }
