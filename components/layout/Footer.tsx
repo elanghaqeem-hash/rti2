@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { LogoFull } from '../brand/LogoFull';
 import { BRAND_CONFIG } from '@/lib/config/contact';
+import { getPublicCmsSettings } from '@/lib/admin/settings-store';
 import {
   MapPin,
   Phone,
@@ -11,8 +12,9 @@ import {
   Calendar,
 } from 'lucide-react';
 
-export const Footer: React.FC = () => {
+export async function Footer() {
   const currentYear = new Date().getFullYear();
+  const cms = await getPublicCmsSettings();
 
   return (
     <footer className="bg-navy-900 text-white border-t border-navy-700">
@@ -50,31 +52,31 @@ export const Footer: React.FC = () => {
           <div className="lg:col-span-2 space-y-4">
             <LogoFull variant="light" size="md" showLegalSubtext={true} />
             <p className="text-sm text-slate-300 max-w-sm leading-relaxed">
-              {BRAND_CONFIG.positioning.id}
+              {cms.positioning || BRAND_CONFIG.positioning.id}
             </p>
             <div className="pt-2 space-y-2.5 text-xs text-slate-300">
               <div className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-gold-500 shrink-0 mt-0.5" />
-                <span>{BRAND_CONFIG.contact.address.fullAddress}</span>
+                <span>{cms.officeAddress || BRAND_CONFIG.contact.address.fullAddress}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-gold-500 shrink-0" />
                 <a
-                  href={BRAND_CONFIG.contact.whatsappUrl}
+                  href={cms.whatsappUrl || BRAND_CONFIG.contact.whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-gold-300 transition"
                 >
-                  WhatsApp: {BRAND_CONFIG.contact.whatsapp}
+                  WhatsApp: {cms.whatsapp || BRAND_CONFIG.contact.whatsapp}
                 </a>
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-gold-500 shrink-0" />
                 <a
-                  href={`mailto:${BRAND_CONFIG.contact.email}`}
+                  href={`mailto:${cms.contactEmail || BRAND_CONFIG.contact.email}`}
                   className="hover:text-gold-300 transition"
                 >
-                  {BRAND_CONFIG.contact.email}
+                  {cms.contactEmail || BRAND_CONFIG.contact.email}
                 </a>
               </div>
             </div>
@@ -239,4 +241,4 @@ export const Footer: React.FC = () => {
       </div>
     </footer>
   );
-};
+}
