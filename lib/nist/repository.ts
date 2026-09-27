@@ -214,9 +214,10 @@ export function createNistAssessment(params: {
       assessment_type, framework_version, questionnaire_version,
       scoring_model_version, recommendation_version, status,
       started_at, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'in_progress', ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'in_progress', ?, ?, ?)`,
   ).run(
     id,
+    accessTokenHash,
     params.organizationId || null,
     params.organization.companyName,
     params.organization.industry,
