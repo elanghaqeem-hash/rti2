@@ -83,6 +83,17 @@ CREATE TABLE IF NOT EXISTS nist_questions (
 CREATE INDEX IF NOT EXISTS idx_nist_questions_active
   ON nist_questions(framework_version, questionnaire_version, active, sort_order);
 
+CREATE TABLE IF NOT EXISTS nist_branching_rules (
+  id TEXT PRIMARY KEY,
+  parent_question_id TEXT NOT NULL,
+  answer_values_json TEXT NOT NULL,
+  follow_up_question_id TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
+  FOREIGN KEY (parent_question_id) REFERENCES nist_questions(id),
+  FOREIGN KEY (follow_up_question_id) REFERENCES nist_questions(id)
+);
+
 CREATE TABLE IF NOT EXISTS nist_answer_options (
   value TEXT PRIMARY KEY,
   label TEXT NOT NULL,
@@ -523,6 +534,33 @@ INSERT OR IGNORE INTO nist_questions(
 'Recovery communication yang tidak jelas dapat memperpanjang disruption dan menurunkan kepercayaan.',
 'Cari recovery communication plan, status template, decision criteria, stakeholder contact list, dan exercise evidence.',
 1,'scale',1,12,'recovery_communication_gap',1,220,'1.0','2026-09-27T00:00:00.000Z','2026-09-27T00:00:00.000Z');
+
+INSERT OR IGNORE INTO nist_questions(
+  id, framework_version, questionnaire_version, function_code, category_code, question_code,
+  question_text_en, question_text_id, help_text, executive_explanation, technical_explanation,
+  weight, question_type, is_core, estimated_seconds, risk_signal, active, sort_order, version,
+  created_at, updated_at
+) VALUES
+('nist-q-decm-followup','NIST-CSF-2.0','QC-2026.1','DE','DE.CM','DE.CM.F1',
+'When continuous monitoring is limited, is there at least a defined process for reviewing critical security logs and escalating suspicious activity?',
+'Jika continuous monitoring masih terbatas, apakah setidaknya tersedia proses yang didefinisikan untuk mereview security log kritikal dan mengeskalasi aktivitas mencurigakan?',
+'Follow-up ini hanya muncul ketika jawaban continuous monitoring menunjukkan gap atau ketidakpastian.',
+'Menilai compensating process ketika SOC/SIEM coverage belum matang.',
+'Cari documented log-review procedure, responsible owner, review frequency, and escalation evidence.',
+1,'scale',0,10,'logging_compensating_control',1,156,'1.0','2026-09-27T00:00:00.000Z','2026-09-27T00:00:00.000Z'),
+('nist-q-rsma-followup','NIST-CSF-2.0','QC-2026.1','RS','RS.MA','RS.MA.F1',
+'When incident response readiness is limited, are response roles, emergency contacts, and escalation paths at least assigned for a major cyber incident?',
+'Jika kesiapan incident response masih terbatas, apakah peran respons, kontak darurat, dan jalur eskalasi setidaknya telah ditetapkan untuk insiden siber besar?',
+'Follow-up ini hanya muncul ketika incident response planning menunjukkan gap atau ketidakpastian.',
+'Menilai minimum viable incident-response coordination before a mature IR program exists.',
+'Cari contact tree, escalation matrix, named incident commander, and emergency decision authority.',
+1,'scale',0,10,'incident_compensating_control',1,175,'1.0','2026-09-27T00:00:00.000Z','2026-09-27T00:00:00.000Z');
+
+INSERT OR IGNORE INTO nist_branching_rules(
+  id, parent_question_id, answer_values_json, follow_up_question_id, sort_order, active
+) VALUES
+('branch-decm-low','nist-q-decm','["0","1","unsure"]','nist-q-decm-followup',10,1),
+('branch-rsma-low','nist-q-rsma','["0","1","unsure"]','nist-q-rsma-followup',20,1);
 
 INSERT OR IGNORE INTO nist_service_mappings(
   id, category_code, service_code, service_name, service_url, reason_template, priority_order
