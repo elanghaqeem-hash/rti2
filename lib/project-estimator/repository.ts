@@ -55,6 +55,14 @@ type OptionRow = {
   price_multiplier: number;
 };
 
+type ConditionRow = {
+  id: string;
+  question_id: string;
+  source_question_key: string;
+  operator: string;
+  compare_value: string | null;
+};
+
 function safeJson<T>(value: string | null | undefined, fallback: T): T {
   if (!value) return fallback;
   try {
@@ -122,8 +130,23 @@ function serviceFromRow(row: ServiceRow): EstimatorService {
   };
 }
 
-function buildQuestions(rows: QuestionRow[], options: OptionRow[]): EstimatorQuestion[] {
+function buildQuestions(
+  rows: QuestionRow[],
+  options: OptionRow[],
+  conditions: ConditionRow[] = [],
+): EstimatorQuestion[] {
   const byQuestion = new Map<string, QuestionOption[]>();
+  const conditionsByQuestion = new Map<string, EstimatorQuestion['conditions']>();
+  for (const row of conditions) {
+    const list = conditionsByQuestion.get(row.question_id) || [];
+    list.push({
+      sourceKey: row.source_question_key,
+      operator: row.operator,
+      compareValue: row.compare_value || undefined,
+    });
+    conditionsByQuestion.set(row.question_id, list);
+  }
+
   for (const row of options) {
     const list = byQuestion.get(row.question_id) || [];
     list.push({
@@ -151,6 +174,7 @@ function buildQuestions(rows: QuestionRow[], options: OptionRow[]): EstimatorQue
     quickMode: Number(row.quick_mode) === 1,
     detailedMode: Number(row.detailed_mode) === 1,
     options: (byQuestion.get(row.id) || []).sort((a, b) => a.label.localeCompare(b.label)),
+    conditions: conditionsByQuestion.get(row.id) || [],
   }));
 }
 
@@ -205,6 +229,13 @@ export function getEstimatorBootstrap(): EstimatorBootstrap {
      ORDER BY sort_order, label`,
   ).all() as OptionRow[];
 
+  const conditionRows = db.prepare(
+    `SELECT id, question_id, source_question_key, operator, compare_value
+     FROM estimator_question_conditions
+     WHERE is_active = 1
+     ORDER BY id`,
+  ).all() as ConditionRow[];
+
   const dimensions = db.prepare(
     `SELECT dimension AS key, label, weight
      FROM complexity_weights
@@ -224,7 +255,7 @@ export function getEstimatorBootstrap(): EstimatorBootstrap {
       description: row.description || undefined,
     })),
     services: serviceRows.map(serviceFromRow),
-    questions: buildQuestions(questionRows, optionRows),
+    questions: buildQuestions(questionRows, optionRows, conditionRows),
     dimensions: dimensions.map((row) => ({ ...row, weight: Number(row.weight) })),
     publicSettings: Object.fromEntries(publicSettingRows.map((row) => [row.key, row.value])),
   };
@@ -556,6 +587,37 @@ function evaluateRules(serviceId: string, answers: Map<string, unknown>) {
   return { complexityDelta, effortMultiplier, priceMultiplier, durationMultiplier, factors, appliedRules };
 }
 
+function conditionValueMatches(operator: string, actual: unknown, compareValue?: string) {
+  if (operator === 'truthy') return Boolean(actual);
+  if (operator === 'falsy') return !actual;
+  if (operator === 'not_equals') return String(actual) !== String(compareValue ?? '');
+  if (operator === 'includes') {
+    return Array.isArray(actual)
+      ? actual.map(String).includes(String(compareValue ?? ''))
+      : String(actual ?? '').includes(String(compareValue ?? ''));
+  }
+  if (operator === 'gt' || operator === 'gte' || operator === 'lt' || operator === 'lte') {
+    const left = Number(actual);
+    const right = Number(compareValue);
+    if (!Number.isFinite(left) || !Number.isFinite(right)) return false;
+    if (operator === 'gt') return left > right;
+    if (operator === 'gte') return left >= right;
+    if (operator === 'lt') return left < right;
+    return left <= right;
+  }
+  return String(actual) === String(compareValue ?? '');
+}
+
+function questionConditionsMatch(question: EstimatorQuestion, answers: Map<string, unknown>) {
+  return question.conditions.every((condition) =>
+    conditionValueMatches(
+      condition.operator,
+      answers.get(condition.sourceKey),
+      condition.compareValue,
+    ),
+  );
+}
+
 function loadSessionAnswers(sessionId: string, serviceId: string, mode: 'quick' | 'detailed') {
   const db = getDatabase();
   const rows = db.prepare(
@@ -578,7 +640,15 @@ function loadSessionAnswers(sessionId: string, serviceId: string, mode: 'quick' 
        AND (q.service_id IS NULL OR q.service_id = ?)`,
   ).all(serviceId) as OptionRow[];
 
-  return { rows, questions: buildQuestions(rows, options) };
+  const conditions = db.prepare(
+    `SELECT c.id, c.question_id, c.source_question_key, c.operator, c.compare_value
+     FROM estimator_question_conditions c
+     JOIN estimator_questions q ON q.id=c.question_id
+     WHERE c.is_active=1 AND q.is_active=1
+       AND (q.service_id IS NULL OR q.service_id = ?)`,
+  ).all(serviceId) as ConditionRow[];
+
+  return { rows, questions: buildQuestions(rows, options, conditions) };
 }
 
 export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
@@ -641,11 +711,15 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
   const factors: string[] = [];
   let answeredRequired = 0;
   let requiredCount = 0;
-  const answerMap = new Map<string, unknown>();
+  const answerMap = new Map<string, unknown>(
+    rows.map((row) => [row.question_key, safeJson<unknown>(row.answer_json, null)]),
+  );
+  const questionById = new Map(questions.map((question) => [question.id, question]));
 
   for (const row of rows) {
-    answerMap.set(row.question_key, safeJson<unknown>(row.answer_json, null));
-    const answer = safeJson<unknown>(row.answer_json, null);
+    const question = questionById.get(row.id);
+    if (question && !questionConditionsMatch(question, answerMap)) continue;
+    const answer = answerMap.get(row.question_key);
     const hasAnswer = answer !== null && answer !== '' && answer !== false;
     if (Number(row.required) === 1) {
       requiredCount += 1;
@@ -816,11 +890,12 @@ function createDeterministicRfqContent(sessionId: string, estimate: ProjectEstim
 
   const { rows, questions } = loadSessionAnswers(sessionId, estimate.serviceId, 'detailed');
   const answerMap = new Map(rows.map((row) => [row.question_key, safeJson<unknown>(row.answer_json, null)]));
-  const answered = questions
+  const visibleQuestions = questions.filter((question) => questionConditionsMatch(question, answerMap));
+  const answered = visibleQuestions
     .map((question) => ({ question, answer: answerMap.get(question.key) }))
     .filter((item) => item.answer !== null && item.answer !== '' && item.answer !== false);
 
-  const missingInformation = questions
+  const missingInformation = visibleQuestions
     .filter((question) => question.required)
     .filter((question) => {
       const answer = answerMap.get(question.key);
