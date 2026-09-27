@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="g" x1="64" y1="128" x2="448" y2="384" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F47A20"/>
+      <stop offset=".48" stop-color="#F6A51C"/>
+      <stop offset="1" stop-color="#FFE600"/>
+    </linearGradient>
+  </defs>
+
+  <polygon points="256,18 480,147 480,365 256,494 32,365 32,147" fill="url(#g)"/>
+
+  <path d="M72 350V174L188 108" stroke="#fff" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="72" cy="350" r="20" fill="#fff"/>
+
+  <path d="M264 68L420 158V314" stroke="#fff" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="264" cy="68" r="20" fill="#fff"/>
+
+  <path d="M145 354L256 418L410 332" stroke="#fff" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="410" cy="332" r="20" fill="#fff"/>
+
+  <polygon points="256,138 368,203 368,327 256,392 144,327 144,203" fill="#fff"/>
+  <polygon points="256,176 333,220 333,310 256,354 179,310 179,220" stroke="url(#g)" stroke-width="8" stroke-linejoin="round"/>
+
+  <path d="M219 218V314M219 218H279C308 218 326 233 326 256C326 279 308 294 279 294H240M279 294L326 337"
+        stroke="url(#g)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="219" cy="218" r="8" fill="#fff" stroke="#F47A20" stroke-width="6"/>
+  <circle cx="326" cy="337" r="8" fill="#fff" stroke="#F2D51B" stroke-width="6"/>
+</svg>
