@@ -196,7 +196,7 @@ export default function ContactPage() {
                       </div>
 
                       <p className="mt-3 text-center text-[10px] text-muted">
-                        Kalender konsultasi akan terbuka di tab baru.
+                        Form pemilihan jadwal konsultasi akan terbuka di tab baru.
                       </p>
                     </div>
                   </div>
