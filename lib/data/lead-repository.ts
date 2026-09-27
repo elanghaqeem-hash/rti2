@@ -1,25 +1,8 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import type { Lead } from '@/lib/scoring/leads';
-
-type D1Result<T = unknown> = {
-  success?: boolean;
-  results?: T[];
-  meta?: {
-    changes?: number;
-    last_row_id?: number;
-  };
-};
-
-type D1PreparedStatement = {
-  bind: (...values: unknown[]) => D1PreparedStatement;
-  first: <T = unknown>() => Promise<T | null>;
-  all: <T = unknown>() => Promise<D1Result<T>>;
-  run: () => Promise<D1Result>;
-};
-
-type D1DatabaseLike = {
-  prepare: (query: string) => D1PreparedStatement;
-};
+import {
+  DatabaseUnavailableError,
+  getDatabase,
+} from '@/lib/server/database';
 
 type LeadRow = {
   id: string;
@@ -40,7 +23,7 @@ type LeadRow = {
 };
 
 export class LeadDatabaseUnavailableError extends Error {
-  constructor(message = 'Cloudflare D1 binding RTI_DB is not available.') {
+  constructor(message = 'RTI server database is not available or not initialized.') {
     super(message);
     this.name = 'LeadDatabaseUnavailableError';
   }
@@ -66,112 +49,110 @@ function rowToLead(row: LeadRow): Lead {
   };
 }
 
-export function getLeadDatabase(): D1DatabaseLike {
+function leadDatabase() {
   try {
-    const context = getCloudflareContext();
-    const env = context.env as Record<string, unknown>;
-    const database = env.RTI_DB as D1DatabaseLike | undefined;
-
-    if (!database || typeof database.prepare !== 'function') {
-      throw new LeadDatabaseUnavailableError();
-    }
-
-    return database;
+    return getDatabase();
   } catch (error) {
-    if (error instanceof LeadDatabaseUnavailableError) throw error;
-    throw new LeadDatabaseUnavailableError();
+    if (error instanceof DatabaseUnavailableError) {
+      throw new LeadDatabaseUnavailableError(error.message);
+    }
+    throw error;
   }
 }
 
 export async function createPersistentLead(lead: Lead): Promise<Lead> {
-  const database = getLeadDatabase();
+  try {
+    const database = leadDatabase();
 
-  const result = await database
-    .prepare(
-      `INSERT INTO leads (
-        id,
-        created_at,
-        source,
-        tool_slug,
-        name,
-        role,
-        company,
-        sector,
-        email,
-        whatsapp,
-        need_summary,
-        score,
-        status,
-        consent_at,
-        consent_version
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .bind(
-      lead.id,
-      lead.createdAt,
-      lead.source,
-      lead.toolSlug || null,
-      lead.name,
-      lead.role,
-      lead.company,
-      lead.sector,
-      lead.email,
-      lead.whatsapp || null,
-      lead.needSummary || null,
-      lead.score,
-      lead.status,
-      lead.consentAt,
-      lead.consentVersion,
-    )
-    .run();
+    database
+      .prepare(
+        `INSERT INTO leads (
+          id,
+          created_at,
+          source,
+          tool_slug,
+          name,
+          role,
+          company,
+          sector,
+          email,
+          whatsapp,
+          need_summary,
+          score,
+          status,
+          consent_at,
+          consent_version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        lead.id,
+        lead.createdAt,
+        lead.source,
+        lead.toolSlug || null,
+        lead.name,
+        lead.role,
+        lead.company,
+        lead.sector,
+        lead.email,
+        lead.whatsapp || null,
+        lead.needSummary || null,
+        lead.score,
+        lead.status,
+        lead.consentAt,
+        lead.consentVersion,
+      );
 
-  if (result.success === false) {
-    throw new Error('D1 insert failed.');
+    return lead;
+  } catch (error) {
+    if (error instanceof LeadDatabaseUnavailableError) throw error;
+    throw new LeadDatabaseUnavailableError(
+      error instanceof Error ? error.message : 'Lead database insert failed.',
+    );
   }
-
-  return lead;
 }
 
 export async function listPersistentLeads(limit = 500): Promise<Lead[]> {
-  const database = getLeadDatabase();
-  const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 1000);
+  try {
+    const database = leadDatabase();
+    const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 1000);
 
-  const result = await database
-    .prepare(
-      `SELECT
-        id,
-        created_at,
-        source,
-        tool_slug,
-        name,
-        role,
-        company,
-        sector,
-        email,
-        whatsapp,
-        need_summary,
-        score,
-        status,
-        consent_at,
-        consent_version
-      FROM leads
-      ORDER BY created_at DESC
-      LIMIT ?`,
-    )
-    .bind(safeLimit)
-    .all<LeadRow>();
+    const rows = database
+      .prepare(
+        `SELECT
+          id,
+          created_at,
+          source,
+          tool_slug,
+          name,
+          role,
+          company,
+          sector,
+          email,
+          whatsapp,
+          need_summary,
+          score,
+          status,
+          consent_at,
+          consent_version
+        FROM leads
+        ORDER BY created_at DESC
+        LIMIT ?`,
+      )
+      .all(safeLimit) as LeadRow[];
 
-  if (result.success === false || !Array.isArray(result.results)) {
-    throw new Error('D1 lead query failed.');
+    return rows.map(rowToLead);
+  } catch (error) {
+    if (error instanceof LeadDatabaseUnavailableError) throw error;
+    throw new LeadDatabaseUnavailableError(
+      error instanceof Error ? error.message : 'Lead database query failed.',
+    );
   }
-
-  return result.results.map(rowToLead);
 }
 
 export async function checkLeadDatabase(): Promise<boolean> {
   try {
-    const database = getLeadDatabase();
-    const row = await database.prepare('SELECT 1 AS ok').first<{ ok: number }>();
+    const database = leadDatabase();
+    const row = database.prepare('SELECT 1 AS ok').get() as { ok?: number } | undefined;
     return row?.ok === 1;
   } catch {
     return false;
