@@ -24,6 +24,7 @@ import type {
   RfqContent,
   RfqRecord,
   SessionInput,
+  SessionProfile,
 } from '@/lib/project-estimator/types';
 
 const objectives = [
@@ -85,7 +86,7 @@ export default function ProjectEstimatorPage() {
   const [bootstrap, setBootstrap] = useState<EstimatorBootstrap | null>(null);
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState<'quick' | 'detailed'>('quick');
-  const [profile, setProfile] = useState(defaultProfile);
+  const [profile, setProfile] = useState<SessionProfile>(defaultProfile);
   const [projectName, setProjectName] = useState('');
   const [selectedObjectives, setSelectedObjectives] = useState<string[]>([]);
   const [serviceId, setServiceId] = useState('');
@@ -630,7 +631,6 @@ export default function ProjectEstimatorPage() {
               {rfq.status !== 'draft' && (
                 <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-800">RFQ submitted. RTI can now qualify the opportunity and proceed to presales/commercial review.</div>
               )}
-              </div>
             </div>
           )}
 
@@ -655,6 +655,7 @@ export default function ProjectEstimatorPage() {
               ) : (
                 <button onClick={calculate} disabled={working} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-gold-500 px-5 py-3 text-xs font-extrabold text-navy-900 disabled:opacity-50">{working ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />} Calculate Project Estimate</button>
               )}
+              </div>
             </div>
           )}
         </div>
