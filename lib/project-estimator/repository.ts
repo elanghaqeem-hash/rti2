@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { getDatabase } from '@/lib/server/database';
 import { generateAiWithFailover } from '@/lib/ai/provider-router';
 import { calculateLeadScore, type Lead } from '@/lib/scoring/leads';
@@ -62,6 +62,36 @@ function safeJson<T>(value: string | null | undefined, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function hashResumeToken(token: string) {
+  return createHash('sha256').update(token, 'utf8').digest('hex');
+}
+
+function safeTokenEqual(left: string, right: string) {
+  const a = Buffer.from(left);
+  const b = Buffer.from(right);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+export function verifyEstimatorSessionAccess(sessionId: string, resumeToken: string) {
+  if (!sessionId || !resumeToken) return false;
+  const row = getDatabase()
+    .prepare('SELECT secure_token_hash FROM estimator_sessions WHERE id=?')
+    .get(sessionId) as { secure_token_hash?: string | null } | undefined;
+  if (!row?.secure_token_hash) return false;
+  return safeTokenEqual(row.secure_token_hash, hashResumeToken(resumeToken));
+}
+
+export function verifyRfqAccess(rfqId: string, resumeToken: string) {
+  if (!rfqId || !resumeToken) return false;
+  const row = getDatabase().prepare(
+    `SELECT es.id AS session_id, es.secure_token_hash
+     FROM rfqs r
+     JOIN estimator_sessions es ON es.id=r.session_id
+     WHERE r.id=?`,
+  ).get(rfqId) as { session_id: string; secure_token_hash: string | null } | undefined;
+  return Boolean(row?.secure_token_hash) && safeTokenEqual(row!.secure_token_hash!, hashResumeToken(resumeToken));
 }
 
 function getSetting(key: string, fallback = ''): string {
@@ -200,17 +230,28 @@ export function getEstimatorBootstrap(): EstimatorBootstrap {
   };
 }
 
-export function upsertEstimatorSession(input: SessionInput, existingSessionId?: string) {
+export function upsertEstimatorSession(
+  input: SessionInput,
+  existingSessionId?: string,
+  resumeToken?: string,
+) {
   const db = getDatabase();
   const now = new Date().toISOString();
   const sessionId = existingSessionId || randomUUID();
 
   const existing = existingSessionId
-    ? (db.prepare('SELECT id, organization_id, contact_id FROM estimator_sessions WHERE id = ?').get(existingSessionId) as
-        | { id: string; organization_id: string | null; contact_id: string | null }
+    ? (db.prepare('SELECT id, organization_id, contact_id, secure_token_hash FROM estimator_sessions WHERE id = ?').get(existingSessionId) as
+        | { id: string; organization_id: string | null; contact_id: string | null; secure_token_hash: string | null }
         | undefined)
     : undefined;
 
+  if (existingSessionId && !existing) throw new Error('Estimator session not found.');
+  if (existing && (!resumeToken || !verifyEstimatorSessionAccess(existingSessionId!, resumeToken))) {
+    throw new Error('Estimator draft access denied.');
+  }
+
+  const nextResumeToken = existing ? resumeToken! : randomBytes(32).toString('base64url');
+  const secureTokenHash = existing?.secure_token_hash || hashResumeToken(nextResumeToken);
   const organizationId = existing?.organization_id || randomUUID();
   const contactId = existing?.contact_id || randomUUID();
 
@@ -265,8 +306,8 @@ export function upsertEstimatorSession(input: SessionInput, existingSessionId?: 
     db.prepare(
       `INSERT INTO estimator_sessions
         (id, mode, organization_id, contact_id, project_name, business_objectives_json,
-         selected_service_id, target_timeline, budget_expectation, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)
+         selected_service_id, target_timeline, budget_expectation, status, secure_token_hash, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          mode=excluded.mode, organization_id=excluded.organization_id, contact_id=excluded.contact_id,
          project_name=excluded.project_name, business_objectives_json=excluded.business_objectives_json,
@@ -282,6 +323,7 @@ export function upsertEstimatorSession(input: SessionInput, existingSessionId?: 
       input.serviceId,
       input.targetTimeline || null,
       input.budgetExpectation || null,
+      secureTokenHash,
       now,
       now,
     );
@@ -319,7 +361,94 @@ export function upsertEstimatorSession(input: SessionInput, existingSessionId?: 
     serviceId: input.serviceId,
   });
 
-  return { sessionId };
+  return { sessionId, resumeToken: nextResumeToken };
+}
+
+export function getEstimatorSessionByToken(resumeToken: string) {
+  if (!resumeToken) throw new Error('Resume token is required.');
+  const tokenHash = hashResumeToken(resumeToken);
+  const db = getDatabase();
+  const row = db.prepare(
+    `SELECT es.id, es.mode, es.project_name, es.business_objectives_json, es.selected_service_id,
+            es.target_timeline, es.budget_expectation,
+            o.name AS company_name, o.industry, o.company_size, o.employee_count, o.office_count,
+            o.location, o.country, o.website,
+            c.name AS contact_name, c.title, c.department, c.email, c.phone, c.whatsapp, c.preferred_channel
+     FROM estimator_sessions es
+     JOIN organizations o ON o.id=es.organization_id
+     JOIN contacts c ON c.id=es.contact_id
+     WHERE es.secure_token_hash=?`,
+  ).get(tokenHash) as any;
+  if (!row) throw new Error('Saved estimator draft not found.');
+
+  const answers = db.prepare(
+    `SELECT q.question_key, a.answer_json
+     FROM estimator_answers a
+     JOIN estimator_questions q ON q.id=a.question_id
+     WHERE a.session_id=?`,
+  ).all(row.id) as Array<{ question_key: string; answer_json: string }>;
+
+  const input: SessionInput = {
+    mode: row.mode,
+    projectName: row.project_name,
+    businessObjectives: safeJson<string[]>(row.business_objectives_json, []),
+    serviceId: row.selected_service_id,
+    targetTimeline: row.target_timeline || undefined,
+    budgetExpectation: row.budget_expectation || undefined,
+    profile: {
+      companyName: row.company_name,
+      industry: row.industry || '',
+      companySize: row.company_size || undefined,
+      employeeCount: row.employee_count == null ? undefined : Number(row.employee_count),
+      officeCount: row.office_count == null ? undefined : Number(row.office_count),
+      location: row.location || undefined,
+      country: row.country || undefined,
+      website: row.website || undefined,
+      contactName: row.contact_name,
+      contactTitle: row.title || undefined,
+      department: row.department || undefined,
+      email: row.email,
+      phone: row.phone || undefined,
+      whatsapp: row.whatsapp || undefined,
+      preferredChannel: row.preferred_channel || undefined,
+    },
+    answers: Object.fromEntries(
+      answers.map((answer) => [answer.question_key, safeJson<unknown>(answer.answer_json, null)]),
+    ),
+  };
+
+  const latestEstimate = db.prepare(
+    `SELECT pe.*, s.name AS service_name
+     FROM project_estimates pe JOIN services s ON s.id=pe.service_id
+     WHERE pe.session_id=? ORDER BY pe.version DESC LIMIT 1`,
+  ).get(row.id) as any;
+
+  return {
+    sessionId: row.id,
+    resumeToken,
+    input,
+    estimate: latestEstimate
+      ? {
+          id: latestEstimate.id,
+          sessionId: latestEstimate.session_id,
+          version: Number(latestEstimate.version),
+          serviceId: latestEstimate.service_id,
+          serviceName: latestEstimate.service_name,
+          complexityIndex: Number(latestEstimate.complexity_index),
+          complexityLevel: latestEstimate.complexity_level,
+          projectSize: latestEstimate.project_size,
+          effortDays: Number(latestEstimate.effort_days),
+          durationMinWeeks: Number(latestEstimate.duration_min_weeks),
+          durationMaxWeeks: Number(latestEstimate.duration_max_weeks),
+          priceMin: Number(latestEstimate.price_min),
+          priceMax: Number(latestEstimate.price_max),
+          readinessScore: Number(latestEstimate.readiness_score),
+          team: safeJson(latestEstimate.team_json, []),
+          factors: safeJson(latestEstimate.factors_json, []),
+          createdAt: latestEstimate.created_at,
+        }
+      : null,
+  };
 }
 
 function levelFromIndex(index: number): ProjectEstimate['complexityLevel'] {
