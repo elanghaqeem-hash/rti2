@@ -9,10 +9,7 @@ export async function GET(
 ) {
   try {
     const { id } = await context.params;
-    const url = new URL(req.url);
-    const headerToken = req.headers.get('x-assessment-token')?.trim() || '';
-    const queryToken = url.searchParams.get('token')?.trim() || '';
-    const token = headerToken || queryToken;
+    const token = req.headers.get('x-assessment-token')?.trim() || '';
 
     const detail = getIsoAssessment(id, token);
     const result = getIsoResults(id, token);
@@ -28,12 +25,20 @@ export async function GET(
         assessment.overallScore == null ? null : Number(assessment.overallScore),
       readinessLevel:
         assessment.readinessLevel == null ? null : String(assessment.readinessLevel),
+      requirementScore:
+        assessment.requirementScore == null ? null : Number(assessment.requirementScore),
+      controlScore:
+        assessment.controlScore == null ? null : Number(assessment.controlScore),
       evidenceScore:
         assessment.evidenceScore == null ? null : Number(assessment.evidenceScore),
       governanceScore:
         assessment.governanceScore == null ? null : Number(assessment.governanceScore),
       auditScore:
         assessment.auditScore == null ? null : Number(assessment.auditScore),
+      stage1Score:
+        assessment.stage1Score == null ? null : Number(assessment.stage1Score),
+      stage2Score:
+        assessment.stage2Score == null ? null : Number(assessment.stage2Score),
       gatesCompleted:
         assessment.gatesCompleted == null ? null : Number(assessment.gatesCompleted),
       gatesTotal: Array.isArray(result.gates) ? result.gates.length : 0,
