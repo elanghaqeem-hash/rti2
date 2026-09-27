@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isAdminRequest } from '@/lib/admin/auth';
 import { calculateLeadScore, type Lead } from '@/lib/scoring/leads';
 import {
   createPersistentLead,
@@ -25,7 +26,7 @@ function databaseUnavailablePayload() {
     leads: [],
     database: {
       connected: false,
-      persistence: 'cloudflare-d1',
+      persistence: 'server-sqlite',
     },
     error:
       'Database production belum tersedia atau migration belum diterapkan. Tidak ada data dummy, sample, fallback, atau penyimpanan sementara yang digunakan.',
@@ -227,7 +228,7 @@ export async function POST(req: Request) {
         },
         database: {
           connected: true,
-          persistence: 'cloudflare-d1',
+          persistence: 'server-sqlite',
         },
       },
       {
@@ -250,7 +251,14 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!isAdminRequest(req)) {
+    return NextResponse.json(
+      { success: false, error: 'Admin authentication required.' },
+      { status: 401, headers: NO_STORE_HEADERS },
+    );
+  }
+
   try {
     const leads = await listPersistentLeads(500);
 
@@ -260,7 +268,7 @@ export async function GET() {
         leads,
         database: {
           connected: true,
-          persistence: 'cloudflare-d1',
+          persistence: 'server-sqlite',
         },
       },
       {
