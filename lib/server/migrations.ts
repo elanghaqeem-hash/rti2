@@ -7,6 +7,7 @@ const MIGRATIONS = [
   '0002_system_parameters.sql',
   '0003_iso27001_readiness.sql',
   '0004_iso27001_rules.sql',
+  '0005_iso27001_evidence_rules.sql',
 ] as const;
 
 export interface MigrationStatus {
