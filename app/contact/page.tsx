@@ -235,7 +235,7 @@ export default function ContactPage() {
                       Inquiry Received Successfully
                     </h3>
                     <p className="text-xs sm:text-sm text-navy-700 max-w-md mx-auto">
-                      Thank you. A formal notification has been sent to our enterprise team ({BRAND_CONFIG.contact.email}). We will review your requirements and reach out promptly.
+                      Thank you. Your inquiry has been accepted by the secure lead service. The RTI team will review the submitted requirements and follow up through the contact channel you provided.
                     </p>
                     <div className="pt-2">
                       <button
