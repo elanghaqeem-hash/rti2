@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { BRAND_CONFIG } from '@/lib/config/contact';
+import { useParameterGroups } from '@/components/parameters/useParameterOptions';
 import {
   GraduationCap,
   Clock,
@@ -77,11 +78,20 @@ export default function TrainingPage() {
     company: '',
     email: '',
     whatsapp: '',
+    sector: 'enterprise_other',
     pax: '1',
     consent: false,
   });
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const parameterGroups = useParameterGroups([
+    'training.categories',
+    'training.pax',
+    'contact.sectors',
+  ]);
+  const categoryOptions = parameterGroups['training.categories'] || [];
+  const paxOptions = parameterGroups['training.pax'] || [];
+  const sectorOptions = parameterGroups['contact.sectors'] || [];
 
   const filteredCourses = COURSES.filter((c) => {
     if (selectedCategory === 'ALL') return true;
@@ -108,6 +118,7 @@ export default function TrainingPage() {
           company: formData.company,
           email: formData.email,
           whatsapp: formData.whatsapp,
+          sector: formData.sector,
           needSummary: `Registrasi Training: ${registeredCourse?.title} (Jumlah Peserta: ${formData.pax})`,
           consent: formData.consent,
         }),
@@ -148,17 +159,17 @@ export default function TrainingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           {/* Category Filter Pills */}
           <div className="flex flex-wrap items-center gap-2 justify-center">
-            {['ALL', 'Cybersecurity Awareness', 'Secure Coding', 'ISO Awareness', 'IT Governance'].map((cat) => (
+            {categoryOptions.map((cat) => (
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                key={cat.value}
+                onClick={() => setSelectedCategory(cat.value)}
                 className={`px-4 py-2 rounded-full text-xs font-bold transition ${
-                  selectedCategory === cat
+                  selectedCategory === cat.value
                     ? 'bg-navy-900 text-white shadow'
                     : 'bg-white text-navy-700 border border-line hover:border-gold-500/50'
                 }`}
               >
-                {cat === 'ALL' ? 'All Programs' : cat}
+                {cat.label}
               </button>
             ))}
           </div>
@@ -305,16 +316,29 @@ export default function TrainingPage() {
                   </div>
 
                   <div>
+                    <label className="block text-xs font-bold text-navy-900 mb-1">Sektor / Industri *</label>
+                    <select
+                      required
+                      value={formData.sector}
+                      onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg border border-line text-xs bg-white"
+                    >
+                      {sectorOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
                     <label className="block text-xs font-bold text-navy-900 mb-1">Perkiraan Jumlah Peserta (Pax)</label>
                     <select
                       value={formData.pax}
                       onChange={(e) => setFormData({ ...formData, pax: e.target.value })}
                       className="w-full px-3 py-2 rounded-lg border border-line text-xs bg-white"
                     >
-                      <option value="1">1 Peserta (Individu / Public Schedule)</option>
-                      <option value="2-5">2 – 5 Peserta (Small Squad)</option>
-                      <option value="6-15">6 – 15 Peserta (In-House Department)</option>
-                      <option value="15+">Lebih dari 15 Peserta (Corporate-Wide)</option>
+                      {paxOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
 
