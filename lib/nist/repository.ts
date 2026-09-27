@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { getDatabase } from '@/lib/server/database';
 import type {
   NistAnswerInput,
@@ -13,6 +13,10 @@ import type {
 
 const SCORING_MODEL_VERSION = 'SCORE-2026.1';
 const RECOMMENDATION_VERSION = 'REC-2026.1';
+
+function hashAccessToken(token: string) {
+  return createHash('sha256').update(token).digest('hex');
+}
 
 function num(value: unknown, fallback = 0) {
   const parsed = Number(value);
@@ -193,15 +197,17 @@ export function createNistAssessment(params: {
   assessmentType: NistAssessmentType;
   consentVersion: string;
   organizationId?: string;
-}): NistAssessmentRecord {
+}): { assessment: NistAssessmentRecord; accessToken: string } {
   const config = getNistAssessmentConfig();
   const db = getDatabase();
   const id = randomUUID();
+  const accessToken = randomBytes(32).toString('base64url');
+  const accessTokenHash = hashAccessToken(accessToken);
   const now = new Date().toISOString();
 
   db.prepare(
     `INSERT INTO nist_assessments (
-      id, organization_id, company_name, industry, company_size,
+      id, access_token_hash, organization_id, company_name, industry, company_size,
       employee_count, it_user_count, country, region, location_count, website,
       technology_context_json, respondent_name, respondent_title, respondent_department,
       respondent_email, respondent_phone, consent_version, consent_at,
@@ -251,7 +257,21 @@ export function createNistAssessment(params: {
     },
   });
 
-  return getNistAssessment(id);
+  return { assessment: getNistAssessment(id), accessToken };
+}
+
+export function verifyNistAssessmentToken(id: string, token: string | undefined | null) {
+  if (!id || !token) return false;
+  const db = getDatabase();
+  const row = db.prepare(
+    'SELECT access_token_hash FROM nist_assessments WHERE id = ?',
+  ).get(id) as { access_token_hash?: string } | undefined;
+  if (!row?.access_token_hash) return false;
+
+  const expected = Buffer.from(String(row.access_token_hash), 'utf8');
+  const actual = Buffer.from(hashAccessToken(token), 'utf8');
+  if (expected.length !== actual.length) return false;
+  return timingSafeEqual(expected, actual);
 }
 
 export function getNistAssessment(id: string): NistAssessmentRecord {
