@@ -1044,7 +1044,7 @@ export default function PdpReadinessClient() {
               return (
                 <div key={String(label)} className="rounded-2xl border border-line bg-white p-5 shadow-sm">
                   <I className="h-5 w-5 text-gold-600" />
-                  <div className="mt-3 text-[10px] font-bold uppercase tracking-wider text-muted">{label}</div>
+                  <div className="mt-3 text-[10px] font-bold uppercase tracking-wider text-muted">{String(label)}</div>
                   <div className="mt-1 text-xl font-black text-navy-900">{String(value)}</div>
                 </div>
               );
