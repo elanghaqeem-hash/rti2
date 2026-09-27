@@ -13,13 +13,28 @@ test('Security readiness: environment secrets are ignored while .env.example sta
   assert.match(gitignore, /^!\.env\.example$/m);
 });
 
-test('Security readiness: admin and lead-read routes are protected by middleware', () => {
+test('Security readiness: admin pages use signed session authentication', () => {
   const middleware = read('middleware.ts');
-  assert.match(middleware, /ADMIN_USERNAME/);
-  assert.match(middleware, /ADMIN_PASSWORD/);
-  assert.match(middleware, /\/admin\/:path\*/);
-  assert.match(middleware, /\/api\/leads/);
-  assert.match(middleware, /WWW-Authenticate/);
+  const layout = read('app/admin/layout.tsx');
+  const auth = read('lib/admin/auth.ts');
+
+  assert.match(middleware, /rti_admin_session/);
+  assert.match(middleware, /\/admin-access/);
+  assert.match(layout, /verifyAdminSession/);
+  assert.match(auth, /ADMIN_SESSION_SECRET/);
+  assert.match(auth, /createHmac/);
+  assert.match(auth, /timingSafeEqual/);
+});
+
+test('Security readiness: admin APIs require authenticated admin sessions', () => {
+  const parameterApi = read('app/api/admin/parameters/route.ts');
+  const systemApi = read('app/api/admin/system/setup/route.ts');
+  const leadApi = read('app/api/leads/route.ts');
+
+  assert.match(parameterApi, /isAdminRequest/);
+  assert.match(systemApi, /isAdminRequest/);
+  assert.match(leadApi, /isAdminRequest/);
+  assert.doesNotMatch(parameterApi, /x-rti-admin-token/i);
 });
 
 test('Security readiness: public compute APIs use rate limiting', () => {
@@ -51,13 +66,11 @@ test('Security readiness: passive scanner never follows redirects automatically'
   assert.match(scanner, /redirect:\s*['"]manual['"]/);
 });
 
-test('Build readiness: production build pins tooling and never bypasses dependency checks with --force', () => {
+test('Build readiness: standard Node production build does not bypass dependency checks', () => {
   const packageJson = JSON.parse(read('package.json'));
+  assert.equal(packageJson.scripts.build, 'next build');
+  assert.equal(packageJson.scripts.dev, 'next dev');
   assert.doesNotMatch(packageJson.scripts.build, /--force/);
-  assert.match(packageJson.scripts.build, /--no-save/);
-  assert.match(packageJson.scripts.build, /--package-lock=false/);
-  assert.match(packageJson.scripts.build, /@opennextjs\/cloudflare@1\.20\.6/);
-  assert.match(packageJson.scripts.build, /wrangler@4\.141\.0/);
 });
 
 test('Dependency hardening: Next nested PostCSS is overridden to a patched line', () => {
@@ -65,24 +78,27 @@ test('Dependency hardening: Next nested PostCSS is overridden to a patched line'
   assert.equal(packageJson.overrides?.next?.postcss, '8.5.28');
 });
 
-
-test('Data readiness: lead persistence uses Cloudflare D1 with prepared statements', () => {
+test('Data readiness: lead persistence uses the server database with prepared statements', () => {
   const repository = read('lib/data/lead-repository.ts');
+  const database = read('lib/server/database.ts');
   const leadApi = read('app/api/leads/route.ts');
   const migration = read('migrations/0001_leads.sql');
 
-  assert.match(repository, /getCloudflareContext/);
-  assert.match(repository, /RTI_DB/);
+  assert.match(database, /node:sqlite/);
+  assert.match(database, /RTI_DB_PATH/);
   assert.match(repository, /\.prepare\(/);
-  assert.match(repository, /\.bind\(/);
+  assert.match(repository, /\.run\(/);
+  assert.match(repository, /\.all\(/);
   assert.match(leadApi, /createPersistentLead/);
   assert.match(leadApi, /listPersistentLeads/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS leads/i);
   assert.doesNotMatch(migration, /INSERT\s+INTO\s+leads/i);
 });
 
-test('Data readiness: D1 migration records consent and lead lifecycle fields', () => {
-  const migration = read('migrations/0001_leads.sql');
+test('Data readiness: migrations record consent, lead lifecycle and parameter registry fields', () => {
+  const leadMigration = read('migrations/0001_leads.sql');
+  const parameterMigration = read('migrations/0002_system_parameters.sql');
+
   for (const column of [
     'created_at',
     'source',
@@ -92,8 +108,23 @@ test('Data readiness: D1 migration records consent and lead lifecycle fields', (
     'consent_at',
     'consent_version',
   ]) {
-    assert.match(migration, new RegExp(`\\b${column}\\b`, 'i'));
+    assert.match(leadMigration, new RegExp(`\\b${column}\\b`, 'i'));
   }
+
+  assert.match(parameterMigration, /CREATE TABLE IF NOT EXISTS system_parameters/i);
+  assert.match(parameterMigration, /group_key/i);
+  assert.match(parameterMigration, /is_active/i);
+});
+
+test('Admin readiness: database migrations are executable only through protected admin setup API', () => {
+  const setupApi = read('app/api/admin/system/setup/route.ts');
+  const migrations = read('lib/server/migrations.ts');
+
+  assert.match(setupApi, /isAdminRequest/);
+  assert.match(setupApi, /applyPendingMigrations/);
+  assert.match(migrations, /0001_leads\.sql/);
+  assert.match(migrations, /0002_system_parameters\.sql/);
+  assert.match(migrations, /schema_migrations/);
 });
 
 test('Security readiness: lead CSV export neutralizes spreadsheet formulas', () => {
@@ -101,10 +132,4 @@ test('Security readiness: lead CSV export neutralizes spreadsheet formulas', () 
   assert.match(adminPage, /function csvCell/);
   assert.match(adminPage, /\^\[=\+\\-@/);
   assert.match(adminPage, /replace\(\/"\/g/);
-});
-
-test('Developer readiness: local dev installs the same pinned OpenNext adapter used by build', () => {
-  const packageJson = JSON.parse(read('package.json'));
-  assert.match(packageJson.scripts.dev, /@opennextjs\/cloudflare@1\.20\.6/);
-  assert.match(packageJson.scripts.dev, /wrangler@4\.141\.0/);
 });
