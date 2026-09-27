@@ -287,9 +287,8 @@ export default function AdminParametersPage() {
                         <label className="mb-1 block text-[10px] font-bold uppercase text-muted">Value / Key</label>
                         <input
                           value={row.value}
-                          readOnly={row.system}
-                          onChange={(event) => updateLocal(row.value, { value: event.target.value })}
-                          className="w-full rounded-lg border border-line bg-grey-50 px-3 py-2 text-xs font-mono read-only:cursor-not-allowed"
+                          readOnly
+                          className="w-full cursor-not-allowed rounded-lg border border-line bg-grey-50 px-3 py-2 text-xs font-mono"
                         />
                       </div>
                       <div className="sm:col-span-6">
