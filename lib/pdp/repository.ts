@@ -433,6 +433,31 @@ export function savePdpResult(
   return true;
 }
 
+export function listPdpEvidenceStorageNames(
+  assessmentId: string,
+  token: string,
+) {
+  if (!verifyPdpAssessmentAccess(assessmentId, token)) return null;
+  const db = getDatabase();
+  return db.prepare(
+    `SELECT stored_name AS storedName
+     FROM pdp_evidences
+     WHERE assessment_id = ? AND deleted_at IS NULL`,
+  ).all(assessmentId) as Array<{ storedName: string }>;
+}
+
+export function deletePdpAssessment(
+  assessmentId: string,
+  token: string,
+) {
+  if (!verifyPdpAssessmentAccess(assessmentId, token)) return false;
+  const db = getDatabase();
+  const result = db.prepare(
+    'DELETE FROM pdp_assessments WHERE id = ?',
+  ).run(assessmentId);
+  return Number(result.changes) > 0;
+}
+
 export function logPdpEvent(
   assessmentId: string,
   action: string,
