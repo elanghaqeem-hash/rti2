@@ -400,6 +400,7 @@ INSERT OR IGNORE INTO estimator_settings (key,label,value,is_public,updated_at) 
 ('rfq_prefix','RFQ number prefix','RTI-RFQ',0,CURRENT_TIMESTAMP),
 ('public_disclaimer','Public estimator disclaimer','This estimate is indicative and is generated based on information submitted by the user and configurable project estimation parameters. It is not a binding commercial offer. Final pricing, scope, timeline, technical architecture, resource allocation, tax treatment and contractual terms are subject to RTI review and formal quotation.',1,CURRENT_TIMESTAMP),
 ('whatsapp_number','RTI WhatsApp destination','',0,CURRENT_TIMESTAMP),
+('whatsapp_url','RTI WhatsApp public URL','',1,CURRENT_TIMESTAMP),
 ('whatsapp_message_template','WhatsApp RFQ message','Hello RTI, I have completed Project Estimator. My RFQ reference is {{rfq_number}}. I would like to discuss the project.',1,CURRENT_TIMESTAMP),
 ('internal_rfq_email','Internal RFQ notification email','',0,CURRENT_TIMESTAMP);
 
@@ -410,7 +411,7 @@ INSERT OR IGNORE INTO estimator_notification_templates (key,channel,subject,body
 INSERT OR IGNORE INTO estimator_rules (id,service_id,name,condition_json,effects_json,sort_order,is_active,updated_at) VALUES
 ('rule-vapt-large-auth','svc-vapt','Large authenticated VAPT scope','[{"field":"asset_volume","operator":"equals","value":"large"},{"field":"test_method","operator":"equals","value":"grey"}]','{"complexityDelta":8,"effortMultiplier":1.15,"priceMultiplier":1.10,"factor":"Large authenticated attack surface"}',10,1,CURRENT_TIMESTAMP),
 ('rule-dev-complex-integration','svc-webapp','Complex application integrations','[{"field":"integration_complexity","operator":"equals","value":"high"}]','{"complexityDelta":10,"effortMultiplier":1.20,"priceMultiplier":1.15,"factor":"Complex enterprise integrations"}',20,1,CURRENT_TIMESTAMP),
-('rule-accelerated',NULL,'Accelerated delivery pressure','[{"field":"timeline_pressure","operator":"equals","value":"accelerated"}]','{"complexityDelta":8,"effortMultiplier":1.10,"priceMultiplier":1.15,"durationMultiplier":0.85,"factor":"Accelerated delivery timeline"}',30,0,CURRENT_TIMESTAMP);
+('rule-accelerated',NULL,'Accelerated delivery pressure','[{"field":"timeline_pressure","operator":"equals","value":"accelerated"}]','{"complexityDelta":8,"effortMultiplier":1.10,"priceMultiplier":1.15,"durationMultiplier":0.85,"factor":"Accelerated delivery timeline"}',30,1,CURRENT_TIMESTAMP);
 
 INSERT OR IGNORE INTO resource_roles (id,role_key,name,internal_day_rate,is_active,updated_at) VALUES
 ('role-pm','project_manager','Project Manager',NULL,1,CURRENT_TIMESTAMP),
