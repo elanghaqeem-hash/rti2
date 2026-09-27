@@ -1,6 +1,6 @@
 ﻿# Auto-push script for PowerShell
-Write-Host "Auto-push watcher aktif untuk RTI 2..." -ForegroundColor Cyan
-Write-Host "Setiap perubahan file akan otomatis di-commit & push ke GitHub dalam 3 detik." -ForegroundColor Gray
+Write-Host "RTI sync watcher aktif dalam mode aman." -ForegroundColor Cyan
+Write-Host "Auto-push hanya berjalan bila RTI_ALLOW_AUTO_PUSH=YES dan branch bukan main/master." -ForegroundColor Gray
 
 $watcher = New-Object System.IO.FileSystemWatcher
 $watcher.Path = $PSScriptRoot
@@ -29,13 +29,24 @@ $action = {
         if ($script:syncing) { return }
         $script:syncing = $true
         try {
+            if ($env:RTI_ALLOW_AUTO_PUSH -ne "YES") {
+                Write-Host "[Auto-Sync] Push dilewati: set RTI_ALLOW_AUTO_PUSH=YES untuk opt-in eksplisit." -ForegroundColor Gray
+                return
+            }
+
+            $branch = (git branch --show-current).Trim()
+            if ($branch -eq "main" -or $branch -eq "master") {
+                Write-Host "[Auto-Sync] DIBLOKIR: auto-push ke branch production tidak diizinkan." -ForegroundColor Red
+                return
+            }
+
             $status = git status --porcelain
             if ($status) {
                 Write-Host "`n[Auto-Sync] Perubahan terdeteksi. Menyimpan & mem-push ke GitHub..." -ForegroundColor Yellow
                 git add .
                 $dateStr = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
                 git commit -m "Auto update: $dateStr"
-                git push origin main
+                git push origin $branch
                 Write-Host "[Auto-Sync] Berhasil ter-push ke GitHub!`n" -ForegroundColor Green
             }
         } finally {
