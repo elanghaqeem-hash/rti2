@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateAiWithFailover } from '@/lib/ai/provider-router';
-import { loadPdpAssessment } from '@/lib/pdp/repository';
+import { getPdpAiPrompt, loadPdpAssessment } from '@/lib/pdp/repository';
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/security/request-protection';
 
 export const runtime = 'nodejs';
@@ -132,6 +132,7 @@ export async function POST(req: Request) {
       ],
     };
 
+    const configuredPrompt = getPdpAiPrompt('executive-analysis');
     const ai = await generateAiWithFailover({
       messages: [
         {
@@ -140,7 +141,10 @@ export async function POST(req: Request) {
             'Buat executive privacy analysis berdasarkan assessment context. Jangan menambah fakta regulasi di luar context.',
         },
       ],
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt:
+        SYSTEM_PROMPT +
+        '\n\nADMIN-MANAGED ANALYSIS INSTRUCTION\n' +
+        (configuredPrompt?.promptText || 'Prioritize material gaps and actionable remediation.'),
       contextText: JSON.stringify(context),
     });
 
