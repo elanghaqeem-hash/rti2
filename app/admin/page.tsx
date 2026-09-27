@@ -87,6 +87,17 @@ const PROVIDER_LABELS: Record<ProviderId, string> = {
   xai: 'xAI Grok',
 };
 
+const PROVIDER_DEFAULT_MODELS: Record<ProviderId, string> = {
+  anthropic: 'claude-3-5-sonnet-20241022',
+  openai: 'gpt-4.1-mini',
+  gemini: 'gemini-2.0-flash',
+  groq: 'llama-3.3-70b-versatile',
+  openrouter: 'openai/gpt-4.1-mini',
+  deepseek: 'deepseek-flash',
+  mistral: 'mistral-large-latest',
+  xai: 'grok-4.7',
+};
+
 const TABS = [
   { id: 'cms', label: 'CMS', icon: FileText },
   { id: 'ai', label: 'AI & API', icon: Bot },
@@ -107,9 +118,12 @@ export default function AdminControlCenterPage() {
   const [activeTab, setActiveTab] = useState<TabId>('cms');
   const [settings, setSettings] = useState<ClientSettings | null>(null);
   const [storage, setStorage] = useState<StorageStatus | null>(null);
-  const [apiSecrets, setApiSecrets] = useState<
-    Partial<Record<ProviderId, string>>
-  >({});
+  const [selectedAiProvider, setSelectedAiProvider] =
+    useState<ProviderId>('openai');
+  const [selectedAiApiKey, setSelectedAiApiKey] = useState('');
+  const [selectedAiModel, setSelectedAiModel] = useState(
+    PROVIDER_DEFAULT_MODELS.openai,
+  );
   const [smtpPassword, setSmtpPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -240,9 +254,6 @@ export default function AdminControlCenterPage() {
           {
             enabled: provider.enabled,
             model: provider.model,
-            ...(apiSecrets[id as ProviderId]?.trim()
-              ? { apiKey: apiSecrets[id as ProviderId]!.trim() }
-              : {}),
           },
         ]),
       );
@@ -280,7 +291,6 @@ export default function AdminControlCenterPage() {
 
       setSettings(data.settings);
       setStorage(data.storage);
-      setApiSecrets({});
       setSmtpPassword('');
       setMessage('Konfigurasi berhasil disimpan dan aktif.');
     } catch (saveError) {
@@ -288,6 +298,68 @@ export default function AdminControlCenterPage() {
         saveError instanceof Error
           ? saveError.message
           : 'Gagal menyimpan konfigurasi.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveSelectedAiProvider() {
+    if (!settings) return;
+
+    const apiKey = selectedAiApiKey.trim();
+    const model = selectedAiModel.trim();
+
+    if (!apiKey) {
+      setError('Masukkan API Key untuk provider AI yang dipilih.');
+      setMessage('');
+      return;
+    }
+
+    if (!model) {
+      setError('Model AI tidak boleh kosong.');
+      setMessage('');
+      return;
+    }
+
+    setSaving(true);
+    setMessage('');
+    setError('');
+
+    try {
+      const response = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ai: {
+            providers: {
+              [selectedAiProvider]: {
+                enabled: true,
+                model,
+                apiKey,
+              },
+            },
+          },
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || 'Gagal menyimpan API AI.');
+      }
+
+      setSettings(data.settings);
+      setStorage(data.storage);
+      setSelectedAiApiKey('');
+      setMessage(
+        PROVIDER_LABELS[selectedAiProvider] +
+          ' berhasil dikonfigurasi dan diaktifkan.',
+      );
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : 'Gagal menyimpan API AI.',
       );
     } finally {
       setSaving(false);
@@ -605,8 +677,128 @@ export default function AdminControlCenterPage() {
                       AI & API Provider
                     </h2>
                     <p className="text-xs text-slate-500 mt-1">
-                      Urutan di bawah adalah primary lalu backup. Chatbot akan
-                      failover otomatis ke provider berikutnya.
+                      Pilih jenis AI, masukkan API Key, lalu simpan. Provider
+                      akan langsung diaktifkan dan dapat digunakan dalam
+                      mekanisme failover.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-gold-300 bg-gold-50/50 p-5">
+                    <div className="flex items-start gap-3 mb-5">
+                      <div className="w-10 h-10 rounded-xl bg-navy-900 text-gold-300 flex items-center justify-center shrink-0">
+                        <KeyRound className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-extrabold text-navy-900">
+                          Konfigurasi Cepat API AI
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Cukup pilih provider AI dan masukkan API Key. Model
+                          default sudah disiapkan dan masih dapat diganti.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid lg:grid-cols-[1fr_1fr_1.5fr_auto] gap-4 items-end">
+                      <label>
+                        <FieldLabel>Jenis AI</FieldLabel>
+                        <select
+                          value={selectedAiProvider}
+                          onChange={(e) => {
+                            const id = e.target.value as ProviderId;
+                            setSelectedAiProvider(id);
+                            setSelectedAiModel(
+                              settings.ai.providers[id]?.model ||
+                                PROVIDER_DEFAULT_MODELS[id],
+                            );
+                            setSelectedAiApiKey('');
+                          }}
+                          className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-bold text-navy-900"
+                        >
+                          {(Object.keys(PROVIDER_LABELS) as ProviderId[]).map(
+                            (id) => (
+                              <option key={id} value={id}>
+                                {PROVIDER_LABELS[id]}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      </label>
+
+                      <label>
+                        <FieldLabel>Model AI</FieldLabel>
+                        <input
+                          value={selectedAiModel}
+                          onChange={(e) => setSelectedAiModel(e.target.value)}
+                          placeholder="Nama model"
+                          className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-mono"
+                        />
+                      </label>
+
+                      <label>
+                        <FieldLabel>API Key</FieldLabel>
+                        <input
+                          type="password"
+                          value={selectedAiApiKey}
+                          onChange={(e) => setSelectedAiApiKey(e.target.value)}
+                          placeholder={
+                            settings.ai.providers[selectedAiProvider]
+                              ?.apiKeyConfigured
+                              ? 'API key tersimpan •••••••• — isi untuk mengganti'
+                              : 'Masukkan API key'
+                          }
+                          autoComplete="new-password"
+                          className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-mono"
+                        />
+                      </label>
+
+                      <button
+                        onClick={saveSelectedAiProvider}
+                        disabled={
+                          saving ||
+                          !storage?.configured ||
+                          !selectedAiApiKey.trim()
+                        }
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy-900 text-white px-5 py-3 text-xs font-extrabold hover:bg-navy-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {saving ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4" />
+                        )}
+                        Simpan & Aktifkan
+                      </button>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px]">
+                      <span
+                        className={
+                          'rounded-full px-2.5 py-1 font-bold ' +
+                          (settings.ai.providers[selectedAiProvider]
+                            ?.apiKeyConfigured
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-slate-200 text-slate-600')
+                        }
+                      >
+                        {settings.ai.providers[selectedAiProvider]
+                          ?.apiKeyConfigured
+                          ? 'API Key sudah tersimpan'
+                          : 'API Key belum dikonfigurasi'}
+                      </span>
+                      <span className="text-slate-500">
+                        Secret disimpan terenkripsi dan tidak pernah ditampilkan
+                        kembali.
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <h3 className="text-sm font-extrabold text-navy-900">
+                      Daftar Provider & Prioritas Failover
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Atur provider primary/backup, model aktif, serta lakukan
+                      tes koneksi setelah API Key disimpan.
                     </p>
                   </div>
 
@@ -683,25 +875,6 @@ export default function AdminControlCenterPage() {
                               className="flex-1 min-w-48 rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-mono"
                             />
 
-                            <div className="flex-1 min-w-56">
-                              <input
-                                type="password"
-                                value={apiSecrets[id] || ''}
-                                onChange={(e) =>
-                                  setApiSecrets((current) => ({
-                                    ...current,
-                                    [id]: e.target.value,
-                                  }))
-                                }
-                                placeholder={
-                                  provider.apiKeyConfigured
-                                    ? 'API key tersimpan ••••••••'
-                                    : 'Masukkan API key'
-                                }
-                                className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-mono"
-                              />
-                            </div>
-
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={() => moveProvider(id, -1)}
@@ -740,8 +913,9 @@ export default function AdminControlCenterPage() {
 
                   <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600 flex items-start gap-2">
                     <KeyRound className="w-4 h-4 mt-0.5 shrink-0" />
-                    API key lama tidak pernah ditampilkan kembali. Isi field
-                    secret hanya bila ingin mengganti key provider tersebut.
+                    Untuk menambah atau mengganti API Key, gunakan menu
+                    “Konfigurasi Cepat API AI” di atas. API key lama tidak
+                    pernah ditampilkan kembali ke browser.
                   </div>
                 </div>
               )}
