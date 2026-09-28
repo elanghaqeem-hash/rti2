@@ -1,8 +1,8 @@
 import type { Lead } from '@/lib/scoring/leads';
 import {
-  DatabaseUnavailableError,
-  getDatabase,
-} from '@/lib/server/database';
+  getRuntimeDatabase,
+  RuntimeDatabaseUnavailableError,
+} from '@/lib/server/runtime-database';
 
 type LeadRow = {
   id: string;
@@ -49,11 +49,11 @@ function rowToLead(row: LeadRow): Lead {
   };
 }
 
-function leadDatabase() {
+async function leadDatabase() {
   try {
-    return getDatabase();
+    return await getRuntimeDatabase();
   } catch (error) {
-    if (error instanceof DatabaseUnavailableError) {
+    if (error instanceof RuntimeDatabaseUnavailableError) {
       throw new LeadDatabaseUnavailableError(error.message);
     }
     throw error;
@@ -62,29 +62,27 @@ function leadDatabase() {
 
 export async function createPersistentLead(lead: Lead): Promise<Lead> {
   try {
-    const database = leadDatabase();
+    const database = await leadDatabase();
 
-    database
-      .prepare(
-        `INSERT INTO leads (
-          id,
-          created_at,
-          source,
-          tool_slug,
-          name,
-          role,
-          company,
-          sector,
-          email,
-          whatsapp,
-          need_summary,
-          score,
-          status,
-          consent_at,
-          consent_version
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
+    await database.run(
+      `INSERT INTO leads (
+        id,
+        created_at,
+        source,
+        tool_slug,
+        name,
+        role,
+        company,
+        sector,
+        email,
+        whatsapp,
+        need_summary,
+        score,
+        status,
+        consent_at,
+        consent_version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
         lead.id,
         lead.createdAt,
         lead.source,
@@ -100,7 +98,8 @@ export async function createPersistentLead(lead: Lead): Promise<Lead> {
         lead.status,
         lead.consentAt,
         lead.consentVersion,
-      );
+      ],
+    );
 
     return lead;
   } catch (error) {
@@ -113,32 +112,31 @@ export async function createPersistentLead(lead: Lead): Promise<Lead> {
 
 export async function listPersistentLeads(limit = 500): Promise<Lead[]> {
   try {
-    const database = leadDatabase();
+    const database = await leadDatabase();
     const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 1000);
 
-    const rows = database
-      .prepare(
-        `SELECT
-          id,
-          created_at,
-          source,
-          tool_slug,
-          name,
-          role,
-          company,
-          sector,
-          email,
-          whatsapp,
-          need_summary,
-          score,
-          status,
-          consent_at,
-          consent_version
-        FROM leads
-        ORDER BY created_at DESC
-        LIMIT ?`,
-      )
-      .all(safeLimit) as LeadRow[];
+    const rows = await database.queryAll<LeadRow>(
+      `SELECT
+        id,
+        created_at,
+        source,
+        tool_slug,
+        name,
+        role,
+        company,
+        sector,
+        email,
+        whatsapp,
+        need_summary,
+        score,
+        status,
+        consent_at,
+        consent_version
+      FROM leads
+      ORDER BY created_at DESC
+      LIMIT ?`,
+      [safeLimit],
+    );
 
     return rows.map(rowToLead);
   } catch (error) {
@@ -151,8 +149,8 @@ export async function listPersistentLeads(limit = 500): Promise<Lead[]> {
 
 export async function checkLeadDatabase(): Promise<boolean> {
   try {
-    const database = leadDatabase();
-    const row = database.prepare('SELECT 1 AS ok').get() as { ok?: number } | undefined;
+    const database = await leadDatabase();
+    const row = await database.queryOne<{ ok?: number }>('SELECT 1 AS ok');
     return row?.ok === 1;
   } catch {
     return false;

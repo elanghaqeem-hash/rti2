@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import {
-  createFinderAssessmentSession,
-  FinderDatabaseUnavailableError,
-  getFinderConfig,
-  getFinderDraft,
-  saveFinderDraft,
-} from '@/lib/enterprise-finder/repository';
+  createFinderAssessmentSessionRuntime,
+  FinderRuntimeDatabaseUnavailableError,
+  getFinderConfigRuntime,
+  getFinderDraftRuntime,
+  saveFinderDraftRuntime,
+} from '@/lib/enterprise-finder/runtime-repository';
 import {
   enforceRateLimit,
   rateLimitHeaders,
@@ -24,7 +24,7 @@ function normalizeLocale(value: unknown): FinderLocale {
 }
 
 function failure(error: unknown, headers: Record<string, string> = {}) {
-  const unavailable = error instanceof FinderDatabaseUnavailableError;
+  const unavailable = error instanceof FinderRuntimeDatabaseUnavailableError;
   const invalidToken =
     error instanceof Error && error.message === 'invalid-assessment-token';
 
@@ -34,7 +34,7 @@ function failure(error: unknown, headers: Record<string, string> = {}) {
       error: invalidToken
         ? 'Assessment token tidak valid.'
         : unavailable
-          ? 'Database Enterprise Solution Finder belum siap. Jalankan pending migration melalui Admin System Setup.'
+          ? 'Enterprise Solution Finder sedang dalam proses aktivasi. Silakan coba kembali beberapa saat lagi.'
           : 'Assessment session tidak dapat diproses.',
     },
     {
@@ -57,7 +57,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const draft = getFinderDraft(assessmentId, token);
+    const draft = await getFinderDraftRuntime(assessmentId, token);
     return NextResponse.json(
       { success: true, draft },
       { headers: NO_STORE },
@@ -95,8 +95,8 @@ export async function POST(req: Request) {
 
   try {
     const locale = normalizeLocale(body?.locale);
-    const config = getFinderConfig(locale);
-    const session = createFinderAssessmentSession({
+    const config = await getFinderConfigRuntime(locale);
+    const session = await createFinderAssessmentSessionRuntime({
       locale,
       questionnaireVersion: config.questionnaireVersion,
       scoringVersion: config.scoringVersion,
@@ -155,7 +155,7 @@ export async function PUT(req: Request) {
   }
 
   try {
-    const saved = saveFinderDraft(assessmentId, token, input);
+    const saved = await saveFinderDraftRuntime(assessmentId, token, input);
     return NextResponse.json(
       { success: true, savedAt: saved.savedAt },
       { headers: { ...NO_STORE, ...headers } },

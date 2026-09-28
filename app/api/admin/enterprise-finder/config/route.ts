@@ -4,10 +4,10 @@ import {
   isAdminRequest,
 } from '@/lib/admin/auth';
 import {
-  FinderAdminDatabaseUnavailableError,
-  getFinderAdminConfig,
-  upsertFinderAdminEntity,
-} from '@/lib/enterprise-finder/admin-repository';
+  FinderAdminRuntimeDatabaseUnavailableError,
+  getFinderAdminConfigRuntime,
+  upsertFinderAdminEntityRuntime,
+} from '@/lib/enterprise-finder/runtime-admin-repository';
 
 export const runtime = 'nodejs';
 
@@ -36,7 +36,7 @@ export async function GET(req: Request) {
     return NextResponse.json(
       {
         success: true,
-        config: getFinderAdminConfig(),
+        config: await getFinderAdminConfigRuntime(),
         database: { connected: true },
       },
       { headers: NO_STORE },
@@ -48,7 +48,7 @@ export async function GET(req: Request) {
         config: null,
         database: { connected: false },
         error:
-          error instanceof FinderAdminDatabaseUnavailableError
+          error instanceof FinderAdminRuntimeDatabaseUnavailableError
             ? 'Database Enterprise Solution Finder belum diinisialisasi.'
             : 'Konfigurasi Enterprise Solution Finder tidak dapat dimuat.',
       },
@@ -87,7 +87,7 @@ export async function PUT(req: Request) {
   }
 
   try {
-    const result = upsertFinderAdminEntity({
+    const result = await upsertFinderAdminEntityRuntime({
       entityType,
       payload,
       actor: session.sub,
@@ -103,7 +103,7 @@ export async function PUT(req: Request) {
       {
         success: false,
         error:
-          error instanceof FinderAdminDatabaseUnavailableError
+          error instanceof FinderAdminRuntimeDatabaseUnavailableError
             ? 'Database Enterprise Solution Finder belum diinisialisasi.'
             : error instanceof Error
               ? `Konfigurasi tidak dapat disimpan: ${error.message}`

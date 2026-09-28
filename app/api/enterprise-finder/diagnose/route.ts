@@ -2,14 +2,15 @@ import { NextResponse } from 'next/server';
 import { generateAiWithFailover } from '@/lib/ai/provider-router';
 import { diagnoseEnterpriseFinder } from '@/lib/enterprise-finder/engine';
 import {
-  completeFinderAssessment,
-  FinderDatabaseUnavailableError,
-  getFinderConfig,
-  getFinderEngineData,
-} from '@/lib/enterprise-finder/repository';
+  completeFinderAssessmentRuntime,
+  FinderRuntimeDatabaseUnavailableError,
+  getFinderConfigRuntime,
+  getFinderEngineDataRuntime,
+} from '@/lib/enterprise-finder/runtime-repository';
 import type {
   CapabilityStatus,
   FinderAssessmentInput,
+  FinderConfig,
   FinderLocale,
   FinderPressureRating,
 } from '@/lib/enterprise-finder/types';
@@ -184,7 +185,7 @@ function normalizeInput(
   };
 }
 
-function valuesFor(config: ReturnType<typeof getFinderConfig>, questionKey: string) {
+function valuesFor(config: FinderConfig, questionKey: string) {
   return new Set(
     config.questions
       .find((question) => question.key === questionKey)
@@ -199,7 +200,7 @@ function errorResponse(
   const message = error instanceof Error ? error.message : '';
   const invalidToken = message === 'invalid-assessment-token';
   const invalidInput = message === 'invalid-input';
-  const unavailable = error instanceof FinderDatabaseUnavailableError;
+  const unavailable = error instanceof FinderRuntimeDatabaseUnavailableError;
 
   return NextResponse.json(
     {
@@ -209,7 +210,7 @@ function errorResponse(
         : invalidInput
           ? 'Data assessment belum lengkap atau berisi pilihan yang tidak valid.'
           : unavailable
-            ? 'Database Enterprise Solution Finder belum siap.'
+            ? 'Enterprise Solution Finder sedang dalam proses aktivasi. Silakan coba kembali beberapa saat lagi.'
             : 'Diagnosis Enterprise Solution Finder gagal diproses.',
     },
     {
@@ -265,7 +266,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const config = getFinderConfig(locale);
+    const config = await getFinderConfigRuntime(locale);
     const allowed = {
       industries: valuesFor(config, 'industry'),
       scales: valuesFor(config, 'organization_scale'),
@@ -283,7 +284,7 @@ export async function POST(req: Request) {
     };
 
     const input = normalizeInput(body?.input, locale, allowed);
-    const engineData = getFinderEngineData(locale);
+    const engineData = await getFinderEngineDataRuntime(locale);
 
     let result = diagnoseEnterpriseFinder({
       input,
@@ -345,7 +346,7 @@ export async function POST(req: Request) {
     }
 
     const finalResult = { ...result, assessmentId };
-    completeFinderAssessment(assessmentId, token, input, finalResult);
+    await completeFinderAssessmentRuntime(assessmentId, token, input, finalResult);
 
     return NextResponse.json(
       {

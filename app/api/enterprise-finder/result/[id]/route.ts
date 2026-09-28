@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import {
-  FinderDatabaseUnavailableError,
-  getFinderAssessmentResult,
-} from '@/lib/enterprise-finder/repository';
+  FinderRuntimeDatabaseUnavailableError,
+  getFinderAssessmentResultRuntime,
+} from '@/lib/enterprise-finder/runtime-repository';
 
 export const runtime = 'nodejs';
 
@@ -24,7 +24,7 @@ export async function GET(
   }
 
   try {
-    const result = getFinderAssessmentResult(assessmentId, token);
+    const result = await getFinderAssessmentResultRuntime(assessmentId, token);
     if (!result) {
       return NextResponse.json(
         { success: false, error: 'Assessment belum selesai atau result belum tersedia.' },
@@ -39,7 +39,7 @@ export async function GET(
   } catch (error) {
     const invalidToken =
       error instanceof Error && error.message === 'invalid-assessment-token';
-    const unavailable = error instanceof FinderDatabaseUnavailableError;
+    const unavailable = error instanceof FinderRuntimeDatabaseUnavailableError;
 
     return NextResponse.json(
       {
@@ -47,7 +47,7 @@ export async function GET(
         error: invalidToken
           ? 'Assessment token tidak valid.'
           : unavailable
-            ? 'Database Enterprise Solution Finder belum siap.'
+            ? 'Enterprise Solution Finder sedang dalam proses aktivasi. Silakan coba kembali beberapa saat lagi.'
             : 'Result assessment tidak dapat dimuat.',
       },
       {
