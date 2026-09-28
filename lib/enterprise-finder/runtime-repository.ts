@@ -730,3 +730,51 @@ export async function getFinderAnalyticsRuntime() {
     );
   }
 }
+
+
+export async function getFinderReadinessRuntime(): Promise<{
+  ready: boolean;
+  database: 'cloudflare-d1' | 'node-sqlite' | 'unavailable';
+  checks: {
+    questions: boolean;
+    services: boolean;
+    mappings: boolean;
+  };
+}> {
+  try {
+    const database = await db();
+    const [questions, services, mappings] = await Promise.all([
+      database.queryOne<{ count?: number }>(
+        'SELECT COUNT(*) AS count FROM enterprise_finder_questions WHERE is_active = 1',
+      ),
+      database.queryOne<{ count?: number }>(
+        'SELECT COUNT(*) AS count FROM enterprise_finder_services WHERE is_active = 1',
+      ),
+      database.queryOne<{ count?: number }>(
+        'SELECT COUNT(*) AS count FROM enterprise_finder_service_mappings WHERE is_active = 1',
+      ),
+    ]);
+
+    const checks = {
+      questions: Number(questions?.count || 0) > 0,
+      services: Number(services?.count || 0) > 0,
+      mappings: Number(mappings?.count || 0) > 0,
+    };
+
+    return {
+      ready: Object.values(checks).every(Boolean),
+      database: database.kind,
+      checks,
+    };
+  } catch {
+    return {
+      ready: false,
+      database: 'unavailable',
+      checks: {
+        questions: false,
+        services: false,
+        mappings: false,
+      },
+    };
+  }
+}
