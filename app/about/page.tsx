@@ -11,6 +11,9 @@ import {
   MapPin,
   Mail,
   Phone,
+  Building2,
+  ExternalLink,
+  Video,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -21,6 +24,10 @@ export const metadata: Metadata = {
 };
 
 export default function AboutPage() {
+  const officeMapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    BRAND_CONFIG.contact.address.fullAddress,
+  )}`;
+
   const values = [
     {
       title: 'Business-Led',
@@ -171,31 +178,41 @@ export default function AboutPage() {
       {/* Head Office Location & Contact */}
       <section className="py-16 sm:py-20 bg-grey-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            <div className="lg:col-span-6 space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+            <div className="lg:col-span-6 min-w-0 space-y-4">
               <span className="text-xs font-bold uppercase tracking-wider text-gold-600">
                 Headquarters
               </span>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-navy-900 tracking-tight">
                 Located in Jakarta&apos;s Central Business Corridor
               </h2>
-              <div className="space-y-3 pt-2 text-sm text-navy-900">
-                <div className="flex items-start gap-3">
+              <div className="min-w-0 space-y-3 pt-2 text-sm text-navy-900">
+                <div className="flex min-w-0 items-start gap-3">
                   <MapPin className="w-5 h-5 text-gold-500 shrink-0 mt-0.5" />
-                  <div>
+                  <div className="min-w-0">
                     <strong className="block text-navy-900">{BRAND_CONFIG.legalName}</strong>
-                    <span className="text-muted leading-relaxed">{BRAND_CONFIG.contact.address.fullAddress}</span>
+                    <span className="text-muted leading-relaxed break-words">
+                      {BRAND_CONFIG.contact.address.fullAddress}
+                    </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Phone className="w-5 h-5 text-gold-500 shrink-0" />
-                  <a href={BRAND_CONFIG.contact.whatsappUrl} className="hover:text-blue-600">
+                <div className="flex min-w-0 items-start gap-3">
+                  <Phone className="w-5 h-5 text-gold-500 shrink-0 mt-0.5" />
+                  <a
+                    href={BRAND_CONFIG.contact.whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="min-w-0 break-words leading-relaxed hover:text-blue-600"
+                  >
                     WhatsApp: {BRAND_CONFIG.contact.whatsapp}
                   </a>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-gold-500 shrink-0" />
-                  <a href={`mailto:${BRAND_CONFIG.contact.email}`} className="hover:text-blue-600">
+                <div className="flex min-w-0 items-start gap-3">
+                  <Mail className="w-5 h-5 text-gold-500 shrink-0 mt-0.5" />
+                  <a
+                    href={`mailto:${BRAND_CONFIG.contact.email}`}
+                    className="min-w-0 break-words leading-relaxed hover:text-blue-600"
+                  >
                     {BRAND_CONFIG.contact.email}
                   </a>
                 </div>
@@ -203,24 +220,72 @@ export default function AboutPage() {
 
               <div className="pt-4">
                 <Link
-                  href="/contact"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-navy-900 text-white font-bold text-xs hover:bg-navy-700 transition"
+                  href={BRAND_CONFIG.contact.bookingUrl}
+                  className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-navy-900 px-5 py-3 text-center text-xs font-bold leading-snug text-white transition hover:bg-navy-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
                 >
                   Schedule an In-Person or Virtual Meeting &rarr;
                 </Link>
               </div>
             </div>
 
-            {/* Interactive OpenStreetMap preview frame */}
-            <div className="lg:col-span-6 bg-white p-3 rounded-2xl border border-line shadow-sm overflow-hidden h-[300px] relative">
-              <iframe
-                title="Office Map - Graha Mustika Ratu"
-                width="100%"
-                height="100%"
-                style={{ border: 0, borderRadius: '0.75rem' }}
-                loading="lazy"
-                src="https://www.openstreetmap.org/export/embed.html?bbox=106.8400%2C-6.2450%2C106.8480%2C-6.2390&layer=mapnik&marker=-6.2420%2C106.8440"
-              />
+            {/* Resilient office card: no third-party iframe dependency */}
+            <div className="relative lg:col-span-6 min-h-[300px] overflow-hidden rounded-2xl border border-navy-700/80 bg-navy-900 p-6 text-white shadow-sm sm:p-8">
+              <div className="pointer-events-none absolute inset-0 opacity-15 bg-[radial-gradient(#4F86F0_1px,transparent_1px)] [background-size:22px_22px]" />
+              <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-gold-500/10 blur-3xl" />
+
+              <div className="relative z-10 flex h-full flex-col justify-between">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-gold-500/30 bg-gold-500/10 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-gold-300">
+                    <Building2 className="h-3.5 w-3.5" />
+                    Jakarta Headquarters
+                  </div>
+
+                  <h3 className="mt-5 text-2xl font-extrabold tracking-tight">
+                    {BRAND_CONFIG.contact.address.building}
+                  </h3>
+                  <p className="mt-2 max-w-lg text-sm leading-relaxed text-slate-300">
+                    {BRAND_CONFIG.contact.address.street}
+                    <br />
+                    {BRAND_CONFIG.contact.address.district}, {BRAND_CONFIG.contact.address.city}
+                  </p>
+
+                  <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="flex items-center gap-3 rounded-xl border border-navy-500/70 bg-navy-700/50 p-3">
+                      <Building2 className="h-4 w-4 shrink-0 text-gold-400" />
+                      <div>
+                        <div className="text-xs font-bold text-white">In-Person Meeting</div>
+                        <div className="mt-0.5 text-[11px] text-slate-400">By confirmed appointment</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 rounded-xl border border-navy-500/70 bg-navy-700/50 p-3">
+                      <Video className="h-4 w-4 shrink-0 text-blue-400" />
+                      <div>
+                        <div className="text-xs font-bold text-white">Virtual Meeting</div>
+                        <div className="mt-0.5 text-[11px] text-slate-400">30-minute discovery session</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                  <a
+                    href={officeMapUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-gold-500 px-4 py-3 text-xs font-extrabold text-navy-900 transition hover:bg-gold-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-300 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-900"
+                  >
+                    <MapPin className="h-4 w-4" />
+                    Open Location in Maps
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                  <Link
+                    href={BRAND_CONFIG.contact.bookingUrl}
+                    className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-navy-500 bg-navy-700 px-4 py-3 text-xs font-bold text-white transition hover:bg-navy-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-900"
+                  >
+                    Arrange a Meeting
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         </div>
