@@ -112,7 +112,7 @@ export async function createPersistentLead(lead: Lead): Promise<Lead> {
 
 export async function listPersistentLeads(limit = 500): Promise<Lead[]> {
   try {
-    const database = leadDatabase();
+    const database = await leadDatabase();
     const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 1000);
 
     const rows = await database.queryAll<LeadRow>(
@@ -149,7 +149,7 @@ export async function listPersistentLeads(limit = 500): Promise<Lead[]> {
 
 export async function checkLeadDatabase(): Promise<boolean> {
   try {
-    const database = leadDatabase();
+    const database = await leadDatabase();
     const row = await database.queryOne<{ ok?: number }>('SELECT 1 AS ok');
     return row?.ok === 1;
   } catch {
