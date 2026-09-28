@@ -24,7 +24,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   const { id } = await context.params;
   const form = await req.formData().catch(() => null);
   const resumeToken = String(form?.get('resumeToken') || '');
-  if (!verifyRfqAccess(id, resumeToken)) return NextResponse.json({ success: false, error: 'RFQ access denied.' }, { status: 403, headers });
+  if (!(await verifyRfqAccess(id, resumeToken))) return NextResponse.json({ success: false, error: 'RFQ access denied.' }, { status: 403, headers });
 
   const file = form?.get('file');
   if (!(file instanceof File)) return NextResponse.json({ success: false, error: 'A valid file is required.' }, { status: 400, headers });
