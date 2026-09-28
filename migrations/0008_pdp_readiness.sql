@@ -306,9 +306,9 @@ INSERT OR IGNORE INTO pdp_questions(
 'Akuntabilitas tidak jelas dapat membuat kewajiban PDP tidak memiliki owner dan tindak lanjut.',
 'Tetapkan governance charter, RACI, sponsor eksekutif, dan mekanisme eskalasi PDP.','Critical',1.4,1,25,1,10,'1.0',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
 ('pdp-q-gov-02','UU-PDP-27-2022-RTI-1.0','PDP-2026.1','GOV','GOV.Q2',
-'Apakah organisasi telah menilai secara formal apakah kondisi wajib penunjukan pejabat/petugas fungsi Pelindungan Data Pribadi terpenuhi dan, jika terpenuhi, telah menunjuk fungsi tersebut?',
-'Jangan menganggap semua organisasi wajib menunjuk DPO. Evaluasi harus mempertimbangkan pelayanan publik, pemantauan sistematis skala besar, serta pemrosesan skala besar atas data spesifik atau terkait tindak pidana.',
-'UU 27/2022 Pasal 53–54',
+'Apakah organisasi telah menilai secara formal apakah salah satu kondisi wajib penunjukan pejabat/petugas fungsi Pelindungan Data Pribadi terpenuhi dan, jika terpenuhi, telah menunjuk fungsi tersebut?',
+'Jangan menganggap semua organisasi wajib menunjuk DPO. Evaluasi harus mempertimbangkan masing-masing kondisi Pasal 53 ayat (1), termasuk pelayanan publik, pemantauan teratur dan sistematis skala besar, serta pemrosesan skala besar atas Data Pribadi spesifik dan/atau terkait tindak pidana. Gunakan pembacaan Pasal 53 ayat (1) setelah Putusan MK No. 151/PUU-XXII/2024 yang memaknai penghubung kriterianya sebagai dan/atau.',
+'UU 27/2022 Pasal 53–54 jo. Putusan MK No. 151/PUU-XXII/2024',
 'DPO applicability assessment, surat penunjukan, job description, bukti independensi/fungsi, laporan aktivitas.',
 'Kewajiban penunjukan dapat terlewat atau fungsi DPO tidak efektif.',
 'Lakukan DPO applicability assessment dan dokumentasikan penunjukan, kompetensi, serta tugas bila kondisi Pasal 53 terpenuhi.','Critical',1.5,1,30,1,20,'1.0',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
@@ -433,7 +433,7 @@ INSERT OR IGNORE INTO pdp_questions(
 ('pdp-q-rgt-01','UU-PDP-27-2022-RTI-1.0','PDP-2026.1','RGT','RGT.Q1',
 'Apakah tersedia kanal dan SOP terintegrasi untuk menerima, memverifikasi, melacak, memenuhi, atau menolak secara sah permintaan hak Subjek Data?',
 'Permohonan dapat datang melalui kanal elektronik maupun nonelektronik dan perlu dicatat.',
-'UU 27/2022 Pasal 5–14',
+'UU 27/2022 Pasal 5–15',
 'Data subject request SOP, request portal, ticket log, SLA matrix.',
 'Permintaan dapat hilang, terlambat, atau ditangani tidak konsisten.',
 'Bangun request workflow end-to-end dengan owner, SLA internal, dan audit trail.','Critical',1.5,1,30,1,310,'1.0',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
@@ -628,4 +628,5 @@ INSERT OR IGNORE INTO system_parameters(group_key,value,label,description,sort_o
 ('pdp_readiness.scalar','PDP_DETAILED_DURATION','20–35 menit','Duration label for the detailed UU PDP assessment.',20,1,1,CURRENT_TIMESTAMP),
 ('pdp_readiness.scalar','PDP_CONSULTATION_URL','/consultation','RTI consultation route used by PDP readiness CTA.',30,1,1,CURRENT_TIMESTAMP),
 ('pdp_readiness.scalar','PDP_REPORT_TITLE','RTI UU PDP Data Protection Readiness Assessment','Default report title.',40,1,1,CURRENT_TIMESTAMP),
-('pdp_readiness.scalar','PDP_DISCLAIMER','Hasil assessment ini merupakan indikator kesiapan internal RTI berdasarkan jawaban dan evidence yang tersedia. Hasil ini bukan opini hukum, keputusan regulator, atau pernyataan kepatuhan resmi terhadap UU PDP.','Assessment disclaimer.',50,1,1,CURRENT_TIMESTAMP);
+('pdp_readiness.scalar','PDP_DISCLAIMER','Hasil assessment ini merupakan indikator kesiapan internal RTI berdasarkan jawaban dan evidence yang tersedia. Hasil ini bukan opini hukum, keputusan regulator, atau pernyataan kepatuhan resmi terhadap UU PDP.','Assessment disclaimer.',50,1,1,CURRENT_TIMESTAMP),
+('pdp_readiness.scalar','PDP_LEGAL_BASELINE','UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi, termasuk interpretasi Pasal 53 ayat (1) berdasarkan Putusan MK No. 151/PUU-XXII/2024.','Legal baseline shown in the PDP readiness tool.',60,1,1,CURRENT_TIMESTAMP);
