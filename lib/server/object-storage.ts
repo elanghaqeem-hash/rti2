@@ -42,6 +42,7 @@ export async function putPrivateObject(params: {
     });
     return { backend: 'r2' as const, descriptor: 'Cloudflare R2 binding RTI_FILES' };
   }
+  if (env) throw new Error('Cloudflare R2 binding RTI_FILES is not configured.');
 
   const { root, path } = await nodeRoot();
   const { mkdir, writeFile } = await import('node:fs/promises');
@@ -60,6 +61,7 @@ export async function getPrivateObject(key: string) {
     if (!object) return null;
     return new Uint8Array(await object.arrayBuffer());
   }
+  if (env) throw new Error('Cloudflare R2 binding RTI_FILES is not configured.');
 
   const { root, path } = await nodeRoot();
   const target = path.join(root, key);
@@ -80,6 +82,7 @@ export async function deletePrivateObject(key: string) {
     await bucket.delete(key);
     return;
   }
+  if (env) throw new Error('Cloudflare R2 binding RTI_FILES is not configured.');
 
   const { root, path } = await nodeRoot();
   const target = path.join(root, key);
