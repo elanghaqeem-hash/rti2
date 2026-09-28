@@ -902,9 +902,20 @@ async function loadSessionAnswers(
   return { rows, questions: buildQuestions(rows, options, conditions) };
 }
 
-export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
-  const db = getDatabase();
-  const session = db.prepare(
+export async function calculateEstimatorSession(sessionId: string): Promise<ProjectEstimate> {
+  const db = await getRuntimeDatabase();
+  const session = await db.queryOne<{
+    id: string;
+    mode: 'quick' | 'detailed';
+    project_name: string;
+    selected_service_id: string;
+    business_objectives_json: string;
+    company_name: string;
+    industry: string;
+    contact_name: string;
+    email: string;
+    contact_title: string | null;
+  }>(
     `SELECT es.id, es.mode, es.project_name, es.selected_service_id, es.business_objectives_json,
             o.name AS company_name, o.industry, c.name AS contact_name, c.email,
             s.category_id, c.title AS contact_title
@@ -913,33 +924,24 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
      JOIN contacts c ON c.id = es.contact_id
      JOIN services s ON s.id = es.selected_service_id
      WHERE es.id = ?`,
-  ).get(sessionId) as
-    | {
-        id: string;
-        mode: 'quick' | 'detailed';
-        project_name: string;
-        selected_service_id: string;
-        business_objectives_json: string;
-        company_name: string;
-        industry: string;
-        contact_name: string;
-        email: string;
-        contact_title: string | null;
-      }
-    | undefined;
+    [sessionId],
+  );
 
   if (!session) throw new Error('Estimator session not found.');
 
-  const serviceRow = db.prepare(
+  const serviceRow = await db.queryOne<ServiceRow>(
     `SELECT s.id, s.category_id, c.name AS category_name, s.slug, s.name, s.description,
             s.base_effort_days, s.base_price_min, s.base_price_max, s.billing_unit,
             s.default_duration_min_weeks, s.default_duration_max_weeks
-     FROM services s JOIN service_categories c ON c.id=s.category_id WHERE s.id=? AND s.is_active=1`,
-  ).get(session.selected_service_id) as ServiceRow | undefined;
+     FROM services s
+     JOIN service_categories c ON c.id=s.category_id
+     WHERE s.id=? AND s.is_active=1`,
+    [session.selected_service_id],
+  );
   if (!serviceRow) throw new Error('Selected service is not available.');
   const service = serviceFromRow(serviceRow);
 
-  const { rows, questions } = loadSessionAnswers(sessionId, service.id, session.mode);
+  const { rows, questions } = await loadSessionAnswers(sessionId, service.id, session.mode);
   const optionMap = new Map<string, OptionRow>();
   for (const question of questions) {
     for (const option of question.options) {
@@ -971,7 +973,7 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
     const question = questionById.get(row.id);
     if (question && !questionConditionsMatch(question, answerMap)) continue;
     const answer = answerMap.get(row.question_key);
-    const hasAnswer = answer !== null && answer !== '' && answer !== false;
+    const hasAnswer = answer !== null && answer !== undefined && answer !== '' && answer !== false;
     if (Number(row.required) === 1) {
       requiredCount += 1;
       if (hasAnswer) answeredRequired += 1;
@@ -981,7 +983,10 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
     const option = optionMap.get(`${row.id}::${String(answer)}`);
     let score = option?.score ?? 3;
     if (!option && typeof answer === 'number') {
-      score = Math.min(5, Math.max(1, answer <= 1 ? 1 : answer <= 5 ? 2 : answer <= 20 ? 3 : answer <= 60 ? 4 : 5));
+      score = Math.min(
+        5,
+        Math.max(1, answer <= 1 ? 1 : answer <= 5 ? 2 : answer <= 20 ? 3 : answer <= 60 ? 4 : 5),
+      );
     }
 
     const weight = Number(row.weight || 1);
@@ -993,21 +998,27 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
   }
 
   const averageScore = totalWeight ? weightedScore / totalWeight : 3;
-  const ruleResult = evaluateRules(service.id, answerMap);
+  const ruleResult = await evaluateRules(service.id, answerMap);
   factors.push(...ruleResult.factors);
+
   const complexityIndex = Math.round(
     Math.min(100, Math.max(0, ((averageScore - 1) / 4) * 100 + ruleResult.complexityDelta)),
   );
-  const complexityLevel = levelFromIndex(complexityIndex);
-  const complexityMultiplier = priceMultiplierForLevel(complexityLevel);
-  const effortFactor = (effortMultipliers.length
-    ? effortMultipliers.reduce((sum, value) => sum + value, 0) / effortMultipliers.length
-    : 1) * ruleResult.effortMultiplier;
-  const priceFactor = (priceMultipliers.length
-    ? priceMultipliers.reduce((sum, value) => sum + value, 0) / priceMultipliers.length
-    : 1) * ruleResult.priceMultiplier;
+  const complexityLevel = await levelFromIndex(complexityIndex);
+  const complexityMultiplier = await priceMultiplierForLevel(complexityLevel);
+  const effortFactor =
+    (effortMultipliers.length
+      ? effortMultipliers.reduce((sum, value) => sum + value, 0) / effortMultipliers.length
+      : 1) * ruleResult.effortMultiplier;
+  const priceFactor =
+    (priceMultipliers.length
+      ? priceMultipliers.reduce((sum, value) => sum + value, 0) / priceMultipliers.length
+      : 1) * ruleResult.priceMultiplier;
 
-  const effortDays = Math.max(1, Math.round(service.baseEffortDays * effortFactor * complexityMultiplier * 10) / 10);
+  const effortDays = Math.max(
+    1,
+    Math.round(service.baseEffortDays * effortFactor * complexityMultiplier * 10) / 10,
+  );
   const scale = effortDays / Math.max(service.baseEffortDays, 1);
   const durationMinWeeks = Math.max(
     1,
@@ -1018,44 +1029,57 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
     Math.round(service.durationMaxWeeks * scale * ruleResult.durationMultiplier * 10) / 10,
   );
   const priceConfigured = service.basePriceMin > 0 && service.basePriceMax >= service.basePriceMin;
-  const priceMin = priceConfigured ? Math.max(0, Math.round(service.basePriceMin * priceFactor * complexityMultiplier)) : 0;
-  const priceMax = priceConfigured ? Math.max(priceMin, Math.round(service.basePriceMax * priceFactor * complexityMultiplier)) : 0;
-  const projectSize = sizeFromEffort(effortDays);
+  const priceMin = priceConfigured
+    ? Math.max(0, Math.round(service.basePriceMin * priceFactor * complexityMultiplier))
+    : 0;
+  const priceMax = priceConfigured
+    ? Math.max(priceMin, Math.round(service.basePriceMax * priceFactor * complexityMultiplier))
+    : 0;
+  const projectSize = await sizeFromEffort(effortDays);
 
   const profileCompleteness =
     [session.company_name, session.industry, session.contact_name, session.email, session.project_name]
       .filter(Boolean).length / 5;
   const requiredCompleteness = requiredCount ? answeredRequired / requiredCount : 1;
-  const requiredWeight = getNumberSetting('readiness_required_weight', 80, 0, 100);
-  const profileWeight = getNumberSetting('readiness_profile_weight', 20, 0, 100);
+
+  const [requiredWeight, profileWeight, resources, recommendations, prior] = await Promise.all([
+    getNumberSetting('readiness_required_weight', 80, 0, 100),
+    getNumberSetting('readiness_profile_weight', 20, 0, 100),
+    db.queryAll<{ name: string; quantity: number; effort_share: number }>(
+      `SELECT rr.name, srd.quantity, srd.effort_share
+       FROM service_resource_defaults srd
+       JOIN resource_roles rr ON rr.id = srd.resource_role_id
+       WHERE srd.service_id = ? AND rr.is_active = 1
+       ORDER BY srd.effort_share DESC`,
+      [service.id],
+    ),
+    loadServiceRecommendations(service.id),
+    db.queryOne<{ version: number | null }>(
+      'SELECT MAX(version) AS version FROM project_estimates WHERE session_id = ?',
+      [sessionId],
+    ),
+  ]);
+
   const readinessWeightTotal = Math.max(1, requiredWeight + profileWeight);
   const readinessScore = Math.round(
-    ((requiredCompleteness * requiredWeight) + (profileCompleteness * profileWeight)) /
-      readinessWeightTotal *
+    (((requiredCompleteness * requiredWeight) + (profileCompleteness * profileWeight)) /
+      readinessWeightTotal) *
       100,
   );
-
-  const resources = db.prepare(
-    `SELECT rr.name, srd.quantity, srd.effort_share
-     FROM service_resource_defaults srd
-     JOIN resource_roles rr ON rr.id = srd.resource_role_id
-     WHERE srd.service_id = ? AND rr.is_active = 1
-     ORDER BY srd.effort_share DESC`,
-  ).all(service.id) as Array<{ name: string; quantity: number; effort_share: number }>;
 
   const team = resources.length
     ? resources.map((row) => ({
         role: row.name,
         quantity: Number(row.quantity),
-        estimatedDays: Math.max(1, Math.round((effortDays * Number(row.effort_share)) / Math.max(Number(row.quantity), 1))),
+        estimatedDays: Math.max(
+          1,
+          Math.round(
+            (effortDays * Number(row.effort_share)) / Math.max(Number(row.quantity), 1),
+          ),
+        ),
       }))
     : [{ role: 'Consultant / Specialist', quantity: 1, estimatedDays: Math.ceil(effortDays) }];
 
-  const recommendations = loadServiceRecommendations(service.id);
-
-  const prior = db.prepare('SELECT MAX(version) AS version FROM project_estimates WHERE session_id = ?').get(sessionId) as
-    | { version: number | null }
-    | undefined;
   const version = Number(prior?.version || 0) + 1;
   const estimateId = randomUUID();
   const now = new Date().toISOString();
@@ -1070,36 +1094,46 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
     appliedRules: ruleResult.appliedRules,
   };
 
-  db.prepare(
-    `INSERT INTO project_estimates
-      (id, session_id, version, service_id, complexity_index, complexity_level, project_size,
-       effort_days, duration_min_weeks, duration_max_weeks, price_min, price_max,
-       readiness_score, team_json, factors_json, recommendations_json, trace_json, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    estimateId,
-    sessionId,
-    version,
-    service.id,
-    complexityIndex,
-    complexityLevel,
-    projectSize,
-    effortDays,
-    durationMinWeeks,
-    durationMaxWeeks,
-    priceMin,
-    priceMax,
-    readinessScore,
-    JSON.stringify(team),
-    JSON.stringify(factors.slice(0, 6)),
-    JSON.stringify(recommendations),
-    JSON.stringify(trace),
-    now,
-  );
+  await db.batch([
+    {
+      sql: `INSERT INTO project_estimates
+        (id, session_id, version, service_id, complexity_index, complexity_level, project_size,
+         effort_days, duration_min_weeks, duration_max_weeks, price_min, price_max,
+         readiness_score, team_json, factors_json, recommendations_json, trace_json, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      params: [
+        estimateId,
+        sessionId,
+        version,
+        service.id,
+        complexityIndex,
+        complexityLevel,
+        projectSize,
+        effortDays,
+        durationMinWeeks,
+        durationMaxWeeks,
+        priceMin,
+        priceMax,
+        readinessScore,
+        JSON.stringify(team),
+        JSON.stringify(factors.slice(0, 6)),
+        JSON.stringify(recommendations),
+        JSON.stringify(trace),
+        now,
+      ],
+    },
+    {
+      sql: "UPDATE estimator_sessions SET status='estimated', updated_at=? WHERE id=?",
+      params: [now, sessionId],
+    },
+  ]);
 
-  db.prepare("UPDATE estimator_sessions SET status='estimated', updated_at=? WHERE id=?").run(now, sessionId);
-  audit('project_estimate', estimateId, 'calculate', { version, complexityIndex, readinessScore });
-  trackEstimatorEvent(sessionId, 'ESTIMATE_CALCULATED', {
+  await audit('project_estimate', estimateId, 'calculate', {
+    version,
+    complexityIndex,
+    readinessScore,
+  });
+  await trackEstimatorEvent(sessionId, 'ESTIMATE_CALCULATED', {
     estimateId,
     version,
     serviceId: service.id,
