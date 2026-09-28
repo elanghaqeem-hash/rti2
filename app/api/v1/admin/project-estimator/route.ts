@@ -33,7 +33,7 @@ export async function GET(req: Request) {
   const auth = session(req);
   if (!auth) return NextResponse.json({ success: false, error: 'Admin authentication required.' }, noStore(401));
   try {
-    return NextResponse.json({ success: true, dashboard: getEstimatorAdminDashboard() }, noStore());
+    return NextResponse.json({ success: true, dashboard: await getEstimatorAdminDashboard() }, noStore());
   } catch (error) {
     console.error('Estimator admin dashboard failed:', error);
     return NextResponse.json(
@@ -51,7 +51,7 @@ export async function PATCH(req: Request) {
 
   try {
     if (action === 'commercial') {
-      updateEstimateCommercial({
+      await updateEstimateCommercial({
         rfqId: String(body.rfqId || ''),
         resourceCost: Number(body.commercial?.resourceCost ?? 0),
         thirdPartyCost: Number(body.commercial?.thirdPartyCost ?? 0),
@@ -64,14 +64,14 @@ export async function PATCH(req: Request) {
         actor: auth.sub,
       });
     } else if (action === 'opportunity_stage') {
-      updateOpportunityStage({
+      await updateOpportunityStage({
         rfqId: String(body.rfqId || ''),
         stage: String(body.stage || ''),
         actor: auth.sub,
         note: typeof body.note === 'string' ? body.note : undefined,
       });
     } else if (action === 'category') {
-      upsertServiceCategory({
+      await upsertServiceCategory({
         id: body.category?.id ? String(body.category.id) : undefined,
         slug: body.category?.slug ? String(body.category.slug) : undefined,
         name: String(body.category?.name || ''),
@@ -81,7 +81,7 @@ export async function PATCH(req: Request) {
         actor: auth.sub,
       });
     } else if (action === 'create_service') {
-      createEstimatorService({
+      await createEstimatorService({
         categoryId: String(body.service?.categoryId || ''),
         slug: body.service?.slug ? String(body.service.slug) : undefined,
         name: String(body.service?.name || ''),
@@ -94,7 +94,7 @@ export async function PATCH(req: Request) {
         actor: auth.sub,
       });
     } else if (action === 'service') {
-      updateEstimatorService({
+      await updateEstimatorService({
         id: String(body.service?.id || ''),
         name: String(body.service?.name || ''),
         description: String(body.service?.description || ''),
@@ -107,19 +107,19 @@ export async function PATCH(req: Request) {
         actor: auth.sub,
       });
     } else if (action === 'pricing') {
-      updatePricingParameter({
+      await updatePricingParameter({
         key: String(body.key || ''),
         value: Number(body.value),
         actor: auth.sub,
       });
     } else if (action === 'setting') {
-      updateEstimatorSetting({
+      await updateEstimatorSetting({
         key: String(body.key || ''),
         value: String(body.value ?? ''),
         actor: auth.sub,
       });
     } else if (action === 'create_question') {
-      createEstimatorQuestion({
+      await createEstimatorQuestion({
         serviceId: body.question?.serviceId ? String(body.question.serviceId) : null,
         key: String(body.question?.key || ''),
         label: String(body.question?.label || ''),
@@ -134,7 +134,7 @@ export async function PATCH(req: Request) {
         actor: auth.sub,
       });
     } else if (action === 'question') {
-      updateEstimatorQuestion({
+      await updateEstimatorQuestion({
         id: String(body.question?.id || ''),
         label: String(body.question?.label || ''),
         helpText: typeof body.question?.helpText === 'string' ? body.question.helpText : undefined,
@@ -146,7 +146,7 @@ export async function PATCH(req: Request) {
         actor: auth.sub,
       });
     } else if (action === 'question_condition') {
-      upsertQuestionCondition({
+      await upsertQuestionCondition({
         id: body.condition?.id ? String(body.condition.id) : undefined,
         questionId: String(body.condition?.questionId || ''),
         sourceQuestionKey: String(body.condition?.sourceQuestionKey || ''),
@@ -156,7 +156,7 @@ export async function PATCH(req: Request) {
         actor: auth.sub,
       });
     } else if (action === 'question_option') {
-      upsertQuestionOption({
+      await upsertQuestionOption({
         id: body.option?.id ? String(body.option.id) : undefined,
         questionId: String(body.option?.questionId || ''),
         value: String(body.option?.value || ''),
@@ -169,7 +169,7 @@ export async function PATCH(req: Request) {
         actor: auth.sub,
       });
     } else if (action === 'rule') {
-      upsertEstimatorRule({
+      await upsertEstimatorRule({
         id: body.rule?.id ? String(body.rule.id) : undefined,
         serviceId: body.rule?.serviceId ? String(body.rule.serviceId) : null,
         name: String(body.rule?.name || ''),
@@ -180,7 +180,7 @@ export async function PATCH(req: Request) {
         actor: auth.sub,
       });
     } else if (action === 'resource') {
-      upsertResourceRole({
+      await upsertResourceRole({
         id: body.resource?.id ? String(body.resource.id) : undefined,
         roleKey: String(body.resource?.roleKey || ''),
         name: String(body.resource?.name || ''),
@@ -189,7 +189,7 @@ export async function PATCH(req: Request) {
         actor: auth.sub,
       });
     } else if (action === 'service_dependency') {
-      upsertServiceDependency({
+      await upsertServiceDependency({
         serviceId: String(body.dependency?.serviceId || ''),
         relatedServiceId: String(body.dependency?.relatedServiceId || ''),
         relationType: body.dependency?.relationType === 'requires' ? 'requires' : 'recommends',
@@ -199,7 +199,7 @@ export async function PATCH(req: Request) {
         actor: auth.sub,
       });
     } else if (action === 'service_resource') {
-      upsertServiceResource({
+      await upsertServiceResource({
         serviceId: String(body.serviceResource?.serviceId || ''),
         resourceRoleId: String(body.serviceResource?.resourceRoleId || ''),
         quantity: Number(body.serviceResource?.quantity ?? 1),
