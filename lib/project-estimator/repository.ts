@@ -443,23 +443,32 @@ export async function validateEstimatorSessionInput(input: SessionInput): Promis
   return errors.slice(0, 12);
 }
 
-export function upsertEstimatorSession(
+export async function upsertEstimatorSession(
   input: SessionInput,
   existingSessionId?: string,
   resumeToken?: string,
 ) {
-  const db = getDatabase();
+  const db = await getRuntimeDatabase();
   const now = new Date().toISOString();
   const sessionId = existingSessionId || randomUUID();
 
   const existing = existingSessionId
-    ? (db.prepare('SELECT id, organization_id, contact_id, secure_token_hash FROM estimator_sessions WHERE id = ?').get(existingSessionId) as
-        | { id: string; organization_id: string | null; contact_id: string | null; secure_token_hash: string | null }
-        | undefined)
-    : undefined;
+    ? await db.queryOne<{
+        id: string;
+        organization_id: string | null;
+        contact_id: string | null;
+        secure_token_hash: string | null;
+      }>(
+        'SELECT id, organization_id, contact_id, secure_token_hash FROM estimator_sessions WHERE id = ?',
+        [existingSessionId],
+      )
+    : null;
 
   if (existingSessionId && !existing) throw new Error('Estimator session not found.');
-  if (existing && (!resumeToken || !verifyEstimatorSessionAccess(existingSessionId!, resumeToken))) {
+  if (
+    existing &&
+    (!resumeToken || !(await verifyEstimatorSessionAccess(existingSessionId!, resumeToken)))
+  ) {
     throw new Error('Estimator draft access denied.');
   }
 
@@ -472,10 +481,15 @@ export function upsertEstimatorSession(
     throw new Error('Diagnostic source context is too large.');
   }
 
-  db.exec('BEGIN IMMEDIATE;');
-  try {
-    db.prepare(
-      `INSERT INTO organizations
+  const questions = await db.queryAll<{ id: string; question_key: string }>(
+    `SELECT id, question_key FROM estimator_questions
+     WHERE is_active = 1 AND (service_id IS NULL OR service_id = ?)`,
+    [input.serviceId],
+  );
+
+  const statements = [
+    {
+      sql: `INSERT INTO organizations
         (id, name, industry, company_size, employee_count, office_count, location, country, website, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
@@ -483,22 +497,22 @@ export function upsertEstimatorSession(
          employee_count=excluded.employee_count, office_count=excluded.office_count,
          location=excluded.location, country=excluded.country, website=excluded.website,
          updated_at=excluded.updated_at`,
-    ).run(
-      organizationId,
-      input.profile.companyName,
-      input.profile.industry,
-      input.profile.companySize || null,
-      input.profile.employeeCount ?? null,
-      input.profile.officeCount ?? null,
-      input.profile.location || null,
-      input.profile.country || null,
-      input.profile.website || null,
-      now,
-      now,
-    );
-
-    db.prepare(
-      `INSERT INTO contacts
+      params: [
+        organizationId,
+        input.profile.companyName,
+        input.profile.industry,
+        input.profile.companySize || null,
+        input.profile.employeeCount ?? null,
+        input.profile.officeCount ?? null,
+        input.profile.location || null,
+        input.profile.country || null,
+        input.profile.website || null,
+        now,
+        now,
+      ],
+    },
+    {
+      sql: `INSERT INTO contacts
         (id, organization_id, name, title, department, email, phone, whatsapp, preferred_channel, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
@@ -506,22 +520,22 @@ export function upsertEstimatorSession(
          department=excluded.department, email=excluded.email, phone=excluded.phone,
          whatsapp=excluded.whatsapp, preferred_channel=excluded.preferred_channel,
          updated_at=excluded.updated_at`,
-    ).run(
-      contactId,
-      organizationId,
-      input.profile.contactName,
-      input.profile.contactTitle || null,
-      input.profile.department || null,
-      input.profile.email,
-      input.profile.phone || null,
-      input.profile.whatsapp || null,
-      input.profile.preferredChannel || null,
-      now,
-      now,
-    );
-
-    db.prepare(
-      `INSERT INTO estimator_sessions
+      params: [
+        contactId,
+        organizationId,
+        input.profile.contactName,
+        input.profile.contactTitle || null,
+        input.profile.department || null,
+        input.profile.email,
+        input.profile.phone || null,
+        input.profile.whatsapp || null,
+        input.profile.preferredChannel || null,
+        now,
+        now,
+      ],
+    },
+    {
+      sql: `INSERT INTO estimator_sessions
         (id, mode, organization_id, contact_id, project_name, business_objectives_json,
          selected_service_id, target_timeline, budget_expectation, source_context_json,
          status, secure_token_hash, created_at, updated_at)
@@ -532,55 +546,44 @@ export function upsertEstimatorSession(
          selected_service_id=excluded.selected_service_id, target_timeline=excluded.target_timeline,
          budget_expectation=excluded.budget_expectation, source_context_json=excluded.source_context_json,
          updated_at=excluded.updated_at`,
-    ).run(
-      sessionId,
-      input.mode,
-      organizationId,
-      contactId,
-      input.projectName,
-      JSON.stringify(input.businessObjectives || []),
-      input.serviceId,
-      input.targetTimeline || null,
-      input.budgetExpectation || null,
-      sourceContextJson,
-      secureTokenHash,
-      now,
-      now,
-    );
-
-    const questions = db.prepare(
-      `SELECT id, question_key FROM estimator_questions
-       WHERE is_active = 1 AND (service_id IS NULL OR service_id = ?)`,
-    ).all(input.serviceId) as Array<{ id: string; question_key: string }>;
-
-    const answerStmt = db.prepare(
-      `INSERT INTO estimator_answers (session_id, question_id, answer_json, updated_at)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT(session_id, question_id) DO UPDATE SET
-         answer_json=excluded.answer_json, updated_at=excluded.updated_at`,
-    );
-
-    for (const question of questions) {
-      if (!(question.question_key in input.answers)) continue;
-      answerStmt.run(
+      params: [
         sessionId,
-        question.id,
-        JSON.stringify(input.answers[question.question_key]),
+        input.mode,
+        organizationId,
+        contactId,
+        input.projectName,
+        JSON.stringify(input.businessObjectives || []),
+        input.serviceId,
+        input.targetTimeline || null,
+        input.budgetExpectation || null,
+        sourceContextJson,
+        secureTokenHash,
         now,
-      );
-    }
+        now,
+      ],
+    },
+    ...questions
+      .filter((question) => question.question_key in input.answers)
+      .map((question) => ({
+        sql: `INSERT INTO estimator_answers (session_id, question_id, answer_json, updated_at)
+              VALUES (?, ?, ?, ?)
+              ON CONFLICT(session_id, question_id) DO UPDATE SET
+                answer_json=excluded.answer_json, updated_at=excluded.updated_at`,
+        params: [
+          sessionId,
+          question.id,
+          JSON.stringify(input.answers[question.question_key] ?? null),
+          now,
+        ],
+      })),
+  ];
 
-    db.exec('COMMIT;');
-  } catch (error) {
-    db.exec('ROLLBACK;');
-    throw error;
-  }
-
-  audit('estimator_session', sessionId, existing ? 'update' : 'create', {
+  await db.batch(statements);
+  await audit('estimator_session', sessionId, existing ? 'update' : 'create', {
     mode: input.mode,
     serviceId: input.serviceId,
   });
-  trackEstimatorEvent(
+  await trackEstimatorEvent(
     sessionId,
     existing ? 'DRAFT_SAVED' : 'ESTIMATOR_STARTED',
     { mode: input.mode, serviceId: input.serviceId },
@@ -589,11 +592,11 @@ export function upsertEstimatorSession(
   return { sessionId, resumeToken: nextResumeToken };
 }
 
-export function getEstimatorSessionByToken(resumeToken: string) {
+export async function getEstimatorSessionByToken(resumeToken: string) {
   if (!resumeToken) throw new Error('Resume token is required.');
   const tokenHash = hashResumeToken(resumeToken);
-  const db = getDatabase();
-  const row = db.prepare(
+  const db = await getRuntimeDatabase();
+  const row = await db.queryOne<any>(
     `SELECT es.id, es.mode, es.project_name, es.business_objectives_json, es.selected_service_id,
             es.target_timeline, es.budget_expectation, es.source_context_json,
             o.name AS company_name, o.industry, o.company_size, o.employee_count, o.office_count,
@@ -603,15 +606,35 @@ export function getEstimatorSessionByToken(resumeToken: string) {
      JOIN organizations o ON o.id=es.organization_id
      JOIN contacts c ON c.id=es.contact_id
      WHERE es.secure_token_hash=?`,
-  ).get(tokenHash) as any;
+    [tokenHash],
+  );
   if (!row) throw new Error('Saved estimator draft not found.');
 
-  const answers = db.prepare(
-    `SELECT q.question_key, a.answer_json
-     FROM estimator_answers a
-     JOIN estimator_questions q ON q.id=a.question_id
-     WHERE a.session_id=?`,
-  ).all(row.id) as Array<{ question_key: string; answer_json: string }>;
+  const [answers, latestEstimate, latestRfq] = await Promise.all([
+    db.queryAll<{ question_key: string; answer_json: string }>(
+      `SELECT q.question_key, a.answer_json
+       FROM estimator_answers a
+       JOIN estimator_questions q ON q.id=a.question_id
+       WHERE a.session_id=?`,
+      [row.id],
+    ),
+    db.queryOne<any>(
+      `SELECT pe.*, s.name AS service_name
+       FROM project_estimates pe JOIN services s ON s.id=pe.service_id
+       WHERE pe.session_id=? ORDER BY pe.version DESC LIMIT 1`,
+      [row.id],
+    ),
+    db.queryOne<any>(
+      `SELECT r.id, r.rfq_number, r.session_id, r.estimate_id, r.current_version,
+              r.status, r.created_at, r.updated_at, rv.content_json
+       FROM rfqs r
+       JOIN rfq_versions rv ON rv.rfq_id=r.id AND rv.version=r.current_version
+       WHERE r.session_id=?
+       ORDER BY r.updated_at DESC
+       LIMIT 1`,
+      [row.id],
+    ),
+  ]);
 
   const input: SessionInput = {
     mode: row.mode,
@@ -642,22 +665,6 @@ export function getEstimatorSessionByToken(resumeToken: string) {
       answers.map((answer) => [answer.question_key, safeJson<unknown>(answer.answer_json, null)]),
     ),
   };
-
-  const latestEstimate = db.prepare(
-    `SELECT pe.*, s.name AS service_name
-     FROM project_estimates pe JOIN services s ON s.id=pe.service_id
-     WHERE pe.session_id=? ORDER BY pe.version DESC LIMIT 1`,
-  ).get(row.id) as any;
-
-  const latestRfq = db.prepare(
-    `SELECT r.id, r.rfq_number, r.session_id, r.estimate_id, r.current_version,
-            r.status, r.created_at, r.updated_at, rv.content_json
-     FROM rfqs r
-     JOIN rfq_versions rv ON rv.rfq_id=r.id AND rv.version=r.current_version
-     WHERE r.session_id=?
-     ORDER BY r.updated_at DESC
-     LIMIT 1`,
-  ).get(row.id) as any;
 
   return {
     sessionId: row.id,
@@ -702,11 +709,14 @@ export function getEstimatorSessionByToken(resumeToken: string) {
   };
 }
 
-function levelFromIndex(index: number): ProjectEstimate['complexityLevel'] {
-  const veryLowMax = getNumberSetting('complexity_threshold_very_low', 20, 0, 100);
-  const lowMax = getNumberSetting('complexity_threshold_low', 40, veryLowMax, 100);
-  const moderateMax = getNumberSetting('complexity_threshold_moderate', 60, lowMax, 100);
-  const highMax = getNumberSetting('complexity_threshold_high', 80, moderateMax, 100);
+async function levelFromIndex(index: number): Promise<ProjectEstimate['complexityLevel']> {
+  let veryLowMax = await getNumberSetting('complexity_threshold_very_low', 20, 0, 100);
+  let lowMax = await getNumberSetting('complexity_threshold_low', 40, 0, 100);
+  let moderateMax = await getNumberSetting('complexity_threshold_moderate', 60, 0, 100);
+  let highMax = await getNumberSetting('complexity_threshold_high', 80, 0, 100);
+  lowMax = Math.max(veryLowMax, lowMax);
+  moderateMax = Math.max(lowMax, moderateMax);
+  highMax = Math.max(moderateMax, highMax);
   if (index <= veryLowMax) return 'Very Low';
   if (index <= lowMax) return 'Low';
   if (index <= moderateMax) return 'Moderate';
@@ -714,11 +724,14 @@ function levelFromIndex(index: number): ProjectEstimate['complexityLevel'] {
   return 'Very High';
 }
 
-function sizeFromEffort(effort: number): ProjectEstimate['projectSize'] {
-  const microMax = getNumberSetting('project_size_micro_max_effort', 5, 0);
-  const smallMax = getNumberSetting('project_size_small_max_effort', 15, microMax);
-  const mediumMax = getNumberSetting('project_size_medium_max_effort', 35, smallMax);
-  const largeMax = getNumberSetting('project_size_large_max_effort', 70, mediumMax);
+async function sizeFromEffort(effort: number): Promise<ProjectEstimate['projectSize']> {
+  let microMax = await getNumberSetting('project_size_micro_max_effort', 5, 0);
+  let smallMax = await getNumberSetting('project_size_small_max_effort', 15, 0);
+  let mediumMax = await getNumberSetting('project_size_medium_max_effort', 35, 0);
+  let largeMax = await getNumberSetting('project_size_large_max_effort', 70, 0);
+  smallMax = Math.max(microMax, smallMax);
+  mediumMax = Math.max(smallMax, mediumMax);
+  largeMax = Math.max(mediumMax, largeMax);
   if (effort <= microMax) return 'Micro';
   if (effort <= smallMax) return 'Small';
   if (effort <= mediumMax) return 'Medium';
@@ -726,7 +739,7 @@ function sizeFromEffort(effort: number): ProjectEstimate['projectSize'] {
   return 'Enterprise';
 }
 
-function priceMultiplierForLevel(level: ProjectEstimate['complexityLevel']) {
+async function priceMultiplierForLevel(level: ProjectEstimate['complexityLevel']) {
   const key =
     level === 'Very High'
       ? 'complexity_multiplier_very_high'
@@ -735,9 +748,11 @@ function priceMultiplierForLevel(level: ProjectEstimate['complexityLevel']) {
         : level === 'Moderate'
           ? 'complexity_multiplier_moderate'
           : 'complexity_multiplier_low';
-  const row = getDatabase().prepare('SELECT value FROM pricing_parameters WHERE key = ?').get(key) as
-    | { value: number }
-    | undefined;
+  const db = await getRuntimeDatabase();
+  const row = await db.queryOne<{ value: number }>(
+    'SELECT value FROM pricing_parameters WHERE key = ?',
+    [key],
+  );
   return Number(row?.value || 1);
 }
 
