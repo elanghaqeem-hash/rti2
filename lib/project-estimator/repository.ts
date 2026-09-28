@@ -314,6 +314,121 @@ export function getEstimatorBootstrap(): EstimatorBootstrap {
   };
 }
 
+export function validateEstimatorSessionInput(input: SessionInput): string[] {
+  const errors: string[] = [];
+  const db = getDatabase();
+
+  const service = db.prepare(
+    'SELECT id FROM services WHERE id=? AND is_active=1',
+  ).get(input.serviceId);
+  if (!service) errors.push('Selected RTI service is not active.');
+
+  if (!Array.isArray(input.businessObjectives) || input.businessObjectives.length > 50) {
+    errors.push('Business objectives are invalid.');
+  } else if (input.businessObjectives.some((item) => typeof item !== 'string' || item.length > 160)) {
+    errors.push('Business objective values are invalid.');
+  }
+
+  const textFields: Array<[unknown, number, string]> = [
+    [input.projectName, 180, 'Project name'],
+    [input.targetTimeline, 240, 'Target timeline'],
+    [input.budgetExpectation, 240, 'Budget expectation'],
+    [input.profile?.companyName, 180, 'Company name'],
+    [input.profile?.industry, 120, 'Industry'],
+    [input.profile?.companySize, 80, 'Company size'],
+    [input.profile?.location, 240, 'Location'],
+    [input.profile?.country, 120, 'Country'],
+    [input.profile?.website, 500, 'Website'],
+    [input.profile?.contactName, 120, 'Contact name'],
+    [input.profile?.contactTitle, 160, 'Contact title'],
+    [input.profile?.department, 160, 'Department'],
+    [input.profile?.email, 254, 'Email'],
+    [input.profile?.phone, 80, 'Phone'],
+    [input.profile?.whatsapp, 80, 'WhatsApp'],
+    [input.profile?.preferredChannel, 80, 'Preferred channel'],
+  ];
+  for (const [value, max, label] of textFields) {
+    if (value == null || value === '') continue;
+    if (typeof value !== 'string' || value.length > max) errors.push(`${label} is invalid.`);
+  }
+
+  for (const [value, label] of [
+    [input.profile?.employeeCount, 'Employee count'],
+    [input.profile?.officeCount, 'Office count'],
+  ] as Array<[unknown, string]>) {
+    if (value == null) continue;
+    if (!Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > 100000000) {
+      errors.push(`${label} is invalid.`);
+    }
+  }
+
+  if (!input.answers || typeof input.answers !== 'object' || Array.isArray(input.answers)) {
+    errors.push('Estimator answers are invalid.');
+    return errors;
+  }
+
+  const answerEntries = Object.entries(input.answers);
+  if (answerEntries.length > 250) {
+    errors.push('Too many estimator answers were submitted.');
+    return errors;
+  }
+
+  const questions = db.prepare(
+    `SELECT id, question_key, field_type
+     FROM estimator_questions
+     WHERE is_active=1 AND (service_id IS NULL OR service_id=?)`,
+  ).all(input.serviceId) as Array<{ id: string; question_key: string; field_type: string }>;
+  const byKey = new Map(questions.map((question) => [question.question_key, question]));
+
+  const optionRows = db.prepare(
+    `SELECT q.question_key, o.value
+     FROM estimator_question_options o
+     JOIN estimator_questions q ON q.id=o.question_id
+     WHERE o.is_active=1 AND q.is_active=1 AND (q.service_id IS NULL OR q.service_id=?)`,
+  ).all(input.serviceId) as Array<{ question_key: string; value: string }>;
+  const options = new Map<string, Set<string>>();
+  for (const row of optionRows) {
+    const values = options.get(row.question_key) || new Set<string>();
+    values.add(row.value);
+    options.set(row.question_key, values);
+  }
+
+  for (const [key, value] of answerEntries) {
+    const question = byKey.get(key);
+    if (!question) {
+      errors.push(`Unknown estimator question: ${key}.`);
+      continue;
+    }
+    const allowed = options.get(key);
+    if (allowed?.size) {
+      if (question.field_type === 'multiselect') {
+        if (!Array.isArray(value) || value.length > 100 || value.some((item) => !allowed.has(String(item)))) {
+          errors.push(`Invalid option submitted for ${key}.`);
+        }
+      } else if (!allowed.has(String(value))) {
+        errors.push(`Invalid option submitted for ${key}.`);
+      }
+      continue;
+    }
+
+    if (question.field_type === 'checkbox') {
+      if (typeof value !== 'boolean') errors.push(`Invalid boolean value for ${key}.`);
+    } else if (['number','currency','slider'].includes(question.field_type)) {
+      if (!Number.isFinite(Number(value)) || Math.abs(Number(value)) > 1000000000000) {
+        errors.push(`Invalid numeric value for ${key}.`);
+      }
+    } else if (question.field_type === 'multiselect') {
+      if (!Array.isArray(value) || value.length > 100 || value.some((item) => typeof item !== 'string' || item.length > 1000)) {
+        errors.push(`Invalid multi-select value for ${key}.`);
+      }
+    } else if (typeof value !== 'string' || value.length > 8000) {
+      errors.push(`Invalid text value for ${key}.`);
+    }
+  }
+
+  return errors.slice(0, 12);
+}
+
 export function upsertEstimatorSession(
   input: SessionInput,
   existingSessionId?: string,
