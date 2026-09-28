@@ -481,7 +481,7 @@ export async function getEstimatorAdminDashboard(): Promise<EstimatorAdminDashbo
   };
 }
 
-export function updateEstimateCommercial(params: {
+export async function updateEstimateCommercial(params: {
   rfqId: string;
   resourceCost: number;
   thirdPartyCost: number;
@@ -493,10 +493,11 @@ export function updateEstimateCommercial(params: {
   taxPct: number;
   actor: string;
 }) {
-  const db = getDatabase();
-  const rfq = db.prepare(
-    `SELECT r.estimate_id FROM rfqs r WHERE r.id=?`,
-  ).get(params.rfqId) as { estimate_id: string } | undefined;
+  const db = await getRuntimeDatabase();
+  const rfq = await db.queryOne<{ estimate_id: string }>(
+    'SELECT estimate_id FROM rfqs WHERE id=?',
+    [params.rfqId],
+  );
   if (!rfq) throw new Error('RFQ not found.');
 
   const safeMoney = (value: number) => Math.max(0, Math.round(Number(value) || 0));
@@ -509,18 +510,20 @@ export function updateEstimateCommercial(params: {
   const marginPct = safePct(params.marginPct);
   const discountAmount = safeMoney(params.discountAmount);
   const taxPct = safePct(params.taxPct);
-
   const directCost = resourceCost + thirdPartyCost + licenseCost + travelCost;
-  const contingencyAmount = Math.round(directCost * contingencyPct / 100);
+  const contingencyAmount = Math.round((directCost * contingencyPct) / 100);
   const commercialBase = directCost + contingencyAmount;
-  const markupAmount = Math.round(commercialBase * marginPct / 100);
+  const markupAmount = Math.round((commercialBase * marginPct) / 100);
   const totalBeforeTax = Math.max(0, commercialBase + markupAmount - discountAmount);
-  const taxAmount = Math.round(totalBeforeTax * taxPct / 100);
+  const taxAmount = Math.round((totalBeforeTax * taxPct) / 100);
   const totalQuotation = totalBeforeTax + taxAmount;
   const now = new Date().toISOString();
 
-  const before = db.prepare('SELECT * FROM estimate_commercials WHERE estimate_id=?').get(rfq.estimate_id);
-  db.prepare(
+  const before = await db.queryOne<Record<string, unknown>>(
+    'SELECT * FROM estimate_commercials WHERE estimate_id=?',
+    [rfq.estimate_id],
+  );
+  await db.run(
     `INSERT INTO estimate_commercials
       (estimate_id, resource_cost, third_party_cost, license_cost, travel_cost,
        contingency_pct, margin_pct, discount_amount, tax_pct, total_before_tax,
@@ -540,134 +543,93 @@ export function updateEstimateCommercial(params: {
        total_quotation=excluded.total_quotation,
        updated_by=excluded.updated_by,
        updated_at=excluded.updated_at`,
-  ).run(
-    rfq.estimate_id,
-    resourceCost,
-    thirdPartyCost,
-    licenseCost,
-    travelCost,
-    contingencyPct,
-    marginPct,
-    discountAmount,
-    taxPct,
-    totalBeforeTax,
-    taxAmount,
-    totalQuotation,
-    params.actor,
-    now,
+    [
+      rfq.estimate_id, resourceCost, thirdPartyCost, licenseCost, travelCost,
+      contingencyPct, marginPct, discountAmount, taxPct, totalBeforeTax,
+      taxAmount, totalQuotation, params.actor, now,
+    ],
   );
-
-  audit('estimate_commercial', rfq.estimate_id, before ? 'update' : 'create', params.actor, before, {
-    resourceCost,
-    thirdPartyCost,
-    licenseCost,
-    travelCost,
-    contingencyPct,
-    marginPct,
-    discountAmount,
-    taxPct,
-    totalBeforeTax,
-    taxAmount,
-    totalQuotation,
+  await audit('estimate_commercial', rfq.estimate_id, before ? 'update' : 'create', params.actor, before, {
+    resourceCost, thirdPartyCost, licenseCost, travelCost, contingencyPct, marginPct,
+    discountAmount, taxPct, totalBeforeTax, taxAmount, totalQuotation,
   });
-
   return { totalBeforeTax, taxAmount, totalQuotation };
 }
 
-export function updateOpportunityStage(params: {
+export async function updateOpportunityStage(params: {
   rfqId: string;
   stage: string;
   actor: string;
   note?: string;
 }) {
   const allowed = new Set([
-    'New RFQ',
-    'Initial Review',
-    'Qualification',
-    'Clarification',
-    'Proposal Preparation',
-    'Proposal Sent',
-    'Negotiation',
-    'Won',
-    'Lost',
+    'New RFQ','Initial Review','Qualification','Clarification','Proposal Preparation',
+    'Proposal Sent','Negotiation','Won','Lost',
   ]);
   if (!allowed.has(params.stage)) throw new Error('Invalid opportunity stage.');
-  const db = getDatabase();
-  const before = db.prepare('SELECT id, stage FROM opportunities WHERE rfq_id=?').get(params.rfqId) as
-    | { id: string; stage: string }
-    | undefined;
+  const db = await getRuntimeDatabase();
+  const before = await db.queryOne<{ id: string; stage: string }>(
+    'SELECT id, stage FROM opportunities WHERE rfq_id=?',
+    [params.rfqId],
+  );
   if (!before) throw new Error('Opportunity not found.');
-
   const now = new Date().toISOString();
-  db.exec('BEGIN IMMEDIATE;');
-  try {
-    db.prepare('UPDATE opportunities SET stage=?, updated_at=? WHERE rfq_id=?').run(params.stage, now, params.rfqId);
-    db.prepare(
-      `INSERT INTO lead_activities (id, opportunity_id, activity_type, note, actor, created_at)
-       VALUES (?, ?, 'STAGE_CHANGE', ?, ?, ?)`,
-    ).run(randomUUID(), before.id, params.note || `${before.stage} → ${params.stage}`, params.actor, now);
-    if (params.stage === 'Won' || params.stage === 'Lost') {
-      db.prepare("UPDATE rfqs SET status='closed', updated_at=? WHERE id=?").run(now, params.rfqId);
-    }
-    db.exec('COMMIT;');
-  } catch (error) {
-    db.exec('ROLLBACK;');
-    throw error;
+  const statements = [
+    {
+      sql: 'UPDATE opportunities SET stage=?, updated_at=? WHERE rfq_id=?',
+      params: [params.stage, now, params.rfqId],
+    },
+    {
+      sql: `INSERT INTO lead_activities (id, opportunity_id, activity_type, note, actor, created_at)
+            VALUES (?, ?, 'STAGE_CHANGE', ?, ?, ?)`,
+      params: [randomUUID(), before.id, params.note || `${before.stage} → ${params.stage}`, params.actor, now],
+    },
+  ];
+  if (params.stage === 'Won' || params.stage === 'Lost') {
+    statements.push({
+      sql: "UPDATE rfqs SET status='closed', updated_at=? WHERE id=?",
+      params: [now, params.rfqId],
+    });
   }
-  audit('opportunity', before.id, 'stage_change', params.actor, before, { stage: params.stage });
+  await db.batch(statements);
+  await audit('opportunity', before.id, 'stage_change', params.actor, before, { stage: params.stage });
 }
 
-export function upsertServiceCategory(params: {
-  id?: string;
-  slug?: string;
-  name: string;
-  description?: string;
-  sortOrder?: number;
-  active?: boolean;
-  actor: string;
+export async function upsertServiceCategory(params: {
+  id?: string; slug?: string; name: string; description?: string;
+  sortOrder?: number; active?: boolean; actor: string;
 }) {
-  const db = getDatabase();
+  const db = await getRuntimeDatabase();
   const id = params.id || `cat-${randomUUID()}`;
   const name = params.name.trim().slice(0, 180);
   const slug = slugify(params.slug || name);
   if (!name || !slug) throw new Error('Category name and slug are required.');
-  const before = db.prepare('SELECT * FROM service_categories WHERE id=?').get(id);
+  const before = await db.queryOne<Record<string, unknown>>('SELECT * FROM service_categories WHERE id=?', [id]);
   const now = new Date().toISOString();
-  db.prepare(
+  await db.run(
     `INSERT INTO service_categories
       (id, slug, name, description, sort_order, is_active, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        slug=excluded.slug, name=excluded.name, description=excluded.description,
        sort_order=excluded.sort_order, is_active=excluded.is_active, updated_at=excluded.updated_at`,
-  ).run(
-    id,
-    slug,
-    name,
-    params.description?.trim().slice(0, 2000) || null,
-    Math.trunc(params.sortOrder ?? 100),
-    params.active === false ? 0 : 1,
-    now,
-    now,
+    [id, slug, name, params.description?.trim().slice(0, 2000) || null,
+      Math.trunc(params.sortOrder ?? 100), params.active === false ? 0 : 1, now, now],
   );
-  audit('service_category', id, before ? 'update' : 'create', params.actor, before, params);
+  await audit('service_category', id, before ? 'update' : 'create', params.actor, before, params);
   return id;
 }
 
-export function createEstimatorService(params: {
-  categoryId: string;
-  slug?: string;
-  name: string;
-  description?: string;
-  baseEffortDays?: number;
-  basePriceMin?: number;
-  basePriceMax?: number;
-  durationMinWeeks?: number;
-  durationMaxWeeks?: number;
-  actor: string;
+export async function createEstimatorService(params: {
+  categoryId: string; slug?: string; name: string; description?: string;
+  baseEffortDays?: number; basePriceMin?: number; basePriceMax?: number;
+  durationMinWeeks?: number; durationMaxWeeks?: number; actor: string;
 }) {
-  const db = getDatabase();
-  const category = db.prepare('SELECT id FROM service_categories WHERE id=? AND is_active=1').get(params.categoryId);
+  const db = await getRuntimeDatabase();
+  const category = await db.queryOne<{ id: string }>(
+    'SELECT id FROM service_categories WHERE id=? AND is_active=1',
+    [params.categoryId],
+  );
   if (!category) throw new Error('Active service category is required.');
   const id = `svc-${randomUUID()}`;
   const name = params.name.trim().slice(0, 180);
@@ -676,44 +638,28 @@ export function createEstimatorService(params: {
   const minPrice = Math.max(0, Math.trunc(params.basePriceMin || 0));
   const maxPrice = Math.max(minPrice, Math.trunc(params.basePriceMax || minPrice));
   const now = new Date().toISOString();
-  db.prepare(
+  await db.run(
     `INSERT INTO services
       (id, category_id, slug, name, description, base_effort_days, base_price_min,
        base_price_max, billing_unit, default_duration_min_weeks,
        default_duration_max_weeks, is_active, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'project', ?, ?, 1, ?, ?)`,
-  ).run(
-    id,
-    params.categoryId,
-    slug,
-    name,
-    params.description?.trim().slice(0, 2000) || null,
-    Math.max(0.5, Number(params.baseEffortDays || 5)),
-    minPrice,
-    maxPrice,
-    Math.max(0.5, Number(params.durationMinWeeks || 1)),
-    Math.max(0.5, Number(params.durationMaxWeeks || 2)),
-    now,
-    now,
+    [id, params.categoryId, slug, name, params.description?.trim().slice(0, 2000) || null,
+      Math.max(0.5, Number(params.baseEffortDays || 5)), minPrice, maxPrice,
+      Math.max(0.5, Number(params.durationMinWeeks || 1)),
+      Math.max(0.5, Number(params.durationMaxWeeks || 2)), now, now],
   );
-  audit('service', id, 'create', params.actor, null, params);
+  await audit('service', id, 'create', params.actor, null, params);
   return id;
 }
 
-export function updateEstimatorService(params: {
-  id: string;
-  name: string;
-  description: string;
-  baseEffortDays: number;
-  basePriceMin: number;
-  basePriceMax: number;
-  durationMinWeeks: number;
-  durationMaxWeeks: number;
-  active: boolean;
-  actor: string;
+export async function updateEstimatorService(params: {
+  id: string; name: string; description: string; baseEffortDays: number;
+  basePriceMin: number; basePriceMax: number; durationMinWeeks: number;
+  durationMaxWeeks: number; active: boolean; actor: string;
 }) {
-  const db = getDatabase();
-  const before = db.prepare('SELECT * FROM services WHERE id=?').get(params.id);
+  const db = await getRuntimeDatabase();
+  const before = await db.queryOne<Record<string, unknown>>('SELECT * FROM services WHERE id=?', [params.id]);
   if (!before) throw new Error('Service not found.');
   const values = [
     params.name.trim().slice(0, 180),
@@ -728,191 +674,139 @@ export function updateEstimatorService(params: {
     params.id,
   ];
   if (!values[0]) throw new Error('Service name is required.');
-  if (Number(values[4]) < Number(values[3])) throw new Error('Maximum price must be greater than or equal to minimum price.');
-  db.prepare(
+  if (Number(values[4]) < Number(values[3])) {
+    throw new Error('Maximum price must be greater than or equal to minimum price.');
+  }
+  await db.run(
     `UPDATE services SET name=?, description=?, base_effort_days=?, base_price_min=?, base_price_max=?,
       default_duration_min_weeks=?, default_duration_max_weeks=?, is_active=?, updated_at=? WHERE id=?`,
-  ).run(...values);
-  audit('service', params.id, 'update', params.actor, before, params);
+    values,
+  );
+  await audit('service', params.id, 'update', params.actor, before, params);
 }
 
-export function updatePricingParameter(params: {
-  key: string;
-  value: number;
-  actor: string;
-}) {
-  const db = getDatabase();
-  const before = db.prepare('SELECT * FROM pricing_parameters WHERE key=?').get(params.key) as any;
+export async function updatePricingParameter(params: { key: string; value: number; actor: string }) {
+  const db = await getRuntimeDatabase();
+  const before = await db.queryOne<any>('SELECT * FROM pricing_parameters WHERE key=?', [params.key]);
   if (!before) throw new Error('Pricing parameter not found.');
   const value = Number(params.value);
   if (!Number.isFinite(value)) throw new Error('Invalid pricing value.');
   if (before.min_value != null && value < Number(before.min_value)) throw new Error('Value is below allowed minimum.');
   if (before.max_value != null && value > Number(before.max_value)) throw new Error('Value exceeds allowed maximum.');
-  db.prepare('UPDATE pricing_parameters SET value=?, updated_at=? WHERE key=?').run(value, new Date().toISOString(), params.key);
-  audit('pricing_parameter', params.key, 'update', params.actor, before, { ...before, value });
+  await db.run('UPDATE pricing_parameters SET value=?, updated_at=? WHERE key=?', [value, new Date().toISOString(), params.key]);
+  await audit('pricing_parameter', params.key, 'update', params.actor, before, { ...before, value });
 }
 
-export function updateEstimatorSetting(params: {
-  key: string;
-  value: string;
-  actor: string;
-}) {
-  const db = getDatabase();
-  const before = db.prepare('SELECT * FROM estimator_settings WHERE key=?').get(params.key);
+export async function updateEstimatorSetting(params: { key: string; value: string; actor: string }) {
+  const db = await getRuntimeDatabase();
+  const before = await db.queryOne<Record<string, unknown>>('SELECT * FROM estimator_settings WHERE key=?', [params.key]);
   if (!before) throw new Error('Estimator setting not found.');
   const value = params.value.trim().slice(0, 8000);
-  db.prepare('UPDATE estimator_settings SET value=?, updated_at=? WHERE key=?').run(value, new Date().toISOString(), params.key);
-  audit('estimator_setting', params.key, 'update', params.actor, before, { key: params.key, value });
+  await db.run('UPDATE estimator_settings SET value=?, updated_at=? WHERE key=?', [value, new Date().toISOString(), params.key]);
+  await audit('estimator_setting', params.key, 'update', params.actor, before, { key: params.key, value });
 }
 
-export function createEstimatorQuestion(params: {
-  serviceId?: string | null;
-  key: string;
-  label: string;
-  helpText?: string;
-  fieldType: string;
-  required?: boolean;
-  dimension?: string | null;
-  weight?: number;
-  sortOrder?: number;
-  quickMode?: boolean;
-  detailedMode?: boolean;
-  actor: string;
+export async function createEstimatorQuestion(params: {
+  serviceId?: string | null; key: string; label: string; helpText?: string;
+  fieldType: string; required?: boolean; dimension?: string | null; weight?: number;
+  sortOrder?: number; quickMode?: boolean; detailedMode?: boolean; actor: string;
 }) {
-  const db = getDatabase();
+  const db = await getRuntimeDatabase();
   const key = slugify(params.key).replace(/-/g, '_');
   const label = params.label.trim().slice(0, 500);
-  if (!key || !label || !FIELD_TYPES.has(params.fieldType)) throw new Error('Question key, label and valid field type are required.');
+  if (!key || !label || !FIELD_TYPES.has(params.fieldType)) {
+    throw new Error('Question key, label and valid field type are required.');
+  }
   if (params.serviceId) {
-    const service = db.prepare('SELECT id FROM services WHERE id=?').get(params.serviceId);
+    const service = await db.queryOne<{ id: string }>('SELECT id FROM services WHERE id=?', [params.serviceId]);
     if (!service) throw new Error('Service not found.');
   }
   const id = `q-${randomUUID()}`;
   const now = new Date().toISOString();
-  db.prepare(
+  await db.run(
     `INSERT INTO estimator_questions
       (id, service_id, question_key, label, help_text, field_type, required,
        complexity_dimension, weight, sort_order, quick_mode, detailed_mode,
        is_active, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-  ).run(
-    id,
-    params.serviceId || null,
-    key,
-    label,
-    params.helpText?.trim().slice(0, 1000) || null,
-    params.fieldType,
-    params.required ? 1 : 0,
-    params.dimension || null,
-    Math.max(0, Math.min(10, Number(params.weight ?? 1))),
-    Math.trunc(params.sortOrder ?? 100),
-    params.quickMode === false ? 0 : 1,
-    params.detailedMode === false ? 0 : 1,
-    now,
-    now,
+    [id, params.serviceId || null, key, label, params.helpText?.trim().slice(0, 1000) || null,
+      params.fieldType, params.required ? 1 : 0, params.dimension || null,
+      Math.max(0, Math.min(10, Number(params.weight ?? 1))), Math.trunc(params.sortOrder ?? 100),
+      params.quickMode === false ? 0 : 1, params.detailedMode === false ? 0 : 1, now, now],
   );
-  audit('estimator_question', id, 'create', params.actor, null, params);
+  await audit('estimator_question', id, 'create', params.actor, null, params);
   return id;
 }
 
-export function updateEstimatorQuestion(params: {
-  id: string;
-  label: string;
-  helpText?: string;
-  required: boolean;
-  weight: number;
-  quickMode: boolean;
-  detailedMode: boolean;
-  active: boolean;
-  actor: string;
+export async function updateEstimatorQuestion(params: {
+  id: string; label: string; helpText?: string; required: boolean; weight: number;
+  quickMode: boolean; detailedMode: boolean; active: boolean; actor: string;
 }) {
-  const db = getDatabase();
-  const before = db.prepare('SELECT * FROM estimator_questions WHERE id=?').get(params.id);
+  const db = await getRuntimeDatabase();
+  const before = await db.queryOne<Record<string, unknown>>('SELECT * FROM estimator_questions WHERE id=?', [params.id]);
   if (!before) throw new Error('Question not found.');
   const label = params.label.trim().slice(0, 500);
   if (!label) throw new Error('Question label is required.');
   const weight = Math.max(0, Math.min(10, Number(params.weight)));
-  db.prepare(
+  await db.run(
     `UPDATE estimator_questions
      SET label=?, help_text=?, required=?, weight=?, quick_mode=?, detailed_mode=?, is_active=?, updated_at=?
      WHERE id=?`,
-  ).run(
-    label,
-    params.helpText?.trim().slice(0, 1000) || null,
-    params.required ? 1 : 0,
-    weight,
-    params.quickMode ? 1 : 0,
-    params.detailedMode ? 1 : 0,
-    params.active ? 1 : 0,
-    new Date().toISOString(),
-    params.id,
+    [label, params.helpText?.trim().slice(0, 1000) || null, params.required ? 1 : 0, weight,
+      params.quickMode ? 1 : 0, params.detailedMode ? 1 : 0, params.active ? 1 : 0,
+      new Date().toISOString(), params.id],
   );
-  audit('estimator_question', params.id, 'update', params.actor, before, params);
+  await audit('estimator_question', params.id, 'update', params.actor, before, params);
 }
 
-export function upsertQuestionCondition(params: {
-  id?: string;
-  questionId: string;
-  sourceQuestionKey: string;
-  operator: string;
-  compareValue?: string;
-  active?: boolean;
-  actor: string;
+export async function upsertQuestionCondition(params: {
+  id?: string; questionId: string; sourceQuestionKey: string; operator: string;
+  compareValue?: string; active?: boolean; actor: string;
 }) {
   const allowedOperators = new Set(['equals','not_equals','includes','gt','gte','lt','lte','truthy','falsy']);
   if (!allowedOperators.has(params.operator)) throw new Error('Unsupported condition operator.');
-  const db = getDatabase();
-  if (!db.prepare('SELECT id FROM estimator_questions WHERE id=?').get(params.questionId)) {
-    throw new Error('Target question not found.');
-  }
+  const db = await getRuntimeDatabase();
+  const target = await db.queryOne<{ id: string }>('SELECT id FROM estimator_questions WHERE id=?', [params.questionId]);
+  if (!target) throw new Error('Target question not found.');
   const sourceKey = params.sourceQuestionKey.trim().slice(0, 180);
-  if (!sourceKey || !db.prepare('SELECT id FROM estimator_questions WHERE question_key=? LIMIT 1').get(sourceKey)) {
-    throw new Error('Source question key not found.');
-  }
+  const source = sourceKey
+    ? await db.queryOne<{ id: string }>('SELECT id FROM estimator_questions WHERE question_key=? LIMIT 1', [sourceKey])
+    : null;
+  if (!source) throw new Error('Source question key not found.');
   const id = params.id || `cond-${randomUUID()}`;
   const before = params.id
-    ? db.prepare('SELECT * FROM estimator_question_conditions WHERE id=?').get(params.id)
+    ? await db.queryOne<Record<string, unknown>>('SELECT * FROM estimator_question_conditions WHERE id=?', [params.id])
     : null;
-  db.prepare(
+  await db.run(
     `INSERT INTO estimator_question_conditions
       (id, question_id, source_question_key, operator, compare_value, is_active)
      VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        question_id=excluded.question_id, source_question_key=excluded.source_question_key,
        operator=excluded.operator, compare_value=excluded.compare_value, is_active=excluded.is_active`,
-  ).run(
-    id,
-    params.questionId,
-    sourceKey,
-    params.operator,
-    params.compareValue?.trim().slice(0, 500) || null,
-    params.active === false ? 0 : 1,
+    [id, params.questionId, sourceKey, params.operator,
+      params.compareValue?.trim().slice(0, 500) || null, params.active === false ? 0 : 1],
   );
-  audit('question_condition', id, before ? 'update' : 'create', params.actor, before, params);
+  await audit('question_condition', id, before ? 'update' : 'create', params.actor, before, params);
   return id;
 }
 
-export function upsertQuestionOption(params: {
-  id?: string;
-  questionId: string;
-  value: string;
-  label: string;
-  score: number;
-  effortMultiplier: number;
-  priceMultiplier: number;
-  sortOrder?: number;
-  active?: boolean;
-  actor: string;
+export async function upsertQuestionOption(params: {
+  id?: string; questionId: string; value: string; label: string; score: number;
+  effortMultiplier: number; priceMultiplier: number; sortOrder?: number;
+  active?: boolean; actor: string;
 }) {
-  const db = getDatabase();
-  const question = db.prepare('SELECT id FROM estimator_questions WHERE id=?').get(params.questionId);
+  const db = await getRuntimeDatabase();
+  const question = await db.queryOne<{ id: string }>('SELECT id FROM estimator_questions WHERE id=?', [params.questionId]);
   if (!question) throw new Error('Question not found.');
   const id = params.id || `qo-${randomUUID()}`;
-  const before = params.id ? db.prepare('SELECT * FROM estimator_question_options WHERE id=?').get(params.id) : null;
+  const before = params.id
+    ? await db.queryOne<Record<string, unknown>>('SELECT * FROM estimator_question_options WHERE id=?', [params.id])
+    : null;
   const value = params.value.trim().slice(0, 160);
   const label = params.label.trim().slice(0, 500);
   if (!value || !label) throw new Error('Option value and label are required.');
-  db.prepare(
+  await db.run(
     `INSERT INTO estimator_question_options
       (id, question_id, value, label, score, effort_multiplier, price_multiplier, sort_order, is_active)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -921,36 +815,27 @@ export function upsertQuestionOption(params: {
        score=excluded.score, effort_multiplier=excluded.effort_multiplier,
        price_multiplier=excluded.price_multiplier, sort_order=excluded.sort_order,
        is_active=excluded.is_active`,
-  ).run(
-    id,
-    params.questionId,
-    value,
-    label,
-    Math.max(1, Math.min(5, Number(params.score))),
-    Math.max(0.1, Math.min(10, Number(params.effortMultiplier))),
-    Math.max(0.1, Math.min(10, Number(params.priceMultiplier))),
-    Math.trunc(params.sortOrder ?? 100),
-    params.active === false ? 0 : 1,
+    [id, params.questionId, value, label, Math.max(1, Math.min(5, Number(params.score))),
+      Math.max(0.1, Math.min(10, Number(params.effortMultiplier))),
+      Math.max(0.1, Math.min(10, Number(params.priceMultiplier))),
+      Math.trunc(params.sortOrder ?? 100), params.active === false ? 0 : 1],
   );
-  audit('question_option', id, before ? 'update' : 'create', params.actor, before, params);
+  await audit('question_option', id, before ? 'update' : 'create', params.actor, before, params);
   return id;
 }
 
-export function upsertEstimatorRule(params: {
-  id?: string;
-  serviceId?: string | null;
-  name: string;
-  conditionsJson: string;
-  effectsJson: string;
-  sortOrder?: number;
-  active?: boolean;
-  actor: string;
+export async function upsertEstimatorRule(params: {
+  id?: string; serviceId?: string | null; name: string; conditionsJson: string;
+  effectsJson: string; sortOrder?: number; active?: boolean; actor: string;
 }) {
-  const db = getDatabase();
+  const db = await getRuntimeDatabase();
   const id = params.id || `rule-${randomUUID()}`;
-  const before = params.id ? db.prepare('SELECT * FROM estimator_rules WHERE id=?').get(params.id) : null;
-  if (params.serviceId && !db.prepare('SELECT id FROM services WHERE id=?').get(params.serviceId)) {
-    throw new Error('Service not found.');
+  const before = params.id
+    ? await db.queryOne<Record<string, unknown>>('SELECT * FROM estimator_rules WHERE id=?', [params.id])
+    : null;
+  if (params.serviceId) {
+    const service = await db.queryOne<{ id: string }>('SELECT id FROM services WHERE id=?', [params.serviceId]);
+    if (!service) throw new Error('Service not found.');
   }
   let conditions: unknown;
   let effects: unknown;
@@ -965,7 +850,7 @@ export function upsertEstimatorRule(params: {
   }
   const name = params.name.trim().slice(0, 240);
   if (!name) throw new Error('Rule name is required.');
-  db.prepare(
+  await db.run(
     `INSERT INTO estimator_rules
       (id, service_id, name, condition_json, effects_json, sort_order, is_active, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -973,88 +858,68 @@ export function upsertEstimatorRule(params: {
        service_id=excluded.service_id, name=excluded.name, condition_json=excluded.condition_json,
        effects_json=excluded.effects_json, sort_order=excluded.sort_order,
        is_active=excluded.is_active, updated_at=excluded.updated_at`,
-  ).run(
-    id,
-    params.serviceId || null,
-    name,
-    JSON.stringify(conditions),
-    JSON.stringify(effects),
-    Math.trunc(params.sortOrder ?? 100),
-    params.active === false ? 0 : 1,
-    new Date().toISOString(),
+    [id, params.serviceId || null, name, JSON.stringify(conditions), JSON.stringify(effects),
+      Math.trunc(params.sortOrder ?? 100), params.active === false ? 0 : 1, new Date().toISOString()],
   );
-  audit('estimator_rule', id, before ? 'update' : 'create', params.actor, before, params);
+  await audit('estimator_rule', id, before ? 'update' : 'create', params.actor, before, params);
   return id;
 }
 
-export function upsertResourceRole(params: {
-  id?: string;
-  roleKey: string;
-  name: string;
-  internalDayRate?: number | null;
-  active?: boolean;
-  actor: string;
+export async function upsertResourceRole(params: {
+  id?: string; roleKey: string; name: string; internalDayRate?: number | null;
+  active?: boolean; actor: string;
 }) {
-  const db = getDatabase();
+  const db = await getRuntimeDatabase();
   const id = params.id || `role-${randomUUID()}`;
-  const before = params.id ? db.prepare('SELECT * FROM resource_roles WHERE id=?').get(params.id) : null;
+  const before = params.id
+    ? await db.queryOne<Record<string, unknown>>('SELECT * FROM resource_roles WHERE id=?', [params.id])
+    : null;
   const roleKey = slugify(params.roleKey).replace(/-/g, '_');
   const name = params.name.trim().slice(0, 180);
   if (!roleKey || !name) throw new Error('Resource key and name are required.');
-  db.prepare(
+  await db.run(
     `INSERT INTO resource_roles (id, role_key, name, internal_day_rate, is_active, updated_at)
      VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        role_key=excluded.role_key, name=excluded.name, internal_day_rate=excluded.internal_day_rate,
        is_active=excluded.is_active, updated_at=excluded.updated_at`,
-  ).run(
-    id,
-    roleKey,
-    name,
-    params.internalDayRate == null ? null : Math.max(0, Math.trunc(params.internalDayRate)),
-    params.active === false ? 0 : 1,
-    new Date().toISOString(),
+    [id, roleKey, name,
+      params.internalDayRate == null ? null : Math.max(0, Math.trunc(params.internalDayRate)),
+      params.active === false ? 0 : 1, new Date().toISOString()],
   );
-  audit('resource_role', id, before ? 'update' : 'create', params.actor, before, params);
+  await audit('resource_role', id, before ? 'update' : 'create', params.actor, before, params);
   return id;
 }
 
-export function upsertServiceDependency(params: {
-  serviceId: string;
-  relatedServiceId: string;
-  relationType: 'requires' | 'recommends';
-  reason?: string;
-  sortOrder?: number;
-  active?: boolean;
-  actor: string;
+export async function upsertServiceDependency(params: {
+  serviceId: string; relatedServiceId: string; relationType: 'requires' | 'recommends';
+  reason?: string; sortOrder?: number; active?: boolean; actor: string;
 }) {
-  const db = getDatabase();
   if (params.serviceId === params.relatedServiceId) throw new Error('A service cannot depend on itself.');
-  if (!db.prepare('SELECT id FROM services WHERE id=?').get(params.serviceId)) throw new Error('Primary service not found.');
-  if (!db.prepare('SELECT id FROM services WHERE id=?').get(params.relatedServiceId)) throw new Error('Related service not found.');
   if (!['requires','recommends'].includes(params.relationType)) throw new Error('Invalid service relationship type.');
-
-  const before = db.prepare(
+  const db = await getRuntimeDatabase();
+  const [primary, related] = await Promise.all([
+    db.queryOne<{ id: string }>('SELECT id FROM services WHERE id=?', [params.serviceId]),
+    db.queryOne<{ id: string }>('SELECT id FROM services WHERE id=?', [params.relatedServiceId]),
+  ]);
+  if (!primary) throw new Error('Primary service not found.');
+  if (!related) throw new Error('Related service not found.');
+  const before = await db.queryOne<Record<string, unknown>>(
     `SELECT * FROM service_dependencies
      WHERE service_id=? AND related_service_id=? AND relation_type=?`,
-  ).get(params.serviceId, params.relatedServiceId, params.relationType);
-
-  db.prepare(
+    [params.serviceId, params.relatedServiceId, params.relationType],
+  );
+  await db.run(
     `INSERT INTO service_dependencies
       (service_id, related_service_id, relation_type, reason, sort_order, is_active)
      VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(service_id, related_service_id, relation_type) DO UPDATE SET
        reason=excluded.reason, sort_order=excluded.sort_order, is_active=excluded.is_active`,
-  ).run(
-    params.serviceId,
-    params.relatedServiceId,
-    params.relationType,
-    params.reason?.trim().slice(0, 1200) || null,
-    Math.trunc(params.sortOrder ?? 100),
-    params.active === false ? 0 : 1,
+    [params.serviceId, params.relatedServiceId, params.relationType,
+      params.reason?.trim().slice(0, 1200) || null, Math.trunc(params.sortOrder ?? 100),
+      params.active === false ? 0 : 1],
   );
-
-  audit(
+  await audit(
     'service_dependency',
     `${params.serviceId}:${params.relatedServiceId}:${params.relationType}`,
     before ? 'update' : 'create',
@@ -1064,31 +929,31 @@ export function upsertServiceDependency(params: {
   );
 }
 
-export function upsertServiceResource(params: {
-  serviceId: string;
-  resourceRoleId: string;
-  quantity: number;
-  effortShare: number;
-  actor: string;
+export async function upsertServiceResource(params: {
+  serviceId: string; resourceRoleId: string; quantity: number;
+  effortShare: number; actor: string;
 }) {
-  const db = getDatabase();
-  if (!db.prepare('SELECT id FROM services WHERE id=?').get(params.serviceId)) throw new Error('Service not found.');
-  if (!db.prepare('SELECT id FROM resource_roles WHERE id=?').get(params.resourceRoleId)) throw new Error('Resource role not found.');
-  const before = db.prepare(
+  const db = await getRuntimeDatabase();
+  const [service, role] = await Promise.all([
+    db.queryOne<{ id: string }>('SELECT id FROM services WHERE id=?', [params.serviceId]),
+    db.queryOne<{ id: string }>('SELECT id FROM resource_roles WHERE id=?', [params.resourceRoleId]),
+  ]);
+  if (!service) throw new Error('Service not found.');
+  if (!role) throw new Error('Resource role not found.');
+  const before = await db.queryOne<Record<string, unknown>>(
     'SELECT * FROM service_resource_defaults WHERE service_id=? AND resource_role_id=?',
-  ).get(params.serviceId, params.resourceRoleId);
-  db.prepare(
+    [params.serviceId, params.resourceRoleId],
+  );
+  await db.run(
     `INSERT INTO service_resource_defaults (service_id, resource_role_id, quantity, effort_share)
      VALUES (?, ?, ?, ?)
      ON CONFLICT(service_id, resource_role_id) DO UPDATE SET
        quantity=excluded.quantity, effort_share=excluded.effort_share`,
-  ).run(
-    params.serviceId,
-    params.resourceRoleId,
-    Math.max(0.1, Math.min(100, Number(params.quantity))),
-    Math.max(0, Math.min(1, Number(params.effortShare))),
+    [params.serviceId, params.resourceRoleId,
+      Math.max(0.1, Math.min(100, Number(params.quantity))),
+      Math.max(0, Math.min(1, Number(params.effortShare)))],
   );
-  audit(
+  await audit(
     'service_resource',
     `${params.serviceId}:${params.resourceRoleId}`,
     before ? 'update' : 'create',
