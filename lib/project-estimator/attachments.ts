@@ -79,7 +79,7 @@ export async function storeRfqAttachment(params: {
   }
 
   const mimeType = String(params.file.type || '').toLowerCase();
-  const extension = path.extname(params.file.name || '').toLowerCase();
+  const extension = (String(params.file.name || '').match(/\.[A-Za-z0-9]+$/)?.[0] || '').toLowerCase();
   const allowedExtensions = ALLOWED.get(mimeType);
   if (!allowedExtensions?.includes(extension)) throw new Error('File type is not allowed.');
 
