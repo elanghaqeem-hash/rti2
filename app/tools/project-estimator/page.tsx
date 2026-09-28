@@ -6,6 +6,7 @@ import { TurnstileWidget } from '@/components/security/TurnstileWidget';
 import { useParameterGroups } from '@/components/parameters/useParameterOptions';
 import { QuickEstimateWorkspace } from '@/components/project-estimator/QuickEstimateWorkspace';
 import { EstimatorCopilotPanel } from '@/components/project-estimator/EstimatorCopilotPanel';
+import { EstimatorDocumentPanel } from '@/components/project-estimator/EstimatorDocumentPanel';
 import {
   ArrowLeft,
   ArrowRight,
@@ -143,6 +144,7 @@ export default function ProjectEstimatorPage() {
   const [resumeToken, setResumeToken] = useState('');
   const [savedAt, setSavedAt] = useState('');
   const [estimate, setEstimate] = useState<(Omit<ProjectEstimate, 'trace'>) | null>(null);
+  const [riskFlags, setRiskFlags] = useState<Array<{ code: string; severity: string; message: string }>>([]);
   const [rfq, setRfq] = useState<RfqRecord | null>(null);
   const [attachments, setAttachments] = useState<RfqAttachment[]>([]);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
@@ -453,6 +455,7 @@ export default function ProjectEstimatorPage() {
       const estimateData = await estimateResponse.json();
       if (!estimateResponse.ok) throw new Error(estimateData?.error || 'Could not calculate estimate.');
       setEstimate(estimateData.estimate);
+      setRiskFlags(Array.isArray(estimateData.riskFlags) ? estimateData.riskFlags : []);
       setRfq(null);
       setStep(5);
     } catch (error) {
@@ -919,11 +922,38 @@ export default function ProjectEstimatorPage() {
                 </div>
               )}
 
+              {riskFlags.length > 0 && (
+                <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50/50 p-5">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-rose-700">Risk Flags</div>
+                  <div className="mt-3 grid gap-2 md:grid-cols-2">
+                    {riskFlags.map((flag) => (
+                      <div key={flag.code} className="rounded-xl border border-rose-100 bg-white p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-extrabold text-navy-900">{flag.code}</span>
+                          <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[9px] font-extrabold uppercase text-rose-700">{flag.severity}</span>
+                        </div>
+                        <p className="mt-1 text-[11px] leading-relaxed text-muted">{flag.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {sessionId && resumeToken && (
+                <EstimatorDocumentPanel
+                  sessionId={sessionId}
+                  resumeToken={resumeToken}
+                  onEstimateUpdate={(nextEstimate) => setEstimate(nextEstimate)}
+                  onRiskFlags={(flags) => setRiskFlags(flags)}
+                />
+              )}
+
               {sessionId && resumeToken && (
                 <EstimatorCopilotPanel
                   sessionId={sessionId}
                   resumeToken={resumeToken}
                   onEstimateUpdate={(nextEstimate) => setEstimate(nextEstimate)}
+                  onRiskFlags={(flags) => setRiskFlags(flags)}
                 />
               )}
 

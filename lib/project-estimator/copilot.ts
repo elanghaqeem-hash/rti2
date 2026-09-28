@@ -9,6 +9,7 @@ import {
   verifyEstimatorSessionAccess,
 } from '@/lib/project-estimator/repository';
 import type { EstimatorQuestion, ProjectEstimate } from '@/lib/project-estimator/types';
+import { listEstimatorRiskFlags, refreshEstimatorRiskFlags } from '@/lib/project-estimator/risk';
 
 type CopilotProposal = {
   key: string;
@@ -429,6 +430,13 @@ export async function runEstimatorCopilot(params: {
     refreshed.input.answers,
     3,
   );
+  const riskFlags = estimate
+    ? await refreshEstimatorRiskFlags({
+        sessionId: params.sessionId,
+        resumeToken: params.resumeToken,
+        estimate,
+      })
+    : await listEstimatorRiskFlags(params.sessionId);
 
   const tools = [
     { name: 'get_session_state', ok: true },
@@ -478,6 +486,7 @@ export async function runEstimatorCopilot(params: {
       required: question.required,
     })),
     estimate,
+    riskFlags,
     degraded,
     provider: modelResult ? 'anthropic' : 'deterministic-fallback',
   };
