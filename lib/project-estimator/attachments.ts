@@ -127,6 +127,43 @@ export async function storeRfqAttachment(params: {
   };
 }
 
+export async function readRfqAttachment(rfqId: string, attachmentId: string) {
+  const db = await getRuntimeDatabase();
+  if (db.kind !== 'node-sqlite') {
+    throw new Error(
+      'RFQ attachment download requires configured object storage on Cloudflare. Download is disabled until that storage is enabled.',
+    );
+  }
+
+  const row = await db.queryOne<{
+    file_name: string;
+    storage_key: string;
+    mime_type: string;
+    sha256: string;
+    scan_status: string;
+  }>(
+    `SELECT file_name, storage_key, mime_type, sha256, scan_status
+     FROM rfq_attachments WHERE id=? AND rfq_id=?`,
+    [attachmentId, rfqId],
+  );
+  if (!row) throw new Error('RFQ attachment not found.');
+  if (row.scan_status !== 'clean') throw new Error('RFQ attachment is not cleared for download.');
+
+  const { directory, path } = await resolveUploadDirectory();
+  if (path.basename(row.storage_key) !== row.storage_key) throw new Error('Invalid RFQ attachment storage key.');
+  const storagePath = path.join(directory, row.storage_key);
+  const { readFile } = await import('node:fs/promises');
+  const buffer = await readFile(storagePath);
+  const sha256 = createHash('sha256').update(buffer).digest('hex');
+  if (sha256 !== row.sha256) throw new Error('RFQ attachment integrity verification failed.');
+
+  return {
+    fileName: row.file_name,
+    mimeType: row.mime_type,
+    sha256,
+    buffer,
+  };
+}
 export async function listRfqAttachments(rfqId: string) {
   const db = await getRuntimeDatabase();
   const rows = await db.queryAll<any>(

@@ -286,3 +286,38 @@ test('Project Estimator: Cloudflare attachment upload fails closed until object 
   assert.match(attachments, /await import\('node:fs\/promises'\)/);
   assert.doesNotMatch(attachments, /^import .*node:fs/m);
 });
+
+test('Project Estimator: branded RFQ PDF is generated server-side behind capability access', () => {
+  const pdf = read('lib/project-estimator/pdf.ts');
+  const route = read('app/api/v1/project-estimator/rfq/[id]/pdf/route.ts');
+  assert.match(pdf, /buildRfqPdf/);
+  assert.match(pdf, /Riset Teknologi Indonesia/);
+  assert.match(route, /verifyRfqAccess/);
+  assert.match(route, /application\/pdf/);
+  assert.match(route, /Content-Disposition/);
+  assert.match(route, /X-RTI-Resume-Token/i);
+});
+
+test('Project Estimator: supporting-document download verifies capability and stored SHA-256 integrity', () => {
+  const attachments = read('lib/project-estimator/attachments.ts');
+  const route = read('app/api/v1/project-estimator/rfq/[id]/attachments/[attachmentId]/route.ts');
+  assert.match(attachments, /readRfqAttachment/);
+  assert.match(attachments, /integrity verification failed/);
+  assert.match(attachments, /sha256 !== row\.sha256/);
+  assert.match(route, /verifyRfqAccess/);
+  assert.match(route, /X-Content-Type-Options/);
+});
+
+test('Project Estimator: explicit RFQ email action uses registered contact and cross-runtime database adapter', () => {
+  const notifications = read('lib/project-estimator/notifications.ts');
+  const route = read('app/api/v1/project-estimator/rfq/[id]/email/route.ts');
+  const page = read('app/tools/project-estimator/page.tsx');
+  assert.match(notifications, /getRuntimeDatabase/);
+  assert.doesNotMatch(notifications, /getDatabase/);
+  assert.match(notifications, /sendCustomerRfqCopy/);
+  assert.match(notifications, /c\.email AS customer_email/);
+  assert.match(route, /verifyRfqAccess/);
+  assert.match(route, /project-rfq-email-copy/);
+  assert.match(page, /Email RFQ/);
+  assert.match(page, /Download PDF/);
+});

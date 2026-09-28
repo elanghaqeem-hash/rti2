@@ -12,6 +12,8 @@ import {
   CheckCircle2,
   FileCheck2,
   Loader2,
+  Download,
+  Mail,
   Printer,
   Save,
   Send,
@@ -503,6 +505,80 @@ export default function ProjectEstimatorPage() {
     }
   };
 
+  const downloadRfqPdf = async () => {
+    if (!rfq || !resumeToken) return;
+    setWorking(true);
+    setMessage('');
+    try {
+      const response = await fetch('/api/v1/project-estimator/rfq/' + rfq.id + '/pdf', {
+        cache: 'no-store',
+        headers: { 'X-RTI-Resume-Token': resumeToken },
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || 'RFQ PDF could not be generated.');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = rfq.rfqNumber + '.pdf';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'RFQ PDF download failed.');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const downloadAttachment = async (attachment: RfqAttachment) => {
+    if (!rfq || !resumeToken) return;
+    setMessage('');
+    try {
+      const response = await fetch('/api/v1/project-estimator/rfq/' + rfq.id + '/attachments/' + attachment.id, {
+        cache: 'no-store',
+        headers: { 'X-RTI-Resume-Token': resumeToken },
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || 'Supporting document could not be downloaded.');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = attachment.fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Supporting document download failed.');
+    }
+  };
+
+  const emailRfq = async () => {
+    if (!rfq || !resumeToken) return;
+    setWorking(true);
+    setMessage('');
+    try {
+      const response = await fetch('/api/v1/project-estimator/rfq/' + rfq.id + '/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeToken }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || 'RFQ email could not be sent.');
+      setMessage(data?.message || 'RFQ copy sent to the registered project contact email.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'RFQ email failed.');
+    } finally {
+      setWorking(false);
+    }
+  };
   const saveRfq = async () => {
     if (!rfq) return;
     setWorking(true);
@@ -820,8 +896,10 @@ export default function ProjectEstimatorPage() {
                   <h2 className="mt-1 text-xl font-extrabold text-navy-900">{rfq.rfqNumber}</h2>
                   <p className="mt-1 text-xs text-muted">Version {rfq.version} · Status: {rfq.status}</p>
                 </div>
-                <div className="flex gap-2 print:hidden">
-                  <button onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl border border-line px-4 py-2.5 text-xs font-bold text-navy-900"><Printer className="h-4 w-4" /> Print / Save PDF</button>
+                <div className="flex flex-wrap gap-2 print:hidden">
+                  <button onClick={() => void downloadRfqPdf()} disabled={working} className="inline-flex items-center gap-2 rounded-xl bg-navy-900 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50"><Download className="h-4 w-4" /> Download PDF</button>
+                  <button onClick={() => void emailRfq()} disabled={working} className="inline-flex items-center gap-2 rounded-xl border border-line px-4 py-2.5 text-xs font-bold text-navy-900 disabled:opacity-50"><Mail className="h-4 w-4" /> Email RFQ</button>
+                  <button onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl border border-line px-4 py-2.5 text-xs font-bold text-navy-900"><Printer className="h-4 w-4" /> Print</button>
                 </div>
               </div>
 
@@ -863,7 +941,9 @@ export default function ProjectEstimatorPage() {
                       {attachments.map((attachment) => (
                         <div key={attachment.id} className="flex flex-col gap-1 rounded-xl bg-grey-50 px-3 py-2.5 text-xs sm:flex-row sm:items-center sm:justify-between">
                           <div className="min-w-0">
-                            <div className="truncate font-bold text-navy-900">{attachment.fileName}</div>
+                            <button type="button" onClick={() => void downloadAttachment(attachment)} className="inline-flex max-w-full items-center gap-1.5 text-left font-bold text-navy-900 hover:text-blue-700">
+                              <Download className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{attachment.fileName}</span>
+                            </button>
                             <div className="text-[10px] text-muted">
                               {(attachment.fileSize / 1024 / 1024).toFixed(2)} MB · {attachment.scanStatus}
                             </div>
