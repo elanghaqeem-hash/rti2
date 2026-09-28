@@ -4,6 +4,20 @@
 
 PRAGMA foreign_keys = ON;
 
+
+CREATE TABLE IF NOT EXISTS estimator_boq_v2 (
+  estimate_id TEXT PRIMARY KEY,
+  a_resource_cost INTEGER NOT NULL DEFAULT 0,
+  b_commission_referral INTEGER NOT NULL DEFAULT 0,
+  c_document_material INTEGER NOT NULL DEFAULT 0,
+  d_third_party INTEGER NOT NULL DEFAULT 0,
+  e_travel_accommodation INTEGER NOT NULL DEFAULT 0,
+  note TEXT,
+  updated_by TEXT,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (estimate_id) REFERENCES project_estimates(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS estimator_quotations (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL,
