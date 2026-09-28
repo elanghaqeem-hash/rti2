@@ -1171,17 +1171,12 @@ function answerLabel(question: EstimatorQuestion, answer: unknown) {
   return option?.label || (typeof answer === 'string' ? answer : JSON.stringify(answer));
 }
 
-function createDeterministicRfqContent(sessionId: string, estimate: ProjectEstimate): RfqContent {
-  const db = getDatabase();
-  const session = db.prepare(
-    `SELECT es.project_name, es.business_objectives_json, es.target_timeline, es.budget_expectation,
-            o.name AS company_name, o.industry, c.name AS contact_name, s.name AS service_name
-     FROM estimator_sessions es
-     JOIN organizations o ON o.id=es.organization_id
-     JOIN contacts c ON c.id=es.contact_id
-     JOIN services s ON s.id=es.selected_service_id
-     WHERE es.id=?`,
-  ).get(sessionId) as {
+async function createDeterministicRfqContent(
+  sessionId: string,
+  estimate: ProjectEstimate,
+): Promise<RfqContent> {
+  const db = await getRuntimeDatabase();
+  const session = await db.queryOne<{
     project_name: string;
     business_objectives_json: string;
     target_timeline: string | null;
@@ -1190,14 +1185,24 @@ function createDeterministicRfqContent(sessionId: string, estimate: ProjectEstim
     industry: string;
     contact_name: string;
     service_name: string;
-  };
+  }>(
+    `SELECT es.project_name, es.business_objectives_json, es.target_timeline, es.budget_expectation,
+            o.name AS company_name, o.industry, c.name AS contact_name, s.name AS service_name
+     FROM estimator_sessions es
+     JOIN organizations o ON o.id=es.organization_id
+     JOIN contacts c ON c.id=es.contact_id
+     JOIN services s ON s.id=es.selected_service_id
+     WHERE es.id=?`,
+    [sessionId],
+  );
+  if (!session) throw new Error('Estimator session not found.');
 
-  const { rows, questions } = loadSessionAnswers(sessionId, estimate.serviceId, 'detailed');
+  const { rows, questions } = await loadSessionAnswers(sessionId, estimate.serviceId, 'detailed');
   const answerMap = new Map(rows.map((row) => [row.question_key, safeJson<unknown>(row.answer_json, null)]));
   const visibleQuestions = questions.filter((question) => questionConditionsMatch(question, answerMap));
   const answered = visibleQuestions
     .map((question) => ({ question, answer: answerMap.get(question.key) }))
-    .filter((item) => item.answer !== null && item.answer !== '' && item.answer !== false);
+    .filter((item) => item.answer !== null && item.answer !== undefined && item.answer !== '' && item.answer !== false);
 
   const missingInformation = visibleQuestions
     .filter((question) => question.required)
@@ -1244,16 +1249,20 @@ function createDeterministicRfqContent(sessionId: string, estimate: ProjectEstim
       'Protect customer information according to agreed security and confidentiality controls.',
       'Escalate material scope, risk or dependency changes.',
     ],
-    timelineExpectation: session.target_timeline || `${estimate.durationMinWeeks}–${estimate.durationMaxWeeks} weeks (indicative)`,
+    timelineExpectation:
+      session.target_timeline ||
+      `${estimate.durationMinWeeks}–${estimate.durationMaxWeeks} weeks (indicative)`,
     serviceLevelExpectation: 'To be confirmed during technical and commercial review.',
-    complianceRequirement: answered
-      .filter(({ question }) => question.complexityDimension === 'regulatory')
-      .map(({ question, answer }) => answerLabel(question, answer))
-      .join('; ') || 'To be confirmed.',
-    securityRequirement: answered
-      .filter(({ question }) => question.complexityDimension === 'security')
-      .map(({ question, answer }) => answerLabel(question, answer))
-      .join('; ') || 'Apply RTI secure delivery baseline and project-specific controls.',
+    complianceRequirement:
+      answered
+        .filter(({ question }) => question.complexityDimension === 'regulatory')
+        .map(({ question, answer }) => answerLabel(question, answer))
+        .join('; ') || 'To be confirmed.',
+    securityRequirement:
+      answered
+        .filter(({ question }) => question.complexityDimension === 'security')
+        .map(({ question, answer }) => answerLabel(question, answer))
+        .join('; ') || 'Apply RTI secure delivery baseline and project-specific controls.',
     commercialRequirement: estimate.priceConfigured
       ? session.budget_expectation
         ? `Customer budget indication: ${session.budget_expectation}. Indicative estimate: IDR ${estimate.priceMin.toLocaleString('id-ID')} – IDR ${estimate.priceMax.toLocaleString('id-ID')}.`
@@ -1270,12 +1279,13 @@ export async function createRfqDraft(params: {
   estimateId: string;
   useAi?: boolean;
 }): Promise<RfqRecord> {
-  const db = getDatabase();
-  const estimateRow = db.prepare(
+  const db = await getRuntimeDatabase();
+  const estimateRow = await db.queryOne<any>(
     `SELECT pe.*, s.name AS service_name FROM project_estimates pe
      JOIN services s ON s.id=pe.service_id
      WHERE pe.id=? AND pe.session_id=?`,
-  ).get(params.estimateId, params.sessionId) as any;
+    [params.estimateId, params.sessionId],
+  );
   if (!estimateRow) throw new Error('Estimate not found for session.');
 
   const estimate: ProjectEstimate = {
@@ -1301,14 +1311,20 @@ export async function createRfqDraft(params: {
     createdAt: estimateRow.created_at,
   };
 
-  const content = createDeterministicRfqContent(params.sessionId, estimate);
+  const content = await createDeterministicRfqContent(params.sessionId, estimate);
   let aiProvider: string | undefined;
   if (params.useAi) {
     const ai = await generateAiWithFailover({
       systemPrompt:
         'You support RTI pre-sales. Write a concise enterprise RFQ advisory note only. Do not invent facts, prices, commitments, certifications, laws, or customer requirements. Explicitly identify uncertainty.',
       contextText: JSON.stringify({ estimate: { ...estimate, trace: undefined }, rfq: content }),
-      messages: [{ role: 'user', content: 'Create a short advisory note improving clarity of this RFQ draft. Maximum 180 words.' }],
+      messages: [
+        {
+          role: 'user',
+          content:
+            'Create a short advisory note improving clarity of this RFQ draft. Maximum 180 words.',
+        },
+      ],
     });
     if (ai?.text) {
       content.aiAssistedDraft = ai.text;
@@ -1318,34 +1334,55 @@ export async function createRfqDraft(params: {
 
   const now = new Date().toISOString();
   const rfqId = randomUUID();
-  const rfqPrefix = getSetting('rfq_prefix', 'RTI-RFQ').replace(/[^A-Za-z0-9-]/g, '').slice(0, 32) || 'RTI-RFQ';
-  const rfqNumber = `${rfqPrefix}-${new Date().getUTCFullYear()}-${randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()}`;
+  const rfqPrefix =
+    (await getSetting('rfq_prefix', 'RTI-RFQ'))
+      .replace(/[^A-Za-z0-9-]/g, '')
+      .slice(0, 32) || 'RTI-RFQ';
+  const rfqNumber = `${rfqPrefix}-${new Date().getUTCFullYear()}-${randomUUID()
+    .replace(/-/g, '')
+    .slice(0, 8)
+    .toUpperCase()}`;
 
-  db.exec('BEGIN IMMEDIATE;');
-  try {
-    db.prepare(
-      `INSERT INTO rfqs
+  await db.batch([
+    {
+      sql: `INSERT INTO rfqs
         (id, rfq_number, session_id, estimate_id, current_version, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, 1, 'draft', ?, ?)`,
-    ).run(rfqId, rfqNumber, params.sessionId, params.estimateId, now, now);
-    db.prepare(
-      `INSERT INTO rfq_versions
+      params: [rfqId, rfqNumber, params.sessionId, params.estimateId, now, now],
+    },
+    {
+      sql: `INSERT INTO rfq_versions
         (id, rfq_id, version, content_json, ai_assisted, ai_provider, created_at)
        VALUES (?, ?, 1, ?, ?, ?, ?)`,
-    ).run(randomUUID(), rfqId, JSON.stringify(content), content.aiAssistedDraft ? 1 : 0, aiProvider || null, now);
-    db.prepare("UPDATE estimator_sessions SET status='rfq_draft', updated_at=? WHERE id=?").run(now, params.sessionId);
-    db.exec('COMMIT;');
-  } catch (error) {
-    db.exec('ROLLBACK;');
-    throw error;
-  }
+      params: [
+        randomUUID(),
+        rfqId,
+        JSON.stringify(content),
+        content.aiAssistedDraft ? 1 : 0,
+        aiProvider || null,
+        now,
+      ],
+    },
+    {
+      sql: "UPDATE estimator_sessions SET status='rfq_draft', updated_at=? WHERE id=?",
+      params: [now, params.sessionId],
+    },
+  ]);
 
-  audit('rfq', rfqId, 'create_draft', { rfqNumber, estimateId: params.estimateId });
-  trackEstimatorEvent(params.sessionId, 'RFQ_GENERATED', {
-    rfqId,
+  await audit('rfq', rfqId, 'create_draft', {
+    rfqNumber,
     estimateId: params.estimateId,
-    aiAssisted: Boolean(content.aiAssistedDraft),
-  }, rfqId);
+  });
+  await trackEstimatorEvent(
+    params.sessionId,
+    'RFQ_GENERATED',
+    {
+      rfqId,
+      estimateId: params.estimateId,
+      aiAssisted: Boolean(content.aiAssistedDraft),
+    },
+    rfqId,
+  );
 
   return {
     id: rfqId,
@@ -1360,15 +1397,16 @@ export async function createRfqDraft(params: {
   };
 }
 
-export function getRfq(rfqId: string): RfqRecord {
-  const db = getDatabase();
-  const row = db.prepare(
+export async function getRfq(rfqId: string): Promise<RfqRecord> {
+  const db = await getRuntimeDatabase();
+  const row = await db.queryOne<any>(
     `SELECT r.id, r.rfq_number, r.session_id, r.estimate_id, r.current_version, r.status,
             r.created_at, r.updated_at, rv.content_json
      FROM rfqs r
      JOIN rfq_versions rv ON rv.rfq_id=r.id AND rv.version=r.current_version
      WHERE r.id=?`,
-  ).get(rfqId) as any;
+    [rfqId],
+  );
   if (!row) throw new Error('RFQ not found.');
   return {
     id: row.id,
@@ -1383,34 +1421,48 @@ export function getRfq(rfqId: string): RfqRecord {
   };
 }
 
-export function saveRfqVersion(rfqId: string, content: RfqContent, actor = 'customer'): RfqRecord {
-  const db = getDatabase();
-  const current = getRfq(rfqId);
+export async function saveRfqVersion(
+  rfqId: string,
+  content: RfqContent,
+  actor = 'customer',
+): Promise<RfqRecord> {
+  const db = await getRuntimeDatabase();
+  const current = await getRfq(rfqId);
   if (current.status !== 'draft') throw new Error('Only draft RFQs can be edited.');
   const nextVersion = current.version + 1;
   const now = new Date().toISOString();
-  db.exec('BEGIN IMMEDIATE;');
-  try {
-    db.prepare(
-      `INSERT INTO rfq_versions (id, rfq_id, version, content_json, ai_assisted, created_by, created_at)
+
+  await db.batch([
+    {
+      sql: `INSERT INTO rfq_versions
+        (id, rfq_id, version, content_json, ai_assisted, created_by, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ).run(randomUUID(), rfqId, nextVersion, JSON.stringify(content), content.aiAssistedDraft ? 1 : 0, actor, now);
-    db.prepare('UPDATE rfqs SET current_version=?, updated_at=? WHERE id=?').run(nextVersion, now, rfqId);
-    db.exec('COMMIT;');
-  } catch (error) {
-    db.exec('ROLLBACK;');
-    throw error;
-  }
-  audit('rfq', rfqId, 'new_version', { version: nextVersion }, actor);
+      params: [
+        randomUUID(),
+        rfqId,
+        nextVersion,
+        JSON.stringify(content),
+        content.aiAssistedDraft ? 1 : 0,
+        actor,
+        now,
+      ],
+    },
+    {
+      sql: 'UPDATE rfqs SET current_version=?, updated_at=? WHERE id=?',
+      params: [nextVersion, now, rfqId],
+    },
+  ]);
+
+  await audit('rfq', rfqId, 'new_version', { version: nextVersion }, actor);
   return getRfq(rfqId);
 }
 
 export async function submitRfq(rfqId: string) {
-  const db = getDatabase();
-  const rfq = getRfq(rfqId);
+  const db = await getRuntimeDatabase();
+  const rfq = await getRfq(rfqId);
   if (rfq.status !== 'draft') return rfq;
 
-  const context = db.prepare(
+  const context = await db.queryOne<any>(
     `SELECT es.id AS session_id, es.project_name, es.organization_id,
             o.name AS company, o.industry, c.name, c.title, c.email, c.whatsapp,
             pe.price_min, pe.price_max, s.name AS service_name
@@ -1421,7 +1473,9 @@ export async function submitRfq(rfqId: string) {
      JOIN project_estimates pe ON pe.id=r.estimate_id
      JOIN services s ON s.id=pe.service_id
      WHERE r.id=?`,
-  ).get(rfqId) as any;
+    [rfqId],
+  );
+  if (!context) throw new Error('RFQ context not found.');
 
   const now = new Date().toISOString();
   const leadId = randomUUID();
@@ -1450,27 +1504,50 @@ export async function submitRfq(rfqId: string) {
   await createPersistentLead(lead);
 
   const opportunityId = randomUUID();
-  db.exec('BEGIN IMMEDIATE;');
-  try {
-    db.prepare("UPDATE rfqs SET status='submitted', submitted_at=?, updated_at=? WHERE id=?").run(now, now, rfqId);
-    db.prepare("UPDATE estimator_sessions SET status='submitted', updated_at=? WHERE id=?").run(now, context.session_id);
-    db.prepare(
-      `INSERT INTO opportunities
+  await db.batch([
+    {
+      sql: "UPDATE rfqs SET status='submitted', submitted_at=?, updated_at=? WHERE id=?",
+      params: [now, now, rfqId],
+    },
+    {
+      sql: "UPDATE estimator_sessions SET status='submitted', updated_at=? WHERE id=?",
+      params: [now, context.session_id],
+    },
+    {
+      sql: `INSERT INTO opportunities
         (id, rfq_id, lead_id, organization_id, stage, estimated_value_min, estimated_value_max, created_at, updated_at)
        VALUES (?, ?, ?, ?, 'New RFQ', ?, ?, ?, ?)`,
-    ).run(opportunityId, rfqId, leadId, context.organization_id, context.price_min, context.price_max, now, now);
-    db.prepare(
-      `INSERT INTO lead_activities (id, opportunity_id, activity_type, note, actor, created_at)
+      params: [
+        opportunityId,
+        rfqId,
+        leadId,
+        context.organization_id,
+        context.price_min,
+        context.price_max,
+        now,
+        now,
+      ],
+    },
+    {
+      sql: `INSERT INTO lead_activities
+        (id, opportunity_id, activity_type, note, actor, created_at)
        VALUES (?, ?, 'RFQ_SUBMITTED', ?, 'customer', ?)`,
-    ).run(randomUUID(), opportunityId, `RFQ ${rfq.rfqNumber} submitted from public estimator.`, now);
-    db.exec('COMMIT;');
-  } catch (error) {
-    db.exec('ROLLBACK;');
-    throw error;
-  }
+      params: [
+        randomUUID(),
+        opportunityId,
+        `RFQ ${rfq.rfqNumber} submitted from public estimator.`,
+        now,
+      ],
+    },
+  ]);
 
-  audit('rfq', rfqId, 'submit', { leadId, opportunityId }, 'customer');
-  trackEstimatorEvent(context.session_id, 'RFQ_SUBMITTED', { rfqId, leadId, opportunityId }, rfqId);
+  await audit('rfq', rfqId, 'submit', { leadId, opportunityId }, 'customer');
+  await trackEstimatorEvent(
+    context.session_id,
+    'RFQ_SUBMITTED',
+    { rfqId, leadId, opportunityId },
+    rfqId,
+  );
   await sendRfqNotifications({
     rfqNumber: rfq.rfqNumber,
     projectName: context.project_name,
