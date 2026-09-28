@@ -30,7 +30,7 @@ test('Project Estimator: production schema is database-driven and has no transac
 test('Project Estimator: migration is registered in protected system setup', () => {
   const migrations = read('lib/server/migrations.ts');
   const setup = read('app/api/admin/system/setup/route.ts');
-  assert.match(migrations, /0005_project_estimator_rfq\\.sql/);
+  assert.match(migrations, /0005_project_estimator_rfq\.sql/);
   assert.match(setup, /isAdminRequest/);
 });
 
