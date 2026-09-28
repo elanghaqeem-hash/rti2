@@ -653,8 +653,8 @@ export async function recordPdpEvidenceRuntime(params: {
 
 export async function deletePdpEvidenceRuntime(assessmentId: string, evidenceId: string) {
   const db = await database();
-  const row = await db.queryOne<{ stored_name?: string }>(
-    'SELECT stored_name FROM pdp_evidence_files WHERE id = ? AND assessment_id = ?',
+  const row = await db.queryOne<{ stored_name?: string; question_id?: string | null }>(
+    'SELECT stored_name,question_id FROM pdp_evidence_files WHERE id = ? AND assessment_id = ?',
     [evidenceId, assessmentId],
   );
   if (!row?.stored_name) throw new Error('Evidence file not found.');
@@ -664,6 +664,20 @@ export async function deletePdpEvidenceRuntime(assessmentId: string, evidenceId:
     'DELETE FROM pdp_evidence_files WHERE id = ? AND assessment_id = ?',
     [evidenceId, assessmentId],
   );
+
+  if (row.question_id) {
+    const remaining = await db.queryOne<{ count?: number }>(
+      'SELECT COUNT(*) AS count FROM pdp_evidence_files WHERE assessment_id = ? AND question_id = ?',
+      [assessmentId, row.question_id],
+    );
+    if (Number(remaining?.count || 0) === 0) {
+      await db.run(
+        "UPDATE pdp_answers SET evidence_status='none', answered_at=? WHERE assessment_id=? AND question_id=? AND evidence_status='uploaded'",
+        [now(), assessmentId, row.question_id],
+      );
+    }
+  }
+
   await writePdpAuditRuntime({
     actor: 'Public Assessment User',
     action: 'evidence.deleted',
@@ -693,6 +707,32 @@ export async function deletePdpAssessmentRuntime(assessmentId: string) {
     resourceId: assessmentId,
   });
   return { deleted: true };
+}
+
+export async function recordPdpGeneratedReportRuntime(
+  assessmentId: string,
+  generatedBy = 'Public Assessment User',
+) {
+  const assessment = await getPdpAssessmentRuntime(assessmentId);
+  if (!assessment) throw new Error('Assessment not found.');
+
+  const db = await database();
+  const id = randomUUID();
+  const generatedAt = now();
+  await db.run(
+    `INSERT INTO pdp_generated_reports(
+      id,assessment_id,report_version,framework_version,generated_at,generated_by
+    ) VALUES (?,?,?,?,?,?)`,
+    [
+      id,
+      assessmentId,
+      'PDP-REPORT-1.0',
+      assessment.frameworkVersion,
+      generatedAt,
+      generatedBy,
+    ],
+  );
+  return { id, generatedAt };
 }
 
 export async function getPdpAdminDashboardRuntime() {
