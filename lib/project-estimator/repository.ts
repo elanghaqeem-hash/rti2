@@ -113,6 +113,17 @@ function getSetting(key: string, fallback = ''): string {
   }
 }
 
+function getNumberSetting(
+  key: string,
+  fallback: number,
+  min = Number.NEGATIVE_INFINITY,
+  max = Number.POSITIVE_INFINITY,
+) {
+  const raw = Number(getSetting(key, String(fallback)));
+  if (!Number.isFinite(raw)) return fallback;
+  return Math.min(max, Math.max(min, raw));
+}
+
 function serviceFromRow(row: ServiceRow): EstimatorService {
   return {
     id: row.id,
@@ -530,18 +541,26 @@ export function getEstimatorSessionByToken(resumeToken: string) {
 }
 
 function levelFromIndex(index: number): ProjectEstimate['complexityLevel'] {
-  if (index <= 20) return 'Very Low';
-  if (index <= 40) return 'Low';
-  if (index <= 60) return 'Moderate';
-  if (index <= 80) return 'High';
+  const veryLowMax = getNumberSetting('complexity_threshold_very_low', 20, 0, 100);
+  const lowMax = getNumberSetting('complexity_threshold_low', 40, veryLowMax, 100);
+  const moderateMax = getNumberSetting('complexity_threshold_moderate', 60, lowMax, 100);
+  const highMax = getNumberSetting('complexity_threshold_high', 80, moderateMax, 100);
+  if (index <= veryLowMax) return 'Very Low';
+  if (index <= lowMax) return 'Low';
+  if (index <= moderateMax) return 'Moderate';
+  if (index <= highMax) return 'High';
   return 'Very High';
 }
 
 function sizeFromEffort(effort: number): ProjectEstimate['projectSize'] {
-  if (effort <= 5) return 'Micro';
-  if (effort <= 15) return 'Small';
-  if (effort <= 35) return 'Medium';
-  if (effort <= 70) return 'Large';
+  const microMax = getNumberSetting('project_size_micro_max_effort', 5, 0);
+  const smallMax = getNumberSetting('project_size_small_max_effort', 15, microMax);
+  const mediumMax = getNumberSetting('project_size_medium_max_effort', 35, smallMax);
+  const largeMax = getNumberSetting('project_size_large_max_effort', 70, mediumMax);
+  if (effort <= microMax) return 'Micro';
+  if (effort <= smallMax) return 'Small';
+  if (effort <= mediumMax) return 'Medium';
+  if (effort <= largeMax) return 'Large';
   return 'Enterprise';
 }
 
@@ -821,7 +840,14 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
     [session.company_name, session.industry, session.contact_name, session.email, session.project_name]
       .filter(Boolean).length / 5;
   const requiredCompleteness = requiredCount ? answeredRequired / requiredCount : 1;
-  const readinessScore = Math.round(requiredCompleteness * 80 + profileCompleteness * 20);
+  const requiredWeight = getNumberSetting('readiness_required_weight', 80, 0, 100);
+  const profileWeight = getNumberSetting('readiness_profile_weight', 20, 0, 100);
+  const readinessWeightTotal = Math.max(1, requiredWeight + profileWeight);
+  const readinessScore = Math.round(
+    ((requiredCompleteness * requiredWeight) + (profileCompleteness * profileWeight)) /
+      readinessWeightTotal *
+      100,
+  );
 
   const resources = db.prepare(
     `SELECT rr.name, srd.quantity, srd.effort_share
