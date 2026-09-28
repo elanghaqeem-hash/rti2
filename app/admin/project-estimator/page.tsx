@@ -49,6 +49,19 @@ type Dashboard = {
     priceMin: number;
     priceMax: number;
     readinessScore: number;
+    commercial: {
+      resourceCost: number;
+      thirdPartyCost: number;
+      licenseCost: number;
+      travelCost: number;
+      contingencyPct: number;
+      marginPct: number;
+      discountAmount: number;
+      taxPct: number;
+      totalBeforeTax: number;
+      taxAmount: number;
+      totalQuotation: number;
+    };
     status: string;
     stage: string | null;
     createdAt: string;
@@ -113,7 +126,7 @@ function money(value: number) {
 
 export default function ProjectEstimatorAdminPage() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
-  const [tab, setTab] = useState<'pipeline' | 'services' | 'pricing' | 'questions'>('pipeline');
+  const [tab, setTab] = useState<'pipeline' | 'commercial' | 'services' | 'pricing' | 'questions'>('pipeline');
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [search, setSearch] = useState('');
@@ -177,6 +190,24 @@ export default function ProjectEstimatorAdminPage() {
     setDashboard((current) =>
       current
         ? { ...current, questions: current.questions.map((item) => item.id === id ? { ...item, ...patchValue } : item) }
+        : current,
+    );
+  };
+
+  const updateCommercialLocal = (
+    rfqId: string,
+    patchValue: Partial<Dashboard['rfqs'][number]['commercial']>,
+  ) => {
+    setDashboard((current) =>
+      current
+        ? {
+            ...current,
+            rfqs: current.rfqs.map((item) =>
+              item.id === rfqId
+                ? { ...item, commercial: { ...item.commercial, ...patchValue } }
+                : item,
+            ),
+          }
         : current,
     );
   };
@@ -259,6 +290,7 @@ export default function ProjectEstimatorAdminPage() {
             <nav className="flex gap-1 overflow-x-auto rounded-2xl border border-line bg-white p-1.5 shadow-sm">
               {[
                 ['pipeline', 'RFQ & Pipeline', FileCheck2],
+                ['commercial', 'Commercial Review', SlidersHorizontal],
                 ['services', 'Services & Baselines', Database],
                 ['pricing', 'Pricing Parameters', SlidersHorizontal],
                 ['questions', 'Question Engine', Settings2],
@@ -326,6 +358,52 @@ export default function ProjectEstimatorAdminPage() {
                     </tbody>
                   </table>
                 </div>
+              </section>
+            )}
+
+            {tab === 'commercial' && (
+              <section className="space-y-4">
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-xs leading-relaxed text-blue-900">
+                  Internal-only commercial model. Resource cost, third-party cost, license, travel, margin, discount, tax and quotation totals are never returned by public estimator APIs.
+                </div>
+                {dashboard.rfqs.map((item) => (
+                  <div key={item.id} className="rounded-2xl border border-line bg-white p-5 shadow-sm">
+                    <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <div className="font-mono text-[10px] font-bold text-muted">{item.rfqNumber}</div>
+                        <div className="mt-1 text-sm font-extrabold text-navy-900">{item.projectName}</div>
+                        <div className="mt-1 text-xs text-muted">{item.company} · {item.service}</div>
+                      </div>
+                      <div className="text-left lg:text-right">
+                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted">Calculated quotation</div>
+                        <div className="mt-1 text-lg font-extrabold text-navy-900">{money(item.commercial.totalQuotation)}</div>
+                        <div className="text-[10px] text-muted">Before tax {money(item.commercial.totalBeforeTax)} · Tax {money(item.commercial.taxAmount)}</div>
+                      </div>
+                    </div>
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                      <NumberField label="Resource cost" value={item.commercial.resourceCost} onChange={(value) => updateCommercialLocal(item.id, { resourceCost: value })} />
+                      <NumberField label="Third-party cost" value={item.commercial.thirdPartyCost} onChange={(value) => updateCommercialLocal(item.id, { thirdPartyCost: value })} />
+                      <NumberField label="License cost" value={item.commercial.licenseCost} onChange={(value) => updateCommercialLocal(item.id, { licenseCost: value })} />
+                      <NumberField label="Travel cost" value={item.commercial.travelCost} onChange={(value) => updateCommercialLocal(item.id, { travelCost: value })} />
+                      <NumberField label="Contingency %" value={item.commercial.contingencyPct} step="0.1" onChange={(value) => updateCommercialLocal(item.id, { contingencyPct: value })} />
+                      <NumberField label="Margin / markup %" value={item.commercial.marginPct} step="0.1" onChange={(value) => updateCommercialLocal(item.id, { marginPct: value })} />
+                      <NumberField label="Discount amount" value={item.commercial.discountAmount} onChange={(value) => updateCommercialLocal(item.id, { discountAmount: value })} />
+                      <NumberField label="Tax %" value={item.commercial.taxPct} step="0.1" onChange={(value) => updateCommercialLocal(item.id, { taxPct: value })} />
+                    </div>
+                    <button
+                      onClick={() => patch(
+                        { action: 'commercial', rfqId: item.id, commercial: item.commercial },
+                        `Commercial model ${item.rfqNumber} diperbarui.`,
+                      )}
+                      className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-navy-900 px-4 py-2.5 text-xs font-extrabold text-white"
+                    >
+                      <Save className="h-4 w-4" /> Recalculate & Save Commercial
+                    </button>
+                  </div>
+                ))}
+                {!dashboard.rfqs.length && (
+                  <div className="rounded-2xl border border-line bg-white p-8 text-center text-xs text-muted">No RFQ records yet.</div>
+                )}
               </section>
             )}
 
