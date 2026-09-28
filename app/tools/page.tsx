@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { getFinderReadinessRuntime } from '@/lib/enterprise-finder/runtime-repository';
 import {
   BarChart3,
   ShieldAlert,
@@ -19,7 +20,11 @@ export const metadata: Metadata = {
     'Alat diagnostik teknologi, kematangan keamanan siber, dan kesiapan regulasi (UU PDP, ISO 27001, NIST CSF) tanpa login oleh PT Riset Teknologi Indonesia.',
 };
 
-export default function ToolsHubPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function ToolsHubPage() {
+  const finderReadiness = await getFinderReadinessRuntime();
+
   const tools = [
     {
       title: 'Technology & Cyber Maturity Assessment',
@@ -47,6 +52,7 @@ export default function ToolsHubPage() {
       desc: 'Adaptive enterprise diagnostic matching industry, scale, technology landscape, capability gaps, business pressures, and urgency to explainable RTI solution blueprints.',
       icon: Compass,
       badgeColor: 'bg-blue-50 text-blue-600',
+      availability: finderReadiness.ready ? 'available' : 'activating',
     },
     {
       title: 'Passive Website Security Headers Check',
@@ -138,13 +144,19 @@ export default function ToolsHubPage() {
                       {t.time}
                     </span>
 
-                    <Link
-                      href={`/tools/${t.slug}`}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-navy-900 group-hover:text-blue-600 transition"
-                    >
-                      <span>Launch Tool</span>
-                      <ArrowRight className="w-3.5 h-3.5 text-gold-500 group-hover:translate-x-1 transition-transform" />
-                    </Link>
+                    {t.availability === 'activating' ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700">
+                        Activating
+                      </span>
+                    ) : (
+                      <Link
+                        href={`/tools/${t.slug}`}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-navy-900 group-hover:text-blue-600 transition"
+                      >
+                        <span>Launch Tool</span>
+                        <ArrowRight className="w-3.5 h-3.5 text-gold-500 group-hover:translate-x-1 transition-transform" />
+                      </Link>
+                    )}
                   </div>
                 </div>
               );
