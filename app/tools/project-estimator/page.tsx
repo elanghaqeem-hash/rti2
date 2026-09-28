@@ -644,7 +644,7 @@ export default function ProjectEstimatorPage() {
   }
 
   return (
-    <main className="min-h-screen bg-grey-50">
+    <main className="bg-grey-50">
       <section className="border-b border-navy-700 bg-navy-900 py-10 text-white sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl">
