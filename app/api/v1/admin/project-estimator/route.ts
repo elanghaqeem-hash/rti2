@@ -15,6 +15,7 @@ import {
   upsertQuestionOption,
   upsertResourceRole,
   upsertServiceCategory,
+  upsertServiceDependency,
   upsertServiceResource,
 } from '@/lib/project-estimator/admin';
 
@@ -185,6 +186,16 @@ export async function PATCH(req: Request) {
         name: String(body.resource?.name || ''),
         internalDayRate: body.resource?.internalDayRate == null ? null : Number(body.resource.internalDayRate),
         active: body.resource?.active !== false,
+        actor: auth.sub,
+      });
+    } else if (action === 'service_dependency') {
+      upsertServiceDependency({
+        serviceId: String(body.dependency?.serviceId || ''),
+        relatedServiceId: String(body.dependency?.relatedServiceId || ''),
+        relationType: body.dependency?.relationType === 'requires' ? 'requires' : 'recommends',
+        reason: typeof body.dependency?.reason === 'string' ? body.dependency.reason : undefined,
+        sortOrder: Number(body.dependency?.sortOrder ?? 100),
+        active: body.dependency?.active !== false,
         actor: auth.sub,
       });
     } else if (action === 'service_resource') {
