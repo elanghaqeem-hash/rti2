@@ -142,6 +142,16 @@ export type EstimatorAdminDashboard = {
     internalDayRate: number | null;
     active: boolean;
   }>;
+  serviceDependencies: Array<{
+    serviceId: string;
+    serviceName: string;
+    relatedServiceId: string;
+    relatedServiceName: string;
+    relationType: 'requires' | 'recommends';
+    reason: string;
+    sortOrder: number;
+    active: boolean;
+  }>;
   serviceResources: Array<{
     serviceId: string;
     serviceName: string;
@@ -282,6 +292,15 @@ export function getEstimatorAdminDashboard(): EstimatorAdminDashboard {
   const resources = db.prepare(
     `SELECT id, role_key, name, internal_day_rate, is_active
      FROM resource_roles ORDER BY name`,
+  ).all() as any[];
+
+  const serviceDependencies = db.prepare(
+    `SELECT d.service_id, s.name AS service_name, d.related_service_id,
+            rs.name AS related_service_name, d.relation_type, d.reason, d.sort_order, d.is_active
+     FROM service_dependencies d
+     JOIN services s ON s.id=d.service_id
+     JOIN services rs ON rs.id=d.related_service_id
+     ORDER BY s.name, d.sort_order, rs.name`,
   ).all() as any[];
 
   const serviceResources = db.prepare(
@@ -461,6 +480,16 @@ export function getEstimatorAdminDashboard(): EstimatorAdminDashboard {
       roleKey: row.role_key,
       name: row.name,
       internalDayRate: row.internal_day_rate == null ? null : Number(row.internal_day_rate),
+      active: Number(row.is_active) === 1,
+    })),
+    serviceDependencies: serviceDependencies.map((row) => ({
+      serviceId: row.service_id,
+      serviceName: row.service_name,
+      relatedServiceId: row.related_service_id,
+      relatedServiceName: row.related_service_name,
+      relationType: row.relation_type,
+      reason: row.reason || '',
+      sortOrder: Number(row.sort_order),
       active: Number(row.is_active) === 1,
     })),
     serviceResources: serviceResources.map((row) => ({
@@ -1010,6 +1039,51 @@ export function upsertResourceRole(params: {
   );
   audit('resource_role', id, before ? 'update' : 'create', params.actor, before, params);
   return id;
+}
+
+export function upsertServiceDependency(params: {
+  serviceId: string;
+  relatedServiceId: string;
+  relationType: 'requires' | 'recommends';
+  reason?: string;
+  sortOrder?: number;
+  active?: boolean;
+  actor: string;
+}) {
+  const db = getDatabase();
+  if (params.serviceId === params.relatedServiceId) throw new Error('A service cannot depend on itself.');
+  if (!db.prepare('SELECT id FROM services WHERE id=?').get(params.serviceId)) throw new Error('Primary service not found.');
+  if (!db.prepare('SELECT id FROM services WHERE id=?').get(params.relatedServiceId)) throw new Error('Related service not found.');
+  if (!['requires','recommends'].includes(params.relationType)) throw new Error('Invalid service relationship type.');
+
+  const before = db.prepare(
+    `SELECT * FROM service_dependencies
+     WHERE service_id=? AND related_service_id=? AND relation_type=?`,
+  ).get(params.serviceId, params.relatedServiceId, params.relationType);
+
+  db.prepare(
+    `INSERT INTO service_dependencies
+      (service_id, related_service_id, relation_type, reason, sort_order, is_active)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(service_id, related_service_id, relation_type) DO UPDATE SET
+       reason=excluded.reason, sort_order=excluded.sort_order, is_active=excluded.is_active`,
+  ).run(
+    params.serviceId,
+    params.relatedServiceId,
+    params.relationType,
+    params.reason?.trim().slice(0, 1200) || null,
+    Math.trunc(params.sortOrder ?? 100),
+    params.active === false ? 0 : 1,
+  );
+
+  audit(
+    'service_dependency',
+    `${params.serviceId}:${params.relatedServiceId}:${params.relationType}`,
+    before ? 'update' : 'create',
+    params.actor,
+    before,
+    params,
+  );
 }
 
 export function upsertServiceResource(params: {
