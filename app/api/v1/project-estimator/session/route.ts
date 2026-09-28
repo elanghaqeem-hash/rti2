@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   const token = req.headers.get('x-rti-resume-token')?.trim() || new URL(req.url).searchParams.get('token')?.trim() || '';
   if (!token) return NextResponse.json({ success: false, error: 'Resume token is required.' }, { status: 400, headers });
   try {
-    return NextResponse.json({ success: true, ...getEstimatorSessionByToken(token) }, { headers });
+    return NextResponse.json({ success: true, ...(await getEstimatorSessionByToken(token)) }, { headers });
   } catch {
     return NextResponse.json({ success: false, error: 'Saved estimator draft was not found or is no longer available.' }, { status: 404, headers });
   }
@@ -41,14 +41,14 @@ export async function POST(req: Request) {
   }
 
   try {
-    const validationErrors = validateEstimatorSessionInput(input);
+    const validationErrors = await validateEstimatorSessionInput(input);
     if (validationErrors.length) {
       return NextResponse.json(
         { success: false, error: validationErrors[0], details: validationErrors },
         { status: 400, headers },
       );
     }
-    const result = upsertEstimatorSession(input, validText(body?.sessionId, 80) || undefined, validText(body?.resumeToken, 256) || undefined);
+    const result = await upsertEstimatorSession(input, validText(body?.sessionId, 80) || undefined, validText(body?.resumeToken, 256) || undefined);
     return NextResponse.json({ success: true, ...result }, { status: 201, headers });
   } catch (error) {
     console.error('Estimator session persistence failed:', error);
