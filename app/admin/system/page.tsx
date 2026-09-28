@@ -24,6 +24,9 @@ type Status = {
     enterpriseFinder: boolean;
     nistAssessments: boolean;
     nistQuestions: boolean;
+    projectEstimator: boolean;
+    rfq: boolean;
+    estimatorServices: boolean;
   };
 };
 
@@ -111,7 +114,7 @@ export default function AdminSystemPage() {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <Link href="/admin/parameters" className="rounded-2xl border border-line bg-white p-4 shadow-sm hover:border-gold-500">
             <Settings2 className="h-5 w-5 text-gold-700" />
             <div className="mt-2 text-sm font-extrabold text-navy-900">Parameter Manager</div>
@@ -127,6 +130,10 @@ export default function AdminSystemPage() {
           <Link href="/admin/nist" className="rounded-2xl border border-line bg-white p-4 shadow-sm hover:border-gold-500">
             <ShieldCheck className="h-5 w-5 text-blue-700" />
             <div className="mt-2 text-sm font-extrabold text-navy-900">NIST Cyber Quick Check</div>
+          </Link>
+          <Link href="/admin/project-estimator" className="rounded-2xl border border-line bg-white p-4 shadow-sm hover:border-gold-500">
+            <Settings2 className="h-5 w-5 text-purple-700" />
+            <div className="mt-2 text-sm font-extrabold text-navy-900">Project Estimator & RFQ</div>
           </Link>
           <button onClick={load} className="rounded-2xl border border-line bg-white p-4 text-left shadow-sm hover:border-gold-500">
             <RefreshCw className={`h-5 w-5 text-emerald-600 ${loading ? 'animate-spin' : ''}`} />
@@ -167,6 +174,12 @@ export default function AdminSystemPage() {
                   nist_assessments: <strong>{status.tables.nistAssessments ? 'READY' : 'PENDING'}</strong>
                   <br />
                   nist_questions: <strong>{status.tables.nistQuestions ? 'READY' : 'PENDING'}</strong>
+                  <br />
+                  estimator_services: <strong>{status.tables.estimatorServices ? 'READY' : 'PENDING'}</strong>
+                  <br />
+                  project_estimates: <strong>{status.tables.projectEstimator ? 'READY' : 'PENDING'}</strong>
+                  <br />
+                  rfq_versioning: <strong>{status.tables.rfq ? 'READY' : 'PENDING'}</strong>
                 </div>
               </div>
 
