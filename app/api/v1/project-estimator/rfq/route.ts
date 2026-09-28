@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const estimateId = typeof body?.estimateId === 'string' ? body.estimateId.trim() : '';
   const resumeToken = typeof body?.resumeToken === 'string' ? body.resumeToken.trim() : '';
   if (!sessionId || !estimateId || !resumeToken) return NextResponse.json({ success: false, error: 'Session, estimate and access token are required.' }, { status: 400, headers });
-  if (!verifyEstimatorSessionAccess(sessionId, resumeToken)) return NextResponse.json({ success: false, error: 'Estimator draft access denied.' }, { status: 403, headers });
+  if (!(await verifyEstimatorSessionAccess(sessionId, resumeToken))) return NextResponse.json({ success: false, error: 'Estimator draft access denied.' }, { status: 403, headers });
 
   try {
     const rfq = await createRfqDraft({ sessionId, estimateId, useAi: body?.useAi === true });
