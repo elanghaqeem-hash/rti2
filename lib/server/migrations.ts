@@ -10,6 +10,7 @@ const MIGRATIONS = [
   '0005_project_estimator_rfq.sql',
   '0006_project_estimator_ai_scoping.sql',
   '0007_project_estimator_copilot.sql',
+  '0008_pdp_readiness.sql',
 ] as const;
 
 export interface MigrationStatus {
@@ -26,6 +27,9 @@ export interface MigrationStatus {
     projectEstimator: boolean;
     rfq: boolean;
     estimatorServices: boolean;
+    pdpAssessments: boolean;
+    pdpQuestions: boolean;
+    pdpEvidence: boolean;
   };
 }
 
@@ -79,6 +83,9 @@ export function getMigrationStatus(): MigrationStatus {
       projectEstimator: tableExists('estimator_sessions') && tableExists('project_estimates'),
       rfq: tableExists('rfqs') && tableExists('rfq_versions'),
       estimatorServices: tableExists('services') && tableExists('estimator_questions'),
+      pdpAssessments: tableExists('pdp_assessments'),
+      pdpQuestions: tableExists('pdp_questions'),
+      pdpEvidence: tableExists('pdp_evidence_files'),
     },
   };
 }
