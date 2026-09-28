@@ -164,20 +164,20 @@ export default function PdpAdminPage() {
                     <h2 className="text-sm font-extrabold text-navy-900">Framework Health</h2>
                     <div className="mt-4 space-y-3 text-xs">
                       <div className="flex items-center gap-2">
-                        {dashboard.config.domains.length === 7 ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 text-amber-600" />}
-                        7 readiness domains: {dashboard.config.domains.length}
+                        {dashboard.config.domains.filter((d: any) => d.active !== false).length === 7 ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 text-amber-600" />}
+                        7 readiness domains: {dashboard.config.domains.filter((d: any) => d.active !== false).length}
                       </div>
                       <div className="flex items-center gap-2">
-                        {dashboard.config.questions.length === 42 ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 text-amber-600" />}
-                        Detailed questions: {dashboard.config.questions.length} / 42
+                        {dashboard.config.questions.filter((q: any) => q.active !== false).length === 42 ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 text-amber-600" />}
+                        Detailed questions: {dashboard.config.questions.filter((q: any) => q.active !== false).length} / 42
                       </div>
                       <div className="flex items-center gap-2">
-                        {dashboard.config.questions.filter((q: any) => q.isCore).length === 14 ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 text-amber-600" />}
-                        Quick Scan questions: {dashboard.config.questions.filter((q: any) => q.isCore).length} / 14
+                        {dashboard.config.questions.filter((q: any) => q.active !== false && q.isCore).length === 14 ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 text-amber-600" />}
+                        Quick Scan questions: {dashboard.config.questions.filter((q: any) => q.active !== false && q.isCore).length} / 14
                       </div>
                       <div className="flex items-center gap-2">
-                        {dashboard.config.readinessGates.length === 7 ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 text-amber-600" />}
-                        Readiness gates: {dashboard.config.readinessGates.length} / 7
+                        {dashboard.config.readinessGates.filter((g: any) => g.active !== false).length === 7 ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 text-amber-600" />}
+                        Readiness gates: {dashboard.config.readinessGates.filter((g: any) => g.active !== false).length} / 7
                       </div>
                     </div>
                   </div>
@@ -278,6 +278,16 @@ export default function PdpAdminPage() {
                 </div>
 
                 <div className="rounded-2xl border border-line bg-white p-5 shadow-sm">
+                  <h2 className="text-sm font-extrabold text-navy-900">Answer / Maturity Options</h2>
+                  <p className="mt-1 text-xs text-muted">Label dan score dapat dikelola admin; opsi Not Applicable tetap menggunakan score null.</p>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    {dashboard.config.answerOptions.map((item: any) => (
+                      <AnswerOptionEditor key={item.value} item={item} onSave={patch} />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-line bg-white p-5 shadow-sm">
                   <h2 className="text-sm font-extrabold text-navy-900">Evidence Maturity</h2>
                   <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                     {dashboard.config.evidenceOptions.map((item: any) => (
@@ -371,12 +381,14 @@ function DomainEditor({ frameworkVersion, domain, onSave }: any) {
   const [name, setName] = React.useState(domain.name);
   const [description, setDescription] = React.useState(domain.description);
   const [weight, setWeight] = React.useState(domain.weight);
+  const [active, setActive] = React.useState(domain.active !== false);
   return (
     <div className="grid min-w-[280px] gap-2 sm:grid-cols-[1fr_80px_40px]">
       <input value={name} onChange={(e) => setName(e.target.value)} className="rounded-lg border border-line px-2 py-1.5 text-[10px]" />
       <input type="number" step="0.1" value={weight} onChange={(e) => setWeight(Number(e.target.value))} className="rounded-lg border border-line px-2 py-1.5 text-[10px]" />
-      <button onClick={() => onSave('domain', frameworkVersion + '::' + domain.code, { name, description, weight })} className="rounded-lg bg-gold-500 p-2 text-navy-900"><Save className="h-3.5 w-3.5" /></button>
+      <button onClick={() => onSave('domain', frameworkVersion + '::' + domain.code, { name, description, weight, active })} className="rounded-lg bg-gold-500 p-2 text-navy-900"><Save className="h-3.5 w-3.5" /></button>
       <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="rounded-lg border border-line px-2 py-1.5 text-[10px] sm:col-span-3" />
+      <label className="flex items-center gap-2 text-[10px] font-bold text-navy-900 sm:col-span-3"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Active domain</label>
     </div>
   );
 }
@@ -391,7 +403,7 @@ function QuestionEditor({ question, onSave }: any) {
   const [criticality, setCriticality] = React.useState(question.criticality);
   const [weight, setWeight] = React.useState(question.weight);
   const [isCore, setIsCore] = React.useState(question.isCore);
-  const [active, setActive] = React.useState(true);
+  const [active, setActive] = React.useState(question.active !== false);
 
   return (
     <details className="rounded-xl border border-line bg-grey-50">
@@ -439,18 +451,81 @@ function GateEditor({ item, evidenceOptions, onSave }: any) {
   const [label, setLabel] = React.useState(item.label);
   const [minimumScore, setMinimumScore] = React.useState(item.minimumScore);
   const [evidenceMinimum, setEvidenceMinimum] = React.useState(item.evidenceMinimum);
-  return <div className="rounded-xl border border-line bg-grey-50 p-4"><input value={label} onChange={(e) => setLabel(e.target.value)} className="w-full rounded-lg border border-line p-2 text-xs font-bold" /><div className="mt-2 grid grid-cols-[1fr_1fr_40px] gap-2"><input type="number" min="0" max="100" value={minimumScore} onChange={(e) => setMinimumScore(Number(e.target.value))} className="rounded-lg border border-line p-2 text-xs" /><select value={evidenceMinimum} onChange={(e) => setEvidenceMinimum(e.target.value)} className="rounded-lg border border-line bg-white p-2 text-xs">{evidenceOptions.map((e: any) => <option key={e.value} value={e.value}>{e.label}</option>)}</select><button onClick={() => onSave('gate', item.key, { label, minimumScore, evidenceMinimum })} className="rounded-lg bg-gold-500 p-2"><Save className="h-4 w-4" /></button></div></div>;
+  const [active, setActive] = React.useState(item.active !== false);
+  return (
+    <div className="rounded-xl border border-line bg-grey-50 p-4">
+      <input value={label} onChange={(e) => setLabel(e.target.value)} className="w-full rounded-lg border border-line p-2 text-xs font-bold" />
+      <div className="mt-2 grid grid-cols-[1fr_1fr_40px] gap-2">
+        <input type="number" min="0" max="100" value={minimumScore} onChange={(e) => setMinimumScore(Number(e.target.value))} className="rounded-lg border border-line p-2 text-xs" />
+        <select value={evidenceMinimum} onChange={(e) => setEvidenceMinimum(e.target.value)} className="rounded-lg border border-line bg-white p-2 text-xs">
+          {evidenceOptions.map((e: any) => <option key={e.value} value={e.value}>{e.label}</option>)}
+        </select>
+        <button onClick={() => onSave('gate', item.key, { label, minimumScore, evidenceMinimum, active })} className="rounded-lg bg-gold-500 p-2"><Save className="h-4 w-4" /></button>
+      </div>
+      <label className="mt-2 flex items-center gap-2 text-[10px] font-bold"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Active gate</label>
+    </div>
+  );
+}
+
+function AnswerOptionEditor({ item, onSave }: any) {
+  const [label, setLabel] = React.useState(item.label);
+  const [description, setDescription] = React.useState(item.description);
+  const [score, setScore] = React.useState(item.score == null ? '' : String(item.score));
+  const [active, setActive] = React.useState(item.active !== false);
+  return (
+    <div className="rounded-xl border border-line bg-grey-50 p-4">
+      <div className="text-[10px] font-extrabold uppercase tracking-wider text-blue-700">{item.value}</div>
+      <input value={label} onChange={(e) => setLabel(e.target.value)} className="mt-2 w-full rounded-lg border border-line p-2 text-xs font-bold" />
+      <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} className="mt-2 w-full rounded-lg border border-line p-2 text-xs" />
+      <div className="mt-2 flex gap-2">
+        <input
+          type="number"
+          min="0"
+          max="100"
+          disabled={item.isNa}
+          value={score}
+          onChange={(e) => setScore(e.target.value)}
+          placeholder={item.isNa ? 'N/A' : 'Score'}
+          className="w-full rounded-lg border border-line p-2 text-xs disabled:bg-slate-100"
+        />
+        <button
+          onClick={() => onSave('answer-option', item.value, {
+            label,
+            description,
+            score: item.isNa ? null : Number(score),
+            active,
+          })}
+          className="rounded-lg bg-gold-500 p-2"
+        >
+          <Save className="h-4 w-4" />
+        </button>
+      </div>
+      <label className="mt-2 flex items-center gap-2 text-[10px] font-bold">
+        <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Active option
+      </label>
+    </div>
+  );
 }
 
 function EvidenceEditor({ item, onSave }: any) {
   const [label, setLabel] = React.useState(item.label);
   const [multiplier, setMultiplier] = React.useState(item.multiplier);
-  return <div className="rounded-xl border border-line bg-grey-50 p-4"><input value={label} onChange={(e) => setLabel(e.target.value)} className="w-full rounded-lg border border-line p-2 text-xs font-bold" /><div className="mt-2 flex gap-2"><input type="number" min="0" max="1" step="0.05" value={multiplier} onChange={(e) => setMultiplier(Number(e.target.value))} className="w-full rounded-lg border border-line p-2 text-xs" /><button onClick={() => onSave('evidence-option', item.value, { label, multiplier })} className="rounded-lg bg-gold-500 p-2"><Save className="h-4 w-4" /></button></div></div>;
+  const [active, setActive] = React.useState(item.active !== false);
+  return (
+    <div className="rounded-xl border border-line bg-grey-50 p-4">
+      <input value={label} onChange={(e) => setLabel(e.target.value)} className="w-full rounded-lg border border-line p-2 text-xs font-bold" />
+      <div className="mt-2 flex gap-2">
+        <input type="number" min="0" max="1" step="0.05" value={multiplier} onChange={(e) => setMultiplier(Number(e.target.value))} className="w-full rounded-lg border border-line p-2 text-xs" />
+        <button onClick={() => onSave('evidence-option', item.value, { label, multiplier, active })} className="rounded-lg bg-gold-500 p-2"><Save className="h-4 w-4" /></button>
+      </div>
+      <label className="mt-2 flex items-center gap-2 text-[10px] font-bold"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Active option</label>
+    </div>
+  );
 }
 
 function ServiceEditor({ item, onSave }: any) {
   const [serviceName, setServiceName] = React.useState(item.serviceName);
   const [reasonTemplate, setReasonTemplate] = React.useState(item.reasonTemplate);
-  const [active, setActive] = React.useState(true);
+  const [active, setActive] = React.useState(item.active !== false);
   return <div className="rounded-xl border border-line bg-grey-50 p-4"><div className="text-[10px] font-extrabold text-blue-700">{item.domainCode}</div><input value={serviceName} onChange={(e) => setServiceName(e.target.value)} className="mt-2 w-full rounded-lg border border-line p-2 text-xs font-bold" /><textarea rows={2} value={reasonTemplate} onChange={(e) => setReasonTemplate(e.target.value)} className="mt-2 w-full rounded-lg border border-line p-2 text-xs" /><div className="mt-2 flex items-center justify-between"><label className="flex items-center gap-2 text-[10px] font-bold"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Active</label><button onClick={() => onSave('service', item.id, { serviceName, reasonTemplate, active })} className="inline-flex items-center gap-1 rounded-lg bg-gold-500 px-3 py-2 text-[10px] font-extrabold"><Save className="h-3.5 w-3.5" /> Save</button></div></div>;
 }
