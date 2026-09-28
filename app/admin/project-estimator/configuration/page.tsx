@@ -13,6 +13,7 @@ type Dashboard = {
   questionOptions: Array<{ id: string; questionId: string; value: string; label: string; score: number; effortMultiplier: number; priceMultiplier: number; sortOrder: number; active: boolean }>;
   rules: Array<{ id: string; serviceId: string | null; serviceName: string; name: string; conditionsJson: string; effectsJson: string; sortOrder: number; active: boolean }>;
   resources: Array<{ id: string; roleKey: string; name: string; internalDayRate: number | null; active: boolean }>;
+  serviceDependencies: Array<{ serviceId: string; serviceName: string; relatedServiceId: string; relatedServiceName: string; relationType: 'requires' | 'recommends'; reason: string; sortOrder: number; active: boolean }>;
   serviceResources: Array<{ serviceId: string; serviceName: string; resourceRoleId: string; resourceName: string; quantity: number; effortShare: number }>;
 };
 
@@ -32,6 +33,7 @@ export default function EstimatorConfigurationPage() {
   const [rule, setRule] = useState({ serviceId: '', name: '', conditionsJson: '[]', effectsJson: '{"complexityDelta":0,"effortMultiplier":1,"priceMultiplier":1}', sortOrder: 100, active: true });
   const [resource, setResource] = useState({ roleKey: '', name: '', internalDayRate: '' });
   const [assignment, setAssignment] = useState({ serviceId: '', resourceRoleId: '', quantity: 1, effortShare: 0.2 });
+  const [dependency, setDependency] = useState({ serviceId: '', relatedServiceId: '', relationType: 'recommends' as 'requires' | 'recommends', reason: '', sortOrder: 100 });
 
   const load = async () => {
     setLoading(true);
@@ -53,6 +55,11 @@ export default function EstimatorConfigurationPage() {
         ...current,
         serviceId: current.serviceId || body.dashboard.services?.[0]?.id || '',
         resourceRoleId: current.resourceRoleId || body.dashboard.resources?.[0]?.id || '',
+      }));
+      setDependency((current) => ({
+        ...current,
+        serviceId: current.serviceId || body.dashboard.services?.[0]?.id || '',
+        relatedServiceId: current.relatedServiceId || body.dashboard.services?.[1]?.id || body.dashboard.services?.[0]?.id || '',
       }));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Configuration tidak dapat dimuat.');
@@ -145,6 +152,25 @@ export default function EstimatorConfigurationPage() {
                     <Num label="Price max" value={service.basePriceMax} onChange={(v) => setService({ ...service, basePriceMax: v })} />
                   </div>
                   <Action label="Add Service" onClick={() => patch({ action: 'create_service', service }, 'Service baru ditambahkan.')} />
+                </Panel>
+
+                <Panel title="Service Dependency / Recommendation">
+                  <Select label="Primary service" value={dependency.serviceId} onChange={(v) => setDependency({ ...dependency, serviceId: v })} options={data.services.map((item) => [item.id, item.name])} />
+                  <Select label="Related service" value={dependency.relatedServiceId} onChange={(v) => setDependency({ ...dependency, relatedServiceId: v })} options={data.services.map((item) => [item.id, item.name])} />
+                  <Select label="Relationship" value={dependency.relationType} onChange={(v) => setDependency({ ...dependency, relationType: v === 'requires' ? 'requires' : 'recommends' })} options={[['recommends','Recommends'],['requires','Requires']]} />
+                  <Text label="Reason" value={dependency.reason} onChange={(v) => setDependency({ ...dependency, reason: v })} />
+                  <Num label="Sort order" value={dependency.sortOrder} onChange={(v) => setDependency({ ...dependency, sortOrder: v })} />
+                  <Action label="Save Relationship" onClick={() => patch({ action: 'service_dependency', dependency }, 'Service relationship diperbarui.')} />
+                  <div className="mt-4 space-y-2">
+                    {data.serviceDependencies.map((item) => (
+                      <div key={`${item.serviceId}:${item.relatedServiceId}:${item.relationType}`} className="rounded-lg bg-grey-50 px-3 py-2 text-xs">
+                        <strong>{item.serviceName}</strong>
+                        <span className="mx-2 font-extrabold text-gold-700">{item.relationType === 'requires' ? 'requires' : 'recommends'}</span>
+                        <strong>{item.relatedServiceName}</strong>
+                        {item.reason && <div className="mt-1 text-[10px] text-muted">{item.reason}</div>}
+                      </div>
+                    ))}
+                  </div>
                 </Panel>
 
                 <div className="lg:col-span-2 rounded-2xl border border-line bg-white p-5 shadow-sm">
