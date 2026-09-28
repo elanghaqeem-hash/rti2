@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { calculateEstimatorSession, verifyEstimatorSessionAccess } from '@/lib/project-estimator/repository';
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/security/request-protection';
+import { refreshEstimatorRiskFlags } from '@/lib/project-estimator/risk';
 
 export const runtime = 'nodejs';
 
@@ -20,7 +21,12 @@ export async function POST(req: Request) {
   try {
     const estimate = await calculateEstimatorSession(sessionId);
     const { trace: _internalTrace, ...publicEstimate } = estimate;
-    return NextResponse.json({ success: true, estimate: publicEstimate }, { headers });
+    const riskFlags = await refreshEstimatorRiskFlags({
+      sessionId,
+      resumeToken,
+      estimate: publicEstimate,
+    });
+    return NextResponse.json({ success: true, estimate: publicEstimate, riskFlags }, { headers });
   } catch (error) {
     console.error('Estimator calculation failed:', error);
     return NextResponse.json({ success: false, error: 'We could not calculate your estimate. Your saved information remains available.' }, { status: 422, headers });
