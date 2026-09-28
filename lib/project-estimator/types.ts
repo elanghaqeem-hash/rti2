@@ -98,6 +98,7 @@ export type SessionInput = {
   serviceId: string;
   targetTimeline?: string;
   budgetExpectation?: string;
+  sourceContext?: Record<string, unknown>;
   profile: SessionProfile;
   answers: Record<string, unknown>;
 };
