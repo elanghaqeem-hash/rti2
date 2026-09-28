@@ -207,6 +207,7 @@ CREATE TABLE IF NOT EXISTS estimator_sessions (
   selected_service_id TEXT,
   target_timeline TEXT,
   budget_expectation TEXT,
+  source_context_json TEXT,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','estimated','rfq_draft','submitted','archived')),
   secure_token_hash TEXT,
   created_by TEXT,
