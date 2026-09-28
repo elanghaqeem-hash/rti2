@@ -33,6 +33,18 @@ export const PARAMETER_GROUPS: ParameterGroupDefinition[] = [
     options: [],
   },
   {
+    key: 'pdp.criticalities',
+    label: 'UU PDP Readiness - Criticality',
+    description: 'Severity/criticality diagnostic yang digunakan pada question bank dan gap prioritization.',
+    logicBound: true,
+    options: [
+      option('Critical', 'Critical', 10),
+      option('High', 'High', 20),
+      option('Medium', 'Medium', 30),
+      option('Low', 'Low', 40),
+    ],
+  },
+  {
     key: 'contact.sectors',
     label: 'Sektor / Industri',
     description: 'Digunakan pada form kontak, lead capture, dan diagnostic tools.',
