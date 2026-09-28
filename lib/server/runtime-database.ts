@@ -67,7 +67,7 @@ export class RuntimeDatabaseUnavailableError extends Error {
   }
 }
 
-function getOpenNextCloudflareEnv(): Record<string, unknown> | null {
+export function getOpenNextCloudflareEnv(): Record<string, unknown> | null {
   try {
     const symbol = Symbol.for('__cloudflare-context__');
     const context = (
