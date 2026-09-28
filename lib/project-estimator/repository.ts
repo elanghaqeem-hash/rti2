@@ -794,18 +794,20 @@ function matchesRuleCondition(condition: RuleCondition, answers: Map<string, unk
   return false;
 }
 
-function evaluateRules(serviceId: string, answers: Map<string, unknown>) {
-  const rows = getDatabase().prepare(
-    `SELECT id, name, condition_json, effects_json
-     FROM estimator_rules
-     WHERE is_active = 1 AND (service_id IS NULL OR service_id = ?)
-     ORDER BY sort_order, name`,
-  ).all(serviceId) as Array<{
+async function evaluateRules(serviceId: string, answers: Map<string, unknown>) {
+  const db = await getRuntimeDatabase();
+  const rows = await db.queryAll<{
     id: string;
     name: string;
     condition_json: string;
     effects_json: string;
-  }>;
+  }>(
+    `SELECT id, name, condition_json, effects_json
+     FROM estimator_rules
+     WHERE is_active = 1 AND (service_id IS NULL OR service_id = ?)
+     ORDER BY sort_order, name`,
+    [serviceId],
+  );
 
   let complexityDelta = 0;
   let effortMultiplier = 1;
@@ -860,35 +862,42 @@ function questionConditionsMatch(question: EstimatorQuestion, answers: Map<strin
   );
 }
 
-function loadSessionAnswers(sessionId: string, serviceId: string, mode: 'quick' | 'detailed') {
-  const db = getDatabase();
-  const rows = db.prepare(
-    `SELECT q.id, q.question_key, q.label, q.help_text, q.field_type, q.required,
-            q.complexity_dimension, q.weight, q.sort_order, q.quick_mode, q.detailed_mode,
-            a.answer_json
-     FROM estimator_questions q
-     LEFT JOIN estimator_answers a ON a.question_id = q.id AND a.session_id = ?
-     WHERE q.is_active = 1
-       AND (q.service_id IS NULL OR q.service_id = ?)
-       AND (? = 'detailed' OR q.quick_mode = 1)
-     ORDER BY q.sort_order, q.label`,
-  ).all(sessionId, serviceId, mode) as Array<QuestionRow & { answer_json: string | null }>;
-
-  const options = db.prepare(
-    `SELECT o.id, o.question_id, o.value, o.label, o.score, o.effort_multiplier, o.price_multiplier
-     FROM estimator_question_options o
-     JOIN estimator_questions q ON q.id = o.question_id
-     WHERE o.is_active = 1 AND q.is_active = 1
-       AND (q.service_id IS NULL OR q.service_id = ?)`,
-  ).all(serviceId) as OptionRow[];
-
-  const conditions = db.prepare(
-    `SELECT c.id, c.question_id, c.source_question_key, c.operator, c.compare_value
-     FROM estimator_question_conditions c
-     JOIN estimator_questions q ON q.id=c.question_id
-     WHERE c.is_active=1 AND q.is_active=1
-       AND (q.service_id IS NULL OR q.service_id = ?)`,
-  ).all(serviceId) as ConditionRow[];
+async function loadSessionAnswers(
+  sessionId: string,
+  serviceId: string,
+  mode: 'quick' | 'detailed',
+) {
+  const db = await getRuntimeDatabase();
+  const [rows, options, conditions] = await Promise.all([
+    db.queryAll<QuestionRow & { answer_json: string | null }>(
+      `SELECT q.id, q.service_id, q.question_key, q.label, q.help_text, q.field_type, q.required,
+              q.complexity_dimension, q.weight, q.sort_order, q.quick_mode, q.detailed_mode,
+              a.answer_json
+       FROM estimator_questions q
+       LEFT JOIN estimator_answers a ON a.question_id = q.id AND a.session_id = ?
+       WHERE q.is_active = 1
+         AND (q.service_id IS NULL OR q.service_id = ?)
+         AND (? = 'detailed' OR q.quick_mode = 1)
+       ORDER BY q.sort_order, q.label`,
+      [sessionId, serviceId, mode],
+    ),
+    db.queryAll<OptionRow>(
+      `SELECT o.id, o.question_id, o.value, o.label, o.score, o.effort_multiplier, o.price_multiplier
+       FROM estimator_question_options o
+       JOIN estimator_questions q ON q.id = o.question_id
+       WHERE o.is_active = 1 AND q.is_active = 1
+         AND (q.service_id IS NULL OR q.service_id = ?)`,
+      [serviceId],
+    ),
+    db.queryAll<ConditionRow>(
+      `SELECT c.id, c.question_id, c.source_question_key, c.operator, c.compare_value
+       FROM estimator_question_conditions c
+       JOIN estimator_questions q ON q.id=c.question_id
+       WHERE c.is_active=1 AND q.is_active=1
+         AND (q.service_id IS NULL OR q.service_id = ?)`,
+      [serviceId],
+    ),
+  ]);
 
   return { rows, questions: buildQuestions(rows, options, conditions) };
 }
