@@ -697,7 +697,7 @@ export async function deletePdpAssessmentRuntime(assessmentId: string) {
 
 export async function getPdpAdminDashboardRuntime() {
   const db = await database();
-  const [config, stats, assessments, topGaps, auditLogs] = await Promise.all([
+  const [config, stats, assessments, topGaps, auditLogs, allDomains, allQuestions, allAnswerOptions, allEvidenceOptions, allGates, allServices] = await Promise.all([
     getPdpConfigRuntime(),
     db.queryOne<any>(
       `SELECT
@@ -731,10 +731,93 @@ export async function getPdpAdminDashboardRuntime() {
        ORDER BY id DESC
        LIMIT 100`,
     ),
+    db.queryAll<any>(
+      'SELECT code,name,description,weight,sort_order,is_active FROM pdp_domains WHERE framework_version = ? ORDER BY sort_order',
+      [FRAMEWORK_VERSION],
+    ),
+    db.queryAll<any>(
+      'SELECT id,domain_code,question_code,question_text,help_text,legal_reference,expected_evidence,risk_if_missing,recommendation,criticality,weight,is_core,estimated_seconds,sort_order,active FROM pdp_questions WHERE framework_version = ? AND questionnaire_version = ? ORDER BY sort_order',
+      [FRAMEWORK_VERSION, QUESTIONNAIRE_VERSION],
+    ),
+    db.queryAll<any>(
+      'SELECT value,label,description,score,is_na,sort_order,active FROM pdp_answer_options ORDER BY sort_order',
+    ),
+    db.queryAll<any>(
+      'SELECT value,label,multiplier,sort_order,active FROM pdp_evidence_options ORDER BY sort_order',
+    ),
+    db.queryAll<any>(
+      'SELECT key,label,question_id,minimum_score,evidence_minimum,sort_order,active FROM pdp_readiness_gates ORDER BY sort_order',
+    ),
+    db.queryAll<any>(
+      'SELECT id,domain_code,service_name,service_url_parameter,reason_template,priority_order,active FROM pdp_service_mappings ORDER BY priority_order',
+    ),
   ]);
 
+  const adminConfig = {
+    ...config,
+    domains: allDomains.map((row) => ({
+      code: String(row.code),
+      name: String(row.name),
+      description: String(row.description),
+      weight: Number(row.weight),
+      sortOrder: Number(row.sort_order),
+      active: Number(row.is_active) === 1,
+    })),
+    questions: allQuestions.map((row) => ({
+      id: String(row.id),
+      domainCode: String(row.domain_code),
+      questionCode: String(row.question_code),
+      questionText: String(row.question_text),
+      helpText: row.help_text == null ? null : String(row.help_text),
+      legalReference: row.legal_reference == null ? null : String(row.legal_reference),
+      expectedEvidence: row.expected_evidence == null ? null : String(row.expected_evidence),
+      riskIfMissing: row.risk_if_missing == null ? null : String(row.risk_if_missing),
+      recommendation: row.recommendation == null ? null : String(row.recommendation),
+      criticality: String(row.criticality),
+      weight: Number(row.weight),
+      isCore: Number(row.is_core) === 1,
+      estimatedSeconds: Number(row.estimated_seconds),
+      sortOrder: Number(row.sort_order),
+      active: Number(row.active) === 1,
+    })),
+    answerOptions: allAnswerOptions.map((row) => ({
+      value: String(row.value),
+      label: String(row.label),
+      description: String(row.description),
+      score: row.score == null ? null : Number(row.score),
+      isNa: Number(row.is_na) === 1,
+      sortOrder: Number(row.sort_order),
+      active: Number(row.active) === 1,
+    })),
+    evidenceOptions: allEvidenceOptions.map((row) => ({
+      value: String(row.value),
+      label: String(row.label),
+      multiplier: Number(row.multiplier),
+      sortOrder: Number(row.sort_order),
+      active: Number(row.active) === 1,
+    })),
+    readinessGates: allGates.map((row) => ({
+      key: String(row.key),
+      label: String(row.label),
+      questionId: String(row.question_id),
+      minimumScore: Number(row.minimum_score),
+      evidenceMinimum: String(row.evidence_minimum),
+      sortOrder: Number(row.sort_order),
+      active: Number(row.active) === 1,
+    })),
+    serviceMappings: allServices.map((row) => ({
+      id: String(row.id),
+      domainCode: String(row.domain_code),
+      serviceName: String(row.service_name),
+      serviceUrlParameter: String(row.service_url_parameter),
+      reasonTemplate: String(row.reason_template),
+      priorityOrder: Number(row.priority_order),
+      active: Number(row.active) === 1,
+    })),
+  };
+
   return {
-    config,
+    config: adminConfig,
     stats: {
       total: Number(stats?.total || 0),
       completed: Number(stats?.completed || 0),
@@ -849,6 +932,25 @@ export async function patchPdpAdminConfigRuntime(params: {
       ],
     );
     after = await db.queryOne('SELECT * FROM pdp_readiness_gates WHERE key = ?', [key]);
+  } else if (entity === 'answer-option') {
+    before = await db.queryOne('SELECT * FROM pdp_answer_options WHERE value = ?', [key]);
+    if (!before) throw new Error('Answer option not found.');
+    const requestedScore = changes.score === undefined ? before.score : changes.score;
+    const score =
+      requestedScore === null
+        ? null
+        : Math.max(0, Math.min(100, asNumber(requestedScore, Number(before.score || 0))));
+    await db.run(
+      'UPDATE pdp_answer_options SET label=?,description=?,score=?,active=? WHERE value=?',
+      [
+        text(changes.label ?? before.label, 160),
+        text(changes.description ?? before.description, 800),
+        score,
+        asBool(changes.active, Number(before.active) === 1) ? 1 : 0,
+        key,
+      ],
+    );
+    after = await db.queryOne('SELECT * FROM pdp_answer_options WHERE value = ?', [key]);
   } else if (entity === 'evidence-option') {
     before = await db.queryOne('SELECT * FROM pdp_evidence_options WHERE value = ?', [key]);
     if (!before) throw new Error('Evidence option not found.');
