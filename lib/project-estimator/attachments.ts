@@ -1,7 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import { getDatabase } from '@/lib/server/database';
+import { getRuntimeDatabase } from '@/lib/server/runtime-database';
 
 const ALLOWED = new Map<string, string[]>([
   ['application/pdf', ['.pdf']],
@@ -45,7 +43,8 @@ async function malwareScan(buffer: Buffer, fileName: string, mimeType: string) {
   return { clean, reason: clean ? 'clean' : 'Scanner rejected file.' };
 }
 
-function uploadDirectory() {
+async function resolveUploadDirectory() {
+  const path = await import('node:path');
   const configured = String(process.env.RTI_UPLOAD_DIR || '').trim();
   if (!configured) throw new Error('RFQ file storage is not configured.');
   const resolved = path.resolve(configured);
@@ -53,7 +52,7 @@ function uploadDirectory() {
   if (resolved === publicRoot || resolved.startsWith(publicRoot + path.sep)) {
     throw new Error('RFQ upload directory must be outside the public web root.');
   }
-  return resolved;
+  return { directory: resolved, path };
 }
 
 export async function storeRfqAttachment(params: {
@@ -61,6 +60,12 @@ export async function storeRfqAttachment(params: {
   file: File;
   actor?: string;
 }) {
+  const db = await getRuntimeDatabase();
+  if (db.kind !== 'node-sqlite') {
+    throw new Error(
+      'RFQ supporting-document upload requires configured object storage on Cloudflare. Upload is disabled until that storage is enabled.',
+    );
+  }
   if (process.env.NODE_ENV === 'production' && process.env.RTI_FILE_UPLOADS_ENABLED !== 'true') {
     throw new Error('RFQ file uploads are disabled in production.');
   }
@@ -84,7 +89,8 @@ export async function storeRfqAttachment(params: {
   const scan = await malwareScan(buffer, params.file.name, mimeType);
   if (!scan.clean) throw new Error(scan.reason || 'File did not pass malware scanning.');
 
-  const directory = uploadDirectory();
+  const { directory, path } = await resolveUploadDirectory();
+  const { mkdir, writeFile } = await import('node:fs/promises');
   await mkdir(directory, { recursive: true });
   const attachmentId = randomUUID();
   const storageKey = `${attachmentId}${extension}`;
@@ -93,20 +99,21 @@ export async function storeRfqAttachment(params: {
 
   const sha256 = createHash('sha256').update(buffer).digest('hex');
   const now = new Date().toISOString();
-  getDatabase().prepare(
+  await db.run(
     `INSERT INTO rfq_attachments
       (id, rfq_id, file_name, storage_key, mime_type, file_size, sha256, scan_status, uploaded_by, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, 'clean', ?, ?)`,
-  ).run(
-    attachmentId,
-    params.rfqId,
-    params.file.name.slice(0, 240),
-    storageKey,
-    mimeType,
-    buffer.length,
-    sha256,
-    params.actor || 'customer',
-    now,
+    [
+      attachmentId,
+      params.rfqId,
+      params.file.name.slice(0, 240),
+      storageKey,
+      mimeType,
+      buffer.length,
+      sha256,
+      params.actor || 'customer',
+      now,
+    ],
   );
 
   return {
@@ -120,11 +127,13 @@ export async function storeRfqAttachment(params: {
   };
 }
 
-export function listRfqAttachments(rfqId: string) {
-  const rows = getDatabase().prepare(
+export async function listRfqAttachments(rfqId: string) {
+  const db = await getRuntimeDatabase();
+  const rows = await db.queryAll<any>(
     `SELECT id, file_name, mime_type, file_size, sha256, scan_status, created_at
      FROM rfq_attachments WHERE rfq_id=? ORDER BY created_at DESC`,
-  ).all(rfqId) as any[];
+    [rfqId],
+  );
   return rows.map((row) => ({
     id: row.id,
     fileName: row.file_name,
