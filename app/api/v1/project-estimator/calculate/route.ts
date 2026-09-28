@@ -15,10 +15,10 @@ export async function POST(req: Request) {
   const sessionId = typeof body?.sessionId === 'string' ? body.sessionId.trim() : '';
   const resumeToken = typeof body?.resumeToken === 'string' ? body.resumeToken.trim() : '';
   if (!sessionId || !resumeToken) return NextResponse.json({ success: false, error: 'Session access token is required.' }, { status: 400, headers });
-  if (!verifyEstimatorSessionAccess(sessionId, resumeToken)) return NextResponse.json({ success: false, error: 'Estimator draft access denied.' }, { status: 403, headers });
+  if (!(await verifyEstimatorSessionAccess(sessionId, resumeToken))) return NextResponse.json({ success: false, error: 'Estimator draft access denied.' }, { status: 403, headers });
 
   try {
-    const estimate = calculateEstimatorSession(sessionId);
+    const estimate = await calculateEstimatorSession(sessionId);
     const { trace: _internalTrace, ...publicEstimate } = estimate;
     return NextResponse.json({ success: true, estimate: publicEstimate }, { headers });
   } catch (error) {
