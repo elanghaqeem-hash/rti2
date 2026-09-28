@@ -338,6 +338,10 @@ export function upsertEstimatorSession(
   const secureTokenHash = existing?.secure_token_hash || hashResumeToken(nextResumeToken);
   const organizationId = existing?.organization_id || randomUUID();
   const contactId = existing?.contact_id || randomUUID();
+  const sourceContextJson = input.sourceContext ? JSON.stringify(input.sourceContext) : null;
+  if (sourceContextJson && sourceContextJson.length > 16000) {
+    throw new Error('Diagnostic source context is too large.');
+  }
 
   db.exec('BEGIN IMMEDIATE;');
   try {
@@ -390,13 +394,15 @@ export function upsertEstimatorSession(
     db.prepare(
       `INSERT INTO estimator_sessions
         (id, mode, organization_id, contact_id, project_name, business_objectives_json,
-         selected_service_id, target_timeline, budget_expectation, status, secure_token_hash, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?)
+         selected_service_id, target_timeline, budget_expectation, source_context_json,
+         status, secure_token_hash, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          mode=excluded.mode, organization_id=excluded.organization_id, contact_id=excluded.contact_id,
          project_name=excluded.project_name, business_objectives_json=excluded.business_objectives_json,
          selected_service_id=excluded.selected_service_id, target_timeline=excluded.target_timeline,
-         budget_expectation=excluded.budget_expectation, updated_at=excluded.updated_at`,
+         budget_expectation=excluded.budget_expectation, source_context_json=excluded.source_context_json,
+         updated_at=excluded.updated_at`,
     ).run(
       sessionId,
       input.mode,
@@ -407,6 +413,7 @@ export function upsertEstimatorSession(
       input.serviceId,
       input.targetTimeline || null,
       input.budgetExpectation || null,
+      sourceContextJson,
       secureTokenHash,
       now,
       now,
@@ -459,7 +466,7 @@ export function getEstimatorSessionByToken(resumeToken: string) {
   const db = getDatabase();
   const row = db.prepare(
     `SELECT es.id, es.mode, es.project_name, es.business_objectives_json, es.selected_service_id,
-            es.target_timeline, es.budget_expectation,
+            es.target_timeline, es.budget_expectation, es.source_context_json,
             o.name AS company_name, o.industry, o.company_size, o.employee_count, o.office_count,
             o.location, o.country, o.website,
             c.name AS contact_name, c.title, c.department, c.email, c.phone, c.whatsapp, c.preferred_channel
@@ -484,6 +491,7 @@ export function getEstimatorSessionByToken(resumeToken: string) {
     serviceId: row.selected_service_id,
     targetTimeline: row.target_timeline || undefined,
     budgetExpectation: row.budget_expectation || undefined,
+    sourceContext: safeJson<Record<string, unknown> | undefined>(row.source_context_json, undefined),
     profile: {
       companyName: row.company_name,
       industry: row.industry || '',
