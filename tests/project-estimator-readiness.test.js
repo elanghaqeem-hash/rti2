@@ -103,7 +103,7 @@ test('Project Estimator: RFQs and estimates are versioned and auditable', () => 
 
 test('Project Estimator: internal resource rates are not exposed by public bootstrap', () => {
   const repository = read('lib/project-estimator/repository.ts');
-  const bootstrapSegment = repository.slice(repository.indexOf('export function getEstimatorBootstrap'), repository.indexOf('export function upsertEstimatorSession'));
+  const bootstrapSegment = repository.slice(repository.indexOf('export async function getEstimatorBootstrap'), repository.indexOf('export async function upsertEstimatorSession'));
   assert.doesNotMatch(bootstrapSegment, /internal_day_rate/);
   assert.doesNotMatch(bootstrapSegment, /trace_json/);
 });
@@ -240,4 +240,49 @@ test('Project Estimator: Solution Finder handoff is persisted as source context'
   assert.match(page, /sourceContext/);
   assert.match(repository, /source_context_json/);
   assert.match(migration, /source_context_json TEXT/);
+});
+
+
+test('Project Estimator: public and admin repositories use the shared cross-runtime database adapter', () => {
+  for (const file of [
+    'lib/project-estimator/repository.ts',
+    'lib/project-estimator/admin.ts',
+    'lib/project-estimator/attachments.ts',
+  ]) {
+    const source = read(file);
+    assert.match(source, /getRuntimeDatabase/);
+    assert.doesNotMatch(source, /@\/lib\/server\/database/);
+    assert.doesNotMatch(source, /\bgetDatabase\b/);
+  }
+});
+
+test('Project Estimator: Cloudflare runtime bundles migration 0005 and exposes readiness tables', () => {
+  const registry = read('lib/server/runtime-migration-registry.ts');
+  const runtimeMigrations = read('lib/server/runtime-migrations.ts');
+  assert.match(registry, /0005_project_estimator_rfq\.sql/);
+  assert.match(registry, /CREATE TABLE IF NOT EXISTS estimator_sessions/);
+  assert.match(runtimeMigrations, /projectEstimator/);
+  assert.match(runtimeMigrations, /estimatorServices/);
+  assert.match(runtimeMigrations, /rfqVersions/);
+});
+
+test('Project Estimator: async capability checks are awaited by public routes', () => {
+  for (const file of [
+    'app/api/v1/project-estimator/calculate/route.ts',
+    'app/api/v1/project-estimator/rfq/route.ts',
+    'app/api/v1/project-estimator/rfq/[id]/route.ts',
+    'app/api/v1/project-estimator/rfq/[id]/submit/route.ts',
+    'app/api/v1/project-estimator/rfq/[id]/attachments/route.ts',
+  ]) {
+    const source = read(file);
+    assert.doesNotMatch(source, /if \(!verify(?:EstimatorSession|Rfq)Access\(/);
+  }
+});
+
+test('Project Estimator: Cloudflare attachment upload fails closed until object storage is configured', () => {
+  const attachments = read('lib/project-estimator/attachments.ts');
+  assert.match(attachments, /db\.kind !== 'node-sqlite'/);
+  assert.match(attachments, /configured object storage on Cloudflare/);
+  assert.match(attachments, /await import\('node:fs\/promises'\)/);
+  assert.doesNotMatch(attachments, /^import .*node:fs/m);
 });
