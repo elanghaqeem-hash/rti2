@@ -8,7 +8,8 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 
 test('Enterprise Solution Finder: production data model and configuration are migration-backed', () => {
   const migration = read('migrations/0003_enterprise_solution_finder.sql');
-  const migrations = read('lib/server/migrations.ts');
+  const migrations = read('lib/server/runtime-migrations.ts');
+  const registry = read('lib/server/runtime-migration-registry.ts');
 
   for (const table of [
     'enterprise_finder_questions',
@@ -26,7 +27,8 @@ test('Enterprise Solution Finder: production data model and configuration are mi
     assert.match(migration, new RegExp(`CREATE TABLE IF NOT EXISTS ${table}`, 'i'));
   }
 
-  assert.match(migrations, /0003_enterprise_solution_finder\.sql/);
+  assert.match(registry, /0003_enterprise_solution_finder\.sql/);
+  assert.match(migrations, /RUNTIME_MIGRATION_NAMES/);
   assert.doesNotMatch(
     migration,
     /INSERT\s+(?:OR\s+IGNORE\s+)?INTO\s+enterprise_finder_(?:assessments|answers|recommendations|events)/i,
@@ -40,7 +42,7 @@ test('Enterprise Solution Finder: production data model and configuration are mi
 });
 
 test('Enterprise Solution Finder: save-and-continue uses a hashed token and never puts the token in the URL', () => {
-  const repository = read('lib/enterprise-finder/repository.ts');
+  const repository = read('lib/enterprise-finder/runtime-repository.ts');
   const sessionApi = read('app/api/enterprise-finder/session/route.ts');
   const resultApi = read('app/api/enterprise-finder/result/[id]/route.ts');
   const page = read('app/tools/solution-finder/page.tsx');
@@ -103,7 +105,7 @@ test('Enterprise Solution Finder: customer experience is adaptive, progressive a
 test('Enterprise Solution Finder: admin configuration and analytics require authenticated admin sessions', () => {
   const configApi = read('app/api/admin/enterprise-finder/config/route.ts');
   const analyticsApi = read('app/api/admin/enterprise-finder/analytics/route.ts');
-  const adminRepository = read('lib/enterprise-finder/admin-repository.ts');
+  const adminRepository = read('lib/enterprise-finder/runtime-admin-repository.ts');
 
   assert.match(configApi, /isAdminRequest|adminSessionFromRequest/);
   assert.match(analyticsApi, /isAdminRequest/);
@@ -142,4 +144,20 @@ test('Enterprise Solution Finder: lead qualification supports Hot, Warm and Nurt
   assert.match(scoring, /requestProposal/);
   assert.doesNotMatch(publicFinder, /leadQualificationLabel/);
   assert.match(adminLeads, /leadQualificationLabel/);
+});
+
+
+test('Enterprise Solution Finder: Cloudflare runtime uses RTI_DB D1 and public UI hides internal setup details', () => {
+  const runtimeDatabase = read('lib/server/runtime-database.ts');
+  const configApi = read('app/api/enterprise-finder/config/route.ts');
+  const page = read('app/tools/solution-finder/page.tsx');
+  const setupApi = read('app/api/admin/system/setup/route.ts');
+
+  assert.match(runtimeDatabase, /RTI_DB/);
+  assert.match(runtimeDatabase, /cloudflare-d1/);
+  assert.match(configApi, /getFinderConfigRuntime/);
+  assert.match(setupApi, /applyRuntimePendingMigrations/);
+  assert.doesNotMatch(page, /Admin RTI perlu memastikan migration/i);
+  assert.doesNotMatch(page, /pending migrations/i);
+  assert.match(page, /sedang dalam proses aktivasi/i);
 });
