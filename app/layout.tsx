@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -7,12 +6,6 @@ import { CookieBanner } from '@/components/layout/CookieBanner';
 import { RisetinAssistant } from '@/components/chat/RisetinAssistant';
 import { BRAND_CONFIG } from '@/lib/config/contact';
 
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700', '800'],
-  variable: '--font-jakarta',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: {
@@ -83,7 +76,7 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="id" className={plusJakartaSans.variable}>
+    <html lang="id">
       <head>
         <script
           type="application/ld+json"
