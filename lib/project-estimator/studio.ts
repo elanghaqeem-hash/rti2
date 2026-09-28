@@ -658,3 +658,44 @@ export async function getPortalSession(resumeToken: string) {
     })),
   };
 }
+
+
+export async function getQuotationPdfData(quotationId: string) {
+  const db = await getRuntimeDatabase();
+  const row = await db.queryOne<any>(
+    `SELECT q.id,q.doc_number,q.final_price,q.payment_terms_json,q.valid_until,q.status,
+            es.project_name,o.name AS company,s.name AS service_name
+     FROM estimator_quotations q
+     JOIN estimator_sessions es ON es.id=q.session_id
+     JOIN organizations o ON o.id=es.organization_id
+     JOIN services s ON s.id=es.selected_service_id
+     WHERE q.id=?`,
+    [quotationId],
+  );
+  if (!row) throw new Error('Quotation not found.');
+  return {
+    id: row.id,
+    docNumber: row.doc_number,
+    company: row.company,
+    projectName: row.project_name,
+    serviceName: row.service_name,
+    finalPrice: Number(row.final_price),
+    paymentTerms: safeJson<Record<string, unknown>>(row.payment_terms_json, {}),
+    validUntil: row.valid_until,
+    status: row.status,
+  };
+}
+
+export async function verifyPortalQuotationAccess(quotationId: string, resumeToken: string) {
+  const state = await getEstimatorSessionByToken(resumeToken);
+  const db = await getRuntimeDatabase();
+  const row = await db.queryOne<{ id: string; session_id: string; status: string }>(
+    'SELECT id,session_id,status FROM estimator_quotations WHERE id=?',
+    [quotationId],
+  );
+  return Boolean(
+    row &&
+    row.session_id === state.sessionId &&
+    ['approved','sent','accepted','rejected','expired'].includes(row.status),
+  );
+}
