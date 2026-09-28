@@ -1084,6 +1084,11 @@ export default function ProjectEstimatorPage() {
                     <Link href="/consultation" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line px-4 py-3 text-xs font-extrabold text-navy-900">
                       <Calendar className="h-4 w-4" /> Schedule Consultation
                     </Link>
+                    {resumeToken && (
+                      <Link href={`/portal#resume=${encodeURIComponent(resumeToken)}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line px-4 py-3 text-xs font-extrabold text-navy-900">
+                        <FileCheck2 className="h-4 w-4" /> Open Client Portal
+                      </Link>
+                    )}
                   </div>
                 </div>
               )}

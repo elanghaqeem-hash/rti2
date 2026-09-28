@@ -28,6 +28,7 @@ export type EstimatorAdminDashboard = {
   };
   rfqs: Array<{
     id: string;
+    sessionId: string;
     rfqNumber: string;
     projectName: string;
     company: string;
@@ -251,7 +252,7 @@ export async function getEstimatorAdminDashboard(): Promise<EstimatorAdminDashbo
     pipelineMax,
   ] = await Promise.all([
     db.queryAll<any>(
-      `SELECT r.id, r.rfq_number, es.project_name, o.name AS company, s.name AS service,
+      `SELECT r.id, r.session_id, r.rfq_number, es.project_name, o.name AS company, s.name AS service,
               pe.complexity_level, pe.project_size, pe.price_min, pe.price_max,
               pe.readiness_score,
               COALESCE(ec.resource_cost,0) AS resource_cost,
@@ -393,6 +394,7 @@ export async function getEstimatorAdminDashboard(): Promise<EstimatorAdminDashbo
     },
     rfqs: rfqs.map((row) => ({
       id: row.id,
+      sessionId: row.session_id,
       rfqNumber: row.rfq_number,
       projectName: row.project_name,
       company: row.company,
