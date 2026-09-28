@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { isAdminRequest } from '@/lib/admin/auth';
 import {
-  FinderDatabaseUnavailableError,
-  getFinderAnalytics,
-} from '@/lib/enterprise-finder/repository';
+  FinderRuntimeDatabaseUnavailableError,
+  getFinderAnalyticsRuntime,
+} from '@/lib/enterprise-finder/runtime-repository';
 
 export const runtime = 'nodejs';
 
@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     return NextResponse.json(
       {
         success: true,
-        analytics: getFinderAnalytics(),
+        analytics: await getFinderAnalyticsRuntime(),
         database: { connected: true },
       },
       { headers: { 'Cache-Control': 'no-store' } },
@@ -31,7 +31,7 @@ export async function GET(req: Request) {
         analytics: null,
         database: { connected: false },
         error:
-          error instanceof FinderDatabaseUnavailableError
+          error instanceof FinderRuntimeDatabaseUnavailableError
             ? 'Enterprise Solution Finder database belum diinisialisasi.'
             : 'Analytics Enterprise Solution Finder tidak dapat dimuat.',
       },
