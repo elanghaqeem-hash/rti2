@@ -19,7 +19,6 @@ import {
   Fingerprint,
   Gauge,
   Globe2,
-  KeyRound,
   Loader2,
   LockKeyhole,
   Network,
@@ -36,6 +35,7 @@ import {
 } from 'lucide-react';
 import { TurnstileWidget } from '@/components/security/TurnstileWidget';
 import { LeadModal } from '@/components/tools/LeadModal';
+import { useParameterOptions } from '@/components/parameters/useParameterOptions';
 import type {
   PdpAnswerRecord,
   PdpAssessmentRecord,
@@ -215,9 +215,10 @@ export function PdpReadinessAssessment() {
   const [busy, setBusy] = React.useState(true);
   const [message, setMessage] = React.useState('');
   const [leadModal, setLeadModal] = React.useState(false);
-  const [openDomain, setOpenDomain] = React.useState<string | null>(null);
 
   const turnstileRequired = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
+  const industryOptions = useParameterOptions('assessment.industries');
+  const companySizeOptions = useParameterOptions('assessment.company_sizes');
 
   const questions = React.useMemo(() => {
     if (!config) return [] as PdpQuestion[];
@@ -324,8 +325,19 @@ export function PdpReadinessAssessment() {
         setResult(resultsData.result);
         setStage('results');
       } else {
-        const answeredCount = Object.keys(mapped).length;
-        setCurrentIndex(Math.min(answeredCount, Math.max(0, questions.length - 1)));
+        const resumedQuestions = (config?.questions || [])
+          .filter((question) =>
+            data.assessment.assessmentType === 'detailed' || question.isCore,
+          )
+          .sort((a, b) => a.sortOrder - b.sortOrder);
+        const firstUnanswered = resumedQuestions.findIndex(
+          (question) => !mapped[question.id],
+        );
+        setCurrentIndex(
+          firstUnanswered >= 0
+            ? firstUnanswered
+            : Math.max(0, resumedQuestions.length - 1),
+        );
         setStage('assessment');
       }
     } catch (error) {
@@ -815,24 +827,58 @@ export function PdpReadinessAssessment() {
           <section className="rounded-2xl border border-line bg-white p-6 shadow-sm">
             <h2 className="text-base font-extrabold text-navy-900">Informasi Organisasi</h2>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
-              {[
-                ['companyName', 'Nama organisasi *', 'PT Contoh Indonesia'],
-                ['industry', 'Industri *', 'Financial Services, Technology, Manufacturing, dll.'],
-                ['companySize', 'Ukuran organisasi *', 'Small / Medium / Large / Enterprise'],
-                ['country', 'Negara', 'Indonesia'],
-              ].map(([key, label, placeholder]) => (
-                <label key={key} className="text-xs font-bold text-navy-900">
-                  {label}
-                  <input
-                    value={String(profile[key as keyof ProfileState] || '')}
-                    onChange={(event) =>
-                      setProfile((current) => ({ ...current, [key]: event.target.value }))
-                    }
-                    placeholder={placeholder}
-                    className="mt-1.5 w-full rounded-xl border border-line px-3 py-3 text-sm font-normal outline-none focus:border-blue-400"
-                  />
-                </label>
-              ))}
+              <label className="text-xs font-bold text-navy-900">
+                Nama organisasi *
+                <input
+                  value={profile.companyName}
+                  onChange={(event) =>
+                    setProfile((current) => ({ ...current, companyName: event.target.value }))
+                  }
+                  placeholder="PT Contoh Indonesia"
+                  className="mt-1.5 w-full rounded-xl border border-line px-3 py-3 text-sm font-normal outline-none focus:border-blue-400"
+                />
+              </label>
+              <label className="text-xs font-bold text-navy-900">
+                Industri *
+                <select
+                  value={profile.industry}
+                  onChange={(event) =>
+                    setProfile((current) => ({ ...current, industry: event.target.value }))
+                  }
+                  className="mt-1.5 w-full rounded-xl border border-line bg-white px-3 py-3 text-sm font-normal outline-none focus:border-blue-400"
+                >
+                  <option value="">Pilih industri</option>
+                  {industryOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs font-bold text-navy-900">
+                Ukuran organisasi *
+                <select
+                  value={profile.companySize}
+                  onChange={(event) =>
+                    setProfile((current) => ({ ...current, companySize: event.target.value }))
+                  }
+                  className="mt-1.5 w-full rounded-xl border border-line bg-white px-3 py-3 text-sm font-normal outline-none focus:border-blue-400"
+                >
+                  <option value="">Pilih skala organisasi</option>
+                  {companySizeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs font-bold text-navy-900">
+                Negara
+                <input
+                  value={profile.country}
+                  onChange={(event) =>
+                    setProfile((current) => ({ ...current, country: event.target.value }))
+                  }
+                  placeholder="Indonesia"
+                  className="mt-1.5 w-full rounded-xl border border-line px-3 py-3 text-sm font-normal outline-none focus:border-blue-400"
+                />
+              </label>
 
               <label className="text-xs font-bold text-navy-900">
                 Jumlah karyawan
@@ -1018,8 +1064,17 @@ export function PdpReadinessAssessment() {
                 </div>
               </div>
               <div className="flex items-center gap-2 text-[11px] font-bold text-muted">
-                <Save className="h-4 w-4 text-blue-600" />
-                Save & Continue Later aktif pada perangkat ini
+                {assessment.status === 'completed' ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    Read-only review · assessment telah diselesaikan
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 text-blue-600" />
+                    Save & Continue Later aktif pada perangkat ini
+                  </>
+                )}
               </div>
             </div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
@@ -1102,9 +1157,12 @@ export function PdpReadinessAssessment() {
                   return (
                     <button
                       key={option.value}
-                      onClick={() =>
-                        setDraft((current) => ({ ...current, answerValue: option.value }))
-                      }
+                      onClick={() => {
+                        if (assessment.status !== 'completed') {
+                          setDraft((current) => ({ ...current, answerValue: option.value }));
+                        }
+                      }}
+                      disabled={assessment.status === 'completed'}
                       className={
                         'rounded-xl border p-4 text-left transition ' +
                         (active
@@ -1168,7 +1226,7 @@ export function PdpReadinessAssessment() {
                     <Upload className="h-4 w-4 shrink-0 text-blue-600" />
                     <input
                       type="file"
-                      disabled={!evidenceConsent}
+                      disabled={!evidenceConsent || assessment.status === 'completed'}
                       onChange={(event) => setEvidenceFile(event.target.files?.[0] || null)}
                       accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png"
                       className="w-full text-xs disabled:opacity-40"
@@ -1238,7 +1296,14 @@ export function PdpReadinessAssessment() {
               <ArrowLeft className="h-4 w-4" /> Sebelumnya
             </button>
 
-            {currentIndex < questions.length - 1 ? (
+            {assessment.status === 'completed' ? (
+              <button
+                onClick={() => setStage('results')}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-navy-900 px-5 py-2 text-xs font-extrabold text-white"
+              >
+                Kembali ke Hasil <ArrowRight className="h-4 w-4" />
+              </button>
+            ) : currentIndex < questions.length - 1 ? (
               <button
                 onClick={saveAndNext}
                 disabled={busy}
