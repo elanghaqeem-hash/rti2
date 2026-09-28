@@ -86,17 +86,21 @@ test('Dependency hardening: Next nested PostCSS is overridden to a patched line'
   assert.equal(packageJson.overrides?.next?.postcss, '8.5.28');
 });
 
-test('Data readiness: lead persistence uses the server database with prepared statements', () => {
+test('Data readiness: lead persistence uses the shared D1/Node runtime database adapter', () => {
   const repository = read('lib/data/lead-repository.ts');
-  const database = read('lib/server/database.ts');
+  const runtimeDatabase = read('lib/server/runtime-database.ts');
+  const nodeDatabase = read('lib/server/database.ts');
   const leadApi = read('app/api/leads/route.ts');
   const migration = read('migrations/0001_leads.sql');
 
-  assert.match(database, /node:sqlite/);
-  assert.match(database, /RTI_DB_PATH/);
-  assert.match(repository, /\.prepare\(/);
-  assert.match(repository, /\.run\(/);
-  assert.match(repository, /\.all\(/);
+  assert.match(runtimeDatabase, /RTI_DB/);
+  assert.match(runtimeDatabase, /cloudflare-d1/);
+  assert.match(runtimeDatabase, /node-sqlite/);
+  assert.match(nodeDatabase, /node:sqlite/);
+  assert.match(nodeDatabase, /RTI_DB_PATH/);
+  assert.match(repository, /getRuntimeDatabase/);
+  assert.match(repository, /database\.run/);
+  assert.match(repository, /database\.queryAll/);
   assert.match(leadApi, /createPersistentLead/);
   assert.match(leadApi, /listPersistentLeads/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS leads/i);
@@ -124,15 +128,18 @@ test('Data readiness: migrations record consent, lead lifecycle and parameter re
   assert.match(parameterMigration, /is_active/i);
 });
 
-test('Admin readiness: database migrations are executable only through protected admin setup API', () => {
+test('Admin readiness: runtime migrations are executable only through protected admin setup API', () => {
   const setupApi = read('app/api/admin/system/setup/route.ts');
-  const migrations = read('lib/server/migrations.ts');
+  const runtimeMigrations = read('lib/server/runtime-migrations.ts');
+  const registry = read('lib/server/runtime-migration-registry.ts');
 
   assert.match(setupApi, /isAdminRequest/);
-  assert.match(setupApi, /applyPendingMigrations/);
-  assert.match(migrations, /0001_leads\.sql/);
-  assert.match(migrations, /0002_system_parameters\.sql/);
-  assert.match(migrations, /schema_migrations/);
+  assert.match(setupApi, /applyRuntimePendingMigrations/);
+  assert.match(runtimeMigrations, /schema_migrations/);
+  assert.match(registry, /0001_leads\.sql/);
+  assert.match(registry, /0002_system_parameters\.sql/);
+  assert.match(registry, /0003_enterprise_solution_finder\.sql/);
+  assert.match(registry, /0004_nist_cyber_quick_check\.sql/);
 });
 
 test('Security readiness: lead CSV export neutralizes spreadsheet formulas', () => {
