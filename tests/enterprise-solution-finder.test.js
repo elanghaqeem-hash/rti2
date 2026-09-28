@@ -174,3 +174,14 @@ test('Enterprise Solution Finder: tools hub only exposes launch when runtime rea
   assert.match(repository, /enterprise_finder_services/);
   assert.match(repository, /enterprise_finder_service_mappings/);
 });
+
+
+test('Enterprise Solution Finder: readiness endpoint exposes only non-sensitive activation checks', () => {
+  const readiness = read('app/api/enterprise-finder/readiness/route.ts');
+
+  assert.match(readiness, /getFinderReadinessRuntime/);
+  assert.match(readiness, /questionnaire/);
+  assert.match(readiness, /serviceLibrary/);
+  assert.match(readiness, /matchingRules/);
+  assert.doesNotMatch(readiness, /databasePath|database_id|RTI_DB_PATH/);
+});
