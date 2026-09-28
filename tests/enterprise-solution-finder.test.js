@@ -161,3 +161,16 @@ test('Enterprise Solution Finder: Cloudflare runtime uses RTI_DB D1 and public U
   assert.doesNotMatch(page, /pending migrations/i);
   assert.match(page, /sedang dalam proses aktivasi/i);
 });
+
+
+test('Enterprise Solution Finder: tools hub only exposes launch when runtime readiness is available', () => {
+  const hub = read('app/tools/page.tsx');
+  const repository = read('lib/enterprise-finder/runtime-repository.ts');
+
+  assert.match(hub, /getFinderReadinessRuntime/);
+  assert.match(hub, /Activating/);
+  assert.match(hub, /availability === 'activating'/);
+  assert.match(repository, /enterprise_finder_questions/);
+  assert.match(repository, /enterprise_finder_services/);
+  assert.match(repository, /enterprise_finder_service_mappings/);
+});
