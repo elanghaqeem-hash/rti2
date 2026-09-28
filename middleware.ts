@@ -5,7 +5,8 @@ const ADMIN_SESSION_COOKIE = 'rti_admin_session';
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (!pathname.startsWith('/admin/')) {
+  const protectedInternal = pathname.startsWith('/admin/') || pathname.startsWith('/studio/');
+  if (!protectedInternal) {
     return NextResponse.next();
   }
 
@@ -23,5 +24,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/admin/:path*', '/studio/:path*'],
 };
