@@ -220,94 +220,94 @@ function buildQuestions(
   }));
 }
 
-function audit(entityType: string, entityId: string, action: string, after?: unknown, actor = 'public') {
-  const db = getDatabase();
-  db.prepare(
+async function audit(entityType: string, entityId: string, action: string, after?: unknown, actor = 'public') {
+  const db = await getRuntimeDatabase();
+  await db.run(
     `INSERT INTO estimator_audit_logs
       (id, entity_type, entity_id, action, actor, before_json, after_json, created_at)
      VALUES (?, ?, ?, ?, ?, NULL, ?, ?)`,
-  ).run(
-    randomUUID(),
-    entityType,
-    entityId,
-    action,
-    actor,
-    after ? JSON.stringify(after) : null,
-    new Date().toISOString(),
+    [
+      randomUUID(),
+      entityType,
+      entityId,
+      action,
+      actor,
+      after ? JSON.stringify(after) : null,
+      new Date().toISOString(),
+    ],
   );
 }
 
-export function trackEstimatorEvent(
+export async function trackEstimatorEvent(
   sessionId: string,
   eventType: string,
   metadata?: Record<string, unknown>,
   rfqId?: string,
 ) {
-  getDatabase().prepare(
+  const db = await getRuntimeDatabase();
+  await db.run(
     `INSERT INTO estimator_events
       (id, session_id, rfq_id, event_type, metadata_json, created_at)
      VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(
-    randomUUID(),
-    sessionId || null,
-    rfqId || null,
-    eventType.trim().slice(0, 80),
-    metadata ? JSON.stringify(metadata) : null,
-    new Date().toISOString(),
+    [
+      randomUUID(),
+      sessionId || null,
+      rfqId || null,
+      eventType.trim().slice(0, 80),
+      metadata ? JSON.stringify(metadata) : null,
+      new Date().toISOString(),
+    ],
   );
 }
 
-export function getEstimatorBootstrap(): EstimatorBootstrap {
-  const db = getDatabase();
-  const categories = db.prepare(
-    `SELECT id, slug, name, description
-     FROM service_categories
-     WHERE is_active = 1
-     ORDER BY sort_order, name`,
-  ).all() as Array<{ id: string; slug: string; name: string; description: string | null }>;
-
-  const serviceRows = db.prepare(
-    `SELECT s.id, s.category_id, c.name AS category_name, s.slug, s.name, s.description,
-            s.base_effort_days, s.base_price_min, s.base_price_max, s.billing_unit,
-            s.default_duration_min_weeks, s.default_duration_max_weeks
-     FROM services s
-     JOIN service_categories c ON c.id = s.category_id
-     WHERE s.is_active = 1 AND c.is_active = 1
-     ORDER BY c.sort_order, s.name`,
-  ).all() as ServiceRow[];
-
-  const questionRows = db.prepare(
-    `SELECT id, service_id, question_key, label, help_text, field_type, required,
-            complexity_dimension, weight, sort_order, quick_mode, detailed_mode
-     FROM estimator_questions
-     WHERE is_active = 1
-     ORDER BY sort_order, label`,
-  ).all() as QuestionRow[];
-
-  const optionRows = db.prepare(
-    `SELECT id, question_id, value, label, score, effort_multiplier, price_multiplier
-     FROM estimator_question_options
-     WHERE is_active = 1
-     ORDER BY sort_order, label`,
-  ).all() as OptionRow[];
-
-  const conditionRows = db.prepare(
-    `SELECT id, question_id, source_question_key, operator, compare_value
-     FROM estimator_question_conditions
-     WHERE is_active = 1
-     ORDER BY id`,
-  ).all() as ConditionRow[];
-
-  const dimensions = db.prepare(
-    `SELECT dimension AS key, label, weight
-     FROM complexity_weights
-     WHERE is_active = 1
-     ORDER BY sort_order`,
-  ).all() as Array<{ key: string; label: string; weight: number }>;
-
-  const publicSettingRows = db.prepare(
-    `SELECT key, value FROM estimator_settings WHERE is_public = 1 ORDER BY key`,
-  ).all() as Array<{ key: string; value: string }>;
+export async function getEstimatorBootstrap(): Promise<EstimatorBootstrap> {
+  const db = await getRuntimeDatabase();
+  const [categories, serviceRows, questionRows, optionRows, conditionRows, dimensions, publicSettingRows] =
+    await Promise.all([
+      db.queryAll<{ id: string; slug: string; name: string; description: string | null }>(
+        `SELECT id, slug, name, description
+         FROM service_categories
+         WHERE is_active = 1
+         ORDER BY sort_order, name`,
+      ),
+      db.queryAll<ServiceRow>(
+        `SELECT s.id, s.category_id, c.name AS category_name, s.slug, s.name, s.description,
+                s.base_effort_days, s.base_price_min, s.base_price_max, s.billing_unit,
+                s.default_duration_min_weeks, s.default_duration_max_weeks
+         FROM services s
+         JOIN service_categories c ON c.id = s.category_id
+         WHERE s.is_active = 1 AND c.is_active = 1
+         ORDER BY c.sort_order, s.name`,
+      ),
+      db.queryAll<QuestionRow>(
+        `SELECT id, service_id, question_key, label, help_text, field_type, required,
+                complexity_dimension, weight, sort_order, quick_mode, detailed_mode
+         FROM estimator_questions
+         WHERE is_active = 1
+         ORDER BY sort_order, label`,
+      ),
+      db.queryAll<OptionRow>(
+        `SELECT id, question_id, value, label, score, effort_multiplier, price_multiplier
+         FROM estimator_question_options
+         WHERE is_active = 1
+         ORDER BY sort_order, label`,
+      ),
+      db.queryAll<ConditionRow>(
+        `SELECT id, question_id, source_question_key, operator, compare_value
+         FROM estimator_question_conditions
+         WHERE is_active = 1
+         ORDER BY id`,
+      ),
+      db.queryAll<{ key: string; label: string; weight: number }>(
+        `SELECT dimension AS key, label, weight
+         FROM complexity_weights
+         WHERE is_active = 1
+         ORDER BY sort_order`,
+      ),
+      db.queryAll<{ key: string; value: string }>(
+        'SELECT key, value FROM estimator_settings WHERE is_public = 1 ORDER BY key',
+      ),
+    ]);
 
   return {
     categories: categories.map((row) => ({
@@ -323,13 +323,30 @@ export function getEstimatorBootstrap(): EstimatorBootstrap {
   };
 }
 
-export function validateEstimatorSessionInput(input: SessionInput): string[] {
+export async function validateEstimatorSessionInput(input: SessionInput): Promise<string[]> {
   const errors: string[] = [];
-  const db = getDatabase();
+  const db = await getRuntimeDatabase();
 
-  const service = db.prepare(
-    'SELECT id FROM services WHERE id=? AND is_active=1',
-  ).get(input.serviceId);
+  const [service, questions, optionRows] = await Promise.all([
+    db.queryOne<{ id: string }>(
+      'SELECT id FROM services WHERE id=? AND is_active=1',
+      [input.serviceId],
+    ),
+    db.queryAll<{ id: string; question_key: string; field_type: string }>(
+      `SELECT id, question_key, field_type
+       FROM estimator_questions
+       WHERE is_active=1 AND (service_id IS NULL OR service_id=?)`,
+      [input.serviceId],
+    ),
+    db.queryAll<{ question_key: string; value: string }>(
+      `SELECT q.question_key, o.value
+       FROM estimator_question_options o
+       JOIN estimator_questions q ON q.id=o.question_id
+       WHERE o.is_active=1 AND q.is_active=1 AND (q.service_id IS NULL OR q.service_id=?)`,
+      [input.serviceId],
+    ),
+  ]);
+
   if (!service) errors.push('Selected RTI service is not active.');
 
   if (!Array.isArray(input.businessObjectives) || input.businessObjectives.length > 50) {
@@ -382,19 +399,7 @@ export function validateEstimatorSessionInput(input: SessionInput): string[] {
     return errors;
   }
 
-  const questions = db.prepare(
-    `SELECT id, question_key, field_type
-     FROM estimator_questions
-     WHERE is_active=1 AND (service_id IS NULL OR service_id=?)`,
-  ).all(input.serviceId) as Array<{ id: string; question_key: string; field_type: string }>;
   const byKey = new Map(questions.map((question) => [question.question_key, question]));
-
-  const optionRows = db.prepare(
-    `SELECT q.question_key, o.value
-     FROM estimator_question_options o
-     JOIN estimator_questions q ON q.id=o.question_id
-     WHERE o.is_active=1 AND q.is_active=1 AND (q.service_id IS NULL OR q.service_id=?)`,
-  ).all(input.serviceId) as Array<{ question_key: string; value: string }>;
   const options = new Map<string, Set<string>>();
   for (const row of optionRows) {
     const values = options.get(row.question_key) || new Set<string>();
