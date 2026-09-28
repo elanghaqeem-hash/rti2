@@ -10,6 +10,8 @@ import {
   verifyEstimatorSessionAccess,
 } from '@/lib/project-estimator/repository';
 import type { EstimatorQuestion } from '@/lib/project-estimator/types';
+
+type ExtractedParam = { key: string; value: string; confidence: number; evidence: string };
 import { listEstimatorRiskFlags, refreshEstimatorRiskFlags } from '@/lib/project-estimator/risk';
 
 const ALLOWED = new Map<string, string[]>([
@@ -51,7 +53,7 @@ async function malwareScan(buffer: Uint8Array, fileName: string, mimeType: strin
       'X-File-Name': encodeURIComponent(fileName),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: buffer,
+    body: buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer,
     cache: 'no-store',
   });
   if (!response.ok) return { clean: false, reason: `Scanner HTTP ${response.status}` };
@@ -198,9 +200,9 @@ async function anthropicExtractText(buffer: Uint8Array, mime: string) {
 async function extractParams(
   text: string,
   questions: EstimatorQuestion[],
-) {
+): Promise<ExtractedParam[]> {
   const apiKey = String(process.env.ANTHROPIC_API_KEY || '').trim();
-  if (!apiKey || !text.trim()) return [] as Array<{ key: string; value: string; confidence: number; evidence: string }>;
+  if (!apiKey || !text.trim()) return [];
   const model = String(process.env.AI_MODEL_PRIMARY || 'claude-sonnet-5').trim();
   const allowed = questions.map((q) => ({
     key: q.key,
@@ -324,14 +326,14 @@ export async function storeAndParseScopingDocument(params: {
       ...state.input,
       answers: {
         ...state.input.answers,
-        ...Object.fromEntries(updates.map((item) => [item.key, item.value])),
+        ...Object.fromEntries(updates.map((item: ExtractedParam) => [item.key, item.value])),
       },
     };
     const errors = await validateEstimatorSessionInput(mergedInput);
     if (!errors.length) {
       await upsertEstimatorSession(mergedInput, params.sessionId, params.resumeToken);
       await db.batch(
-        updates.map((update) => ({
+        updates.map((update: ExtractedParam) => ({
           sql: `INSERT INTO estimator_scope_provenance
             (session_id,question_key,source,evidence_json,confidence,status,updated_at)
            VALUES (?,?,'document',?,?,'ai_extracted',?)
@@ -364,7 +366,7 @@ export async function storeAndParseScopingDocument(params: {
         updates,
         error: errorMessage || undefined,
       }),
-      JSON.stringify(updates.map((item) => ({ key: item.key, evidence: item.evidence }))),
+      JSON.stringify(updates.map((item: ExtractedParam) => ({ key: item.key, evidence: item.evidence }))),
       JSON.stringify(securityFlags),
       new Date().toISOString(),
       id,
