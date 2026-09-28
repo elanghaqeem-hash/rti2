@@ -73,6 +73,17 @@ type DraftAnswer = {
   comment: string;
 };
 
+type EvidenceItem = {
+  id: string;
+  questionId: string | null;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  classification: string;
+  scanStatus: string;
+  createdAt: string;
+};
+
 type PdpResult = {
   assessmentId: string;
   implementationScore: number;
@@ -99,6 +110,7 @@ type PdpResult = {
     overallScore: number;
     gap: number;
     status: string;
+    applicableQuestions: number;
   }>;
   findings: Array<{
     id: string;
@@ -211,6 +223,7 @@ export function PdpReadinessAssessment() {
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [draft, setDraft] = React.useState<DraftAnswer>(initialDraft);
   const [evidenceFile, setEvidenceFile] = React.useState<File | null>(null);
+  const [evidenceItems, setEvidenceItems] = React.useState<EvidenceItem[]>([]);
   const [result, setResult] = React.useState<PdpResult | null>(null);
   const [busy, setBusy] = React.useState(true);
   const [message, setMessage] = React.useState('');
@@ -288,6 +301,7 @@ export function PdpReadinessAssessment() {
         mapped[String(item.questionId)] = item as PdpAnswerRecord;
       }
       setAnswers(mapped);
+      setEvidenceItems((data.evidence || []) as EvidenceItem[]);
       setAssessment(data.assessment);
       setAssessmentType(data.assessment.assessmentType === 'detailed' ? 'detailed' : 'quick');
 
@@ -405,6 +419,7 @@ export function PdpReadinessAssessment() {
       setAssessment(data.assessment);
       setResumeAssessment(data.assessment);
       setAnswers({});
+      setEvidenceItems([]);
       setCurrentIndex(0);
       setResult(null);
       setStage('assessment');
@@ -417,7 +432,7 @@ export function PdpReadinessAssessment() {
   }
 
   async function uploadEvidence(questionId: string) {
-    if (!evidenceFile || !assessment) return;
+    if (!evidenceFile || !assessment) return null;
     const form = new FormData();
     form.append('file', evidenceFile);
     form.append('questionId', questionId);
@@ -429,6 +444,52 @@ export function PdpReadinessAssessment() {
     );
     const data = await response.json().catch(() => null);
     if (!response.ok || !data?.success) throw new Error(data?.error || 'Evidence tidak dapat diunggah.');
+
+    const item = data.evidence as EvidenceItem;
+    setEvidenceItems((current) => [item, ...current]);
+    return item;
+  }
+
+  async function deleteEvidence(evidenceId: string) {
+    if (!assessment) return;
+    setBusy(true);
+    setMessage('');
+    try {
+      const response = await fetch(
+        '/api/pdp-assessment/' +
+          encodeURIComponent(assessment.id) +
+          '/evidence/' +
+          encodeURIComponent(evidenceId),
+        { method: 'DELETE' },
+      );
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || 'Evidence tidak dapat dihapus.');
+      }
+      setEvidenceItems((current) => current.filter((item) => item.id !== evidenceId));
+
+      if (currentQuestion) {
+        const remaining = evidenceItems.filter(
+          (item) => item.id !== evidenceId && item.questionId === currentQuestion.id,
+        );
+        if (remaining.length === 0 && draft.evidenceStatus === 'uploaded') {
+          setDraft((current) => ({ ...current, evidenceStatus: 'none' }));
+          setAnswers((current) => {
+            const existing = current[currentQuestion.id];
+            if (!existing) return current;
+            return {
+              ...current,
+              [currentQuestion.id]: { ...existing, evidenceStatus: 'none' },
+            };
+          });
+        }
+      }
+      setMessage('Evidence dihapus dari private storage.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Evidence tidak dapat dihapus.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function persistDraft() {
@@ -575,6 +636,7 @@ export function PdpReadinessAssessment() {
       setAssessment(null);
       setResumeAssessment(null);
       setAnswers({});
+      setEvidenceItems([]);
       setResult(null);
       setProfile(initialProfile);
       setConsent(false);
@@ -1049,6 +1111,9 @@ export function PdpReadinessAssessment() {
     const currentDomain = config.domains.find((domain) => domain.code === currentQuestion.domainCode);
     const DomainIcon = domainIcons[currentQuestion.domainCode] || FileCheck2;
     const selected = config.answerOptions.find((option) => option.value === draft.answerValue);
+    const currentEvidence = evidenceItems.filter(
+      (item) => item.questionId === currentQuestion.id,
+    );
     const domainProgress = config.domains.map((domain) => {
       const domainQuestions = questions.filter((question) => question.domainCode === domain.code);
       const count = domainQuestions.filter((question) => answers[question.id]).length;
@@ -1249,6 +1314,35 @@ export function PdpReadinessAssessment() {
                 </label>
               </div>
 
+              {currentEvidence.length > 0 && (
+                <div className="mt-4 rounded-xl border border-line bg-grey-50 p-4">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted">
+                    Uploaded evidence · {currentEvidence.length}
+                  </div>
+                  <div className="mt-2 space-y-2">
+                    {currentEvidence.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-xs font-bold text-navy-900">{item.originalName}</div>
+                          <div className="mt-0.5 text-[10px] text-muted">
+                            {(item.sizeBytes / 1024).toFixed(0)} KB · {item.classification} · scan {item.scanStatus}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => deleteEvidence(item.id)}
+                          disabled={busy}
+                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50 disabled:opacity-40"
+                          aria-label={'Hapus evidence ' + item.originalName}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <label className="mt-4 block text-xs font-bold text-navy-900">
                 Evidence note
                 <textarea
@@ -1425,14 +1519,25 @@ export function PdpReadinessAssessment() {
                           <Icon className="h-4 w-4 shrink-0 text-blue-600" />
                           <span className="truncate text-xs font-bold text-navy-900">{domain.domainName}</span>
                         </div>
-                        <span className="text-xs font-extrabold text-navy-900">{domain.overallScore.toFixed(1)}%</span>
+                        <span className="text-xs font-extrabold text-navy-900">
+                          {domain.applicableQuestions > 0 ? domain.overallScore.toFixed(1) + '%' : 'N/A'}
+                        </span>
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                        <div className="h-full rounded-full bg-blue-600" style={{ width: domain.overallScore + '%' }} />
+                        <div
+                          className="h-full rounded-full bg-blue-600"
+                          style={{ width: (domain.applicableQuestions > 0 ? domain.overallScore : 0) + '%' }}
+                        />
                       </div>
                       <div className="mt-1 flex gap-3 text-[10px] text-muted">
-                        <span>Implementation {domain.implementationScore.toFixed(0)}%</span>
-                        <span>Evidence {domain.evidenceScore.toFixed(0)}%</span>
+                        {domain.applicableQuestions > 0 ? (
+                          <>
+                            <span>Implementation {domain.implementationScore.toFixed(0)}%</span>
+                            <span>Evidence {domain.evidenceScore.toFixed(0)}%</span>
+                          </>
+                        ) : (
+                          <span>Domain tidak berlaku berdasarkan justifikasi jawaban.</span>
+                        )}
                       </div>
                     </div>
                   );
