@@ -37,6 +37,19 @@ export type EstimatorAdminDashboard = {
     priceMin: number;
     priceMax: number;
     readinessScore: number;
+    commercial: {
+      resourceCost: number;
+      thirdPartyCost: number;
+      licenseCost: number;
+      travelCost: number;
+      contingencyPct: number;
+      marginPct: number;
+      discountAmount: number;
+      taxPct: number;
+      totalBeforeTax: number;
+      taxAmount: number;
+      totalQuotation: number;
+    };
     status: string;
     stage: string | null;
     createdAt: string;
@@ -189,12 +202,25 @@ export function getEstimatorAdminDashboard(): EstimatorAdminDashboard {
   const rfqs = db.prepare(
     `SELECT r.id, r.rfq_number, es.project_name, o.name AS company, s.name AS service,
             pe.complexity_level, pe.project_size, pe.price_min, pe.price_max,
-            pe.readiness_score, r.status, op.stage, r.created_at, r.updated_at
+            pe.readiness_score,
+            COALESCE(ec.resource_cost,0) AS resource_cost,
+            COALESCE(ec.third_party_cost,0) AS third_party_cost,
+            COALESCE(ec.license_cost,0) AS license_cost,
+            COALESCE(ec.travel_cost,0) AS travel_cost,
+            COALESCE(ec.contingency_pct,0) AS contingency_pct,
+            COALESCE(ec.margin_pct,0) AS margin_pct,
+            COALESCE(ec.discount_amount,0) AS discount_amount,
+            COALESCE(ec.tax_pct,0) AS tax_pct,
+            COALESCE(ec.total_before_tax,0) AS total_before_tax,
+            COALESCE(ec.tax_amount,0) AS tax_amount,
+            COALESCE(ec.total_quotation,0) AS total_quotation,
+            r.status, op.stage, r.created_at, r.updated_at
      FROM rfqs r
      JOIN estimator_sessions es ON es.id = r.session_id
      JOIN organizations o ON o.id = es.organization_id
      JOIN project_estimates pe ON pe.id = r.estimate_id
      JOIN services s ON s.id = pe.service_id
+     LEFT JOIN estimate_commercials ec ON ec.estimate_id = pe.id
      LEFT JOIN opportunities op ON op.rfq_id = r.id
      ORDER BY r.updated_at DESC
      LIMIT 500`,
@@ -332,6 +358,19 @@ export function getEstimatorAdminDashboard(): EstimatorAdminDashboard {
       priceMin: Number(row.price_min),
       priceMax: Number(row.price_max),
       readinessScore: Number(row.readiness_score),
+      commercial: {
+        resourceCost: Number(row.resource_cost),
+        thirdPartyCost: Number(row.third_party_cost),
+        licenseCost: Number(row.license_cost),
+        travelCost: Number(row.travel_cost),
+        contingencyPct: Number(row.contingency_pct),
+        marginPct: Number(row.margin_pct),
+        discountAmount: Number(row.discount_amount),
+        taxPct: Number(row.tax_pct),
+        totalBeforeTax: Number(row.total_before_tax),
+        taxAmount: Number(row.tax_amount),
+        totalQuotation: Number(row.total_quotation),
+      },
       status: row.status,
       stage: row.stage || null,
       createdAt: row.created_at,
@@ -433,6 +472,99 @@ export function getEstimatorAdminDashboard(): EstimatorAdminDashboard {
       effortShare: Number(row.effort_share),
     })),
   };
+}
+
+export function updateEstimateCommercial(params: {
+  rfqId: string;
+  resourceCost: number;
+  thirdPartyCost: number;
+  licenseCost: number;
+  travelCost: number;
+  contingencyPct: number;
+  marginPct: number;
+  discountAmount: number;
+  taxPct: number;
+  actor: string;
+}) {
+  const db = getDatabase();
+  const rfq = db.prepare(
+    `SELECT r.estimate_id FROM rfqs r WHERE r.id=?`,
+  ).get(params.rfqId) as { estimate_id: string } | undefined;
+  if (!rfq) throw new Error('RFQ not found.');
+
+  const safeMoney = (value: number) => Math.max(0, Math.round(Number(value) || 0));
+  const safePct = (value: number) => Math.max(0, Math.min(100, Number(value) || 0));
+  const resourceCost = safeMoney(params.resourceCost);
+  const thirdPartyCost = safeMoney(params.thirdPartyCost);
+  const licenseCost = safeMoney(params.licenseCost);
+  const travelCost = safeMoney(params.travelCost);
+  const contingencyPct = safePct(params.contingencyPct);
+  const marginPct = safePct(params.marginPct);
+  const discountAmount = safeMoney(params.discountAmount);
+  const taxPct = safePct(params.taxPct);
+
+  const directCost = resourceCost + thirdPartyCost + licenseCost + travelCost;
+  const contingencyAmount = Math.round(directCost * contingencyPct / 100);
+  const commercialBase = directCost + contingencyAmount;
+  const markupAmount = Math.round(commercialBase * marginPct / 100);
+  const totalBeforeTax = Math.max(0, commercialBase + markupAmount - discountAmount);
+  const taxAmount = Math.round(totalBeforeTax * taxPct / 100);
+  const totalQuotation = totalBeforeTax + taxAmount;
+  const now = new Date().toISOString();
+
+  const before = db.prepare('SELECT * FROM estimate_commercials WHERE estimate_id=?').get(rfq.estimate_id);
+  db.prepare(
+    `INSERT INTO estimate_commercials
+      (estimate_id, resource_cost, third_party_cost, license_cost, travel_cost,
+       contingency_pct, margin_pct, discount_amount, tax_pct, total_before_tax,
+       tax_amount, total_quotation, updated_by, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(estimate_id) DO UPDATE SET
+       resource_cost=excluded.resource_cost,
+       third_party_cost=excluded.third_party_cost,
+       license_cost=excluded.license_cost,
+       travel_cost=excluded.travel_cost,
+       contingency_pct=excluded.contingency_pct,
+       margin_pct=excluded.margin_pct,
+       discount_amount=excluded.discount_amount,
+       tax_pct=excluded.tax_pct,
+       total_before_tax=excluded.total_before_tax,
+       tax_amount=excluded.tax_amount,
+       total_quotation=excluded.total_quotation,
+       updated_by=excluded.updated_by,
+       updated_at=excluded.updated_at`,
+  ).run(
+    rfq.estimate_id,
+    resourceCost,
+    thirdPartyCost,
+    licenseCost,
+    travelCost,
+    contingencyPct,
+    marginPct,
+    discountAmount,
+    taxPct,
+    totalBeforeTax,
+    taxAmount,
+    totalQuotation,
+    params.actor,
+    now,
+  );
+
+  audit('estimate_commercial', rfq.estimate_id, before ? 'update' : 'create', params.actor, before, {
+    resourceCost,
+    thirdPartyCost,
+    licenseCost,
+    travelCost,
+    contingencyPct,
+    marginPct,
+    discountAmount,
+    taxPct,
+    totalBeforeTax,
+    taxAmount,
+    totalQuotation,
+  });
+
+  return { totalBeforeTax, taxAmount, totalQuotation };
 }
 
 export function updateOpportunityStage(params: {
