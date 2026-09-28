@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { getDatabase } from '@/lib/server/database';
+import { getRuntimeDatabase } from '@/lib/server/runtime-database';
 
 export type EstimatorAdminDashboard = {
   metrics: {
@@ -176,25 +176,37 @@ const FIELD_TYPES = new Set([
   'textarea',
 ]);
 
-function scalar(sql: string): number {
-  const row = getDatabase().prepare(sql).get() as { value?: number } | undefined;
+async function scalar(
+  db: Awaited<ReturnType<typeof getRuntimeDatabase>>,
+  sql: string,
+): Promise<number> {
+  const row = await db.queryOne<{ value?: number }>(sql);
   return Number(row?.value || 0);
 }
 
-function audit(entityType: string, entityId: string, action: string, actor: string, before: unknown, after: unknown) {
-  getDatabase().prepare(
+async function audit(
+  entityType: string,
+  entityId: string,
+  action: string,
+  actor: string,
+  before: unknown,
+  after: unknown,
+) {
+  const db = await getRuntimeDatabase();
+  await db.run(
     `INSERT INTO estimator_audit_logs
      (id, entity_type, entity_id, action, actor, before_json, after_json, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    randomUUID(),
-    entityType,
-    entityId,
-    action,
-    actor,
-    before == null ? null : JSON.stringify(before),
-    after == null ? null : JSON.stringify(after),
-    new Date().toISOString(),
+    [
+      randomUUID(),
+      entityType,
+      entityId,
+      action,
+      actor,
+      before == null ? null : JSON.stringify(before),
+      after == null ? null : JSON.stringify(after),
+      new Date().toISOString(),
+    ],
   );
 }
 
@@ -207,139 +219,152 @@ function slugify(value: string) {
     .slice(0, 100);
 }
 
-export function getEstimatorAdminDashboard(): EstimatorAdminDashboard {
-  const db = getDatabase();
-  const rfqs = db.prepare(
-    `SELECT r.id, r.rfq_number, es.project_name, o.name AS company, s.name AS service,
-            pe.complexity_level, pe.project_size, pe.price_min, pe.price_max,
-            pe.readiness_score,
-            COALESCE(ec.resource_cost,0) AS resource_cost,
-            COALESCE(ec.third_party_cost,0) AS third_party_cost,
-            COALESCE(ec.license_cost,0) AS license_cost,
-            COALESCE(ec.travel_cost,0) AS travel_cost,
-            COALESCE(ec.contingency_pct,0) AS contingency_pct,
-            COALESCE(ec.margin_pct,0) AS margin_pct,
-            COALESCE(ec.discount_amount,0) AS discount_amount,
-            COALESCE(ec.tax_pct,0) AS tax_pct,
-            COALESCE(ec.total_before_tax,0) AS total_before_tax,
-            COALESCE(ec.tax_amount,0) AS tax_amount,
-            COALESCE(ec.total_quotation,0) AS total_quotation,
-            r.status, op.stage, r.created_at, r.updated_at
-     FROM rfqs r
-     JOIN estimator_sessions es ON es.id = r.session_id
-     JOIN organizations o ON o.id = es.organization_id
-     JOIN project_estimates pe ON pe.id = r.estimate_id
-     JOIN services s ON s.id = pe.service_id
-     LEFT JOIN estimate_commercials ec ON ec.estimate_id = pe.id
-     LEFT JOIN opportunities op ON op.rfq_id = r.id
-     ORDER BY r.updated_at DESC
-     LIMIT 500`,
-  ).all() as any[];
+export async function getEstimatorAdminDashboard(): Promise<EstimatorAdminDashboard> {
+  const db = await getRuntimeDatabase();
 
-  const categories = db.prepare(
-    `SELECT id, slug, name, description, sort_order, is_active
-     FROM service_categories ORDER BY sort_order, name`,
-  ).all() as any[];
-
-  const services = db.prepare(
-    `SELECT s.id, s.category_id, c.name AS category_name, s.slug, s.name, s.description,
-            s.base_effort_days, s.base_price_min, s.base_price_max,
-            s.default_duration_min_weeks, s.default_duration_max_weeks, s.is_active
-     FROM services s
-     JOIN service_categories c ON c.id=s.category_id
-     ORDER BY c.sort_order, s.name`,
-  ).all() as any[];
-
-  const pricing = db.prepare(
-    `SELECT key, label, value, min_value, max_value
-     FROM pricing_parameters ORDER BY key`,
-  ).all() as any[];
-
-  const settings = db.prepare(
-    `SELECT key, label, value, is_public FROM estimator_settings ORDER BY key`,
-  ).all() as any[];
-
-  const questions = db.prepare(
-    `SELECT q.id, q.service_id, COALESCE(s.name, 'Common / all services') AS service_name,
-            q.question_key, q.label, q.help_text, q.field_type, q.required, q.complexity_dimension,
-            q.weight, q.quick_mode, q.detailed_mode, q.is_active, q.sort_order
-     FROM estimator_questions q
-     LEFT JOIN services s ON s.id=q.service_id
-     ORDER BY COALESCE(s.name, ''), q.sort_order, q.label`,
-  ).all() as any[];
-
-  const questionOptions = db.prepare(
-    `SELECT id, question_id, value, label, score, effort_multiplier, price_multiplier,
-            sort_order, is_active
-     FROM estimator_question_options
-     ORDER BY question_id, sort_order, label`,
-  ).all() as any[];
-
-  const questionConditions = db.prepare(
-    `SELECT id, question_id, source_question_key, operator, compare_value, is_active
-     FROM estimator_question_conditions
-     ORDER BY question_id, id`,
-  ).all() as any[];
-
-  const rules = db.prepare(
-    `SELECT r.id, r.service_id, COALESCE(s.name, 'Common / all services') AS service_name,
-            r.name, r.condition_json, r.effects_json, r.sort_order, r.is_active
-     FROM estimator_rules r
-     LEFT JOIN services s ON s.id=r.service_id
-     ORDER BY r.sort_order, r.name`,
-  ).all() as any[];
-
-  const resources = db.prepare(
-    `SELECT id, role_key, name, internal_day_rate, is_active
-     FROM resource_roles ORDER BY name`,
-  ).all() as any[];
-
-  const serviceDependencies = db.prepare(
-    `SELECT d.service_id, s.name AS service_name, d.related_service_id,
-            rs.name AS related_service_name, d.relation_type, d.reason, d.sort_order, d.is_active
-     FROM service_dependencies d
-     JOIN services s ON s.id=d.service_id
-     JOIN services rs ON rs.id=d.related_service_id
-     ORDER BY s.name, d.sort_order, rs.name`,
-  ).all() as any[];
-
-  const serviceResources = db.prepare(
-    `SELECT sr.service_id, s.name AS service_name, sr.resource_role_id,
-            rr.name AS resource_name, sr.quantity, sr.effort_share
-     FROM service_resource_defaults sr
-     JOIN services s ON s.id=sr.service_id
-     JOIN resource_roles rr ON rr.id=sr.resource_role_id
-     ORDER BY s.name, rr.name`,
-  ).all() as any[];
-
-  const started = scalar("SELECT COUNT(DISTINCT session_id) AS value FROM estimator_events WHERE event_type='ESTIMATOR_STARTED'");
-  const estimated = scalar("SELECT COUNT(DISTINCT session_id) AS value FROM estimator_events WHERE event_type='ESTIMATE_CALCULATED'");
-  const rfqGenerated = scalar("SELECT COUNT(DISTINCT session_id) AS value FROM estimator_events WHERE event_type='RFQ_GENERATED'");
-  const submitted = scalar("SELECT COUNT(DISTINCT session_id) AS value FROM estimator_events WHERE event_type='RFQ_SUBMITTED'");
-
-  const topServices = db.prepare(
-    `SELECT s.name, COUNT(*) AS count
-     FROM estimator_sessions es
-     JOIN services s ON s.id=es.selected_service_id
-     GROUP BY s.id, s.name
-     ORDER BY count DESC, s.name
-     LIMIT 8`,
-  ).all() as Array<{ name: string; count: number }>;
-
-  const topIndustries = db.prepare(
-    `SELECT COALESCE(NULLIF(TRIM(o.industry),''),'Unspecified') AS name, COUNT(*) AS count
-     FROM estimator_sessions es
-     JOIN organizations o ON o.id=es.organization_id
-     GROUP BY COALESCE(NULLIF(TRIM(o.industry),''),'Unspecified')
-     ORDER BY count DESC, name
-     LIMIT 8`,
-  ).all() as Array<{ name: string; count: number }>;
-
-  const averageValues = db.prepare(
-    `SELECT COALESCE(AVG(NULLIF(price_min,0)),0) AS min_value,
-            COALESCE(AVG(NULLIF(price_max,0)),0) AS max_value
-     FROM project_estimates`,
-  ).get() as { min_value?: number; max_value?: number } | undefined;
+  const [
+    rfqs,
+    categories,
+    services,
+    pricing,
+    settings,
+    questions,
+    questionOptions,
+    questionConditions,
+    rules,
+    resources,
+    serviceDependencies,
+    serviceResources,
+    started,
+    estimated,
+    rfqGenerated,
+    submitted,
+    topServices,
+    topIndustries,
+    averageValues,
+    sessions,
+    completedEstimates,
+    rfqCount,
+    submittedRfqs,
+    opportunities,
+    pipelineMin,
+    pipelineMax,
+  ] = await Promise.all([
+    db.queryAll<any>(
+      `SELECT r.id, r.rfq_number, es.project_name, o.name AS company, s.name AS service,
+              pe.complexity_level, pe.project_size, pe.price_min, pe.price_max,
+              pe.readiness_score,
+              COALESCE(ec.resource_cost,0) AS resource_cost,
+              COALESCE(ec.third_party_cost,0) AS third_party_cost,
+              COALESCE(ec.license_cost,0) AS license_cost,
+              COALESCE(ec.travel_cost,0) AS travel_cost,
+              COALESCE(ec.contingency_pct,0) AS contingency_pct,
+              COALESCE(ec.margin_pct,0) AS margin_pct,
+              COALESCE(ec.discount_amount,0) AS discount_amount,
+              COALESCE(ec.tax_pct,0) AS tax_pct,
+              COALESCE(ec.total_before_tax,0) AS total_before_tax,
+              COALESCE(ec.tax_amount,0) AS tax_amount,
+              COALESCE(ec.total_quotation,0) AS total_quotation,
+              r.status, op.stage, r.created_at, r.updated_at
+       FROM rfqs r
+       JOIN estimator_sessions es ON es.id = r.session_id
+       JOIN organizations o ON o.id = es.organization_id
+       JOIN project_estimates pe ON pe.id = r.estimate_id
+       JOIN services s ON s.id = pe.service_id
+       LEFT JOIN estimate_commercials ec ON ec.estimate_id = pe.id
+       LEFT JOIN opportunities op ON op.rfq_id = r.id
+       ORDER BY r.updated_at DESC
+       LIMIT 500`,
+    ),
+    db.queryAll<any>(
+      'SELECT id, slug, name, description, sort_order, is_active FROM service_categories ORDER BY sort_order, name',
+    ),
+    db.queryAll<any>(
+      `SELECT s.id, s.category_id, c.name AS category_name, s.slug, s.name, s.description,
+              s.base_effort_days, s.base_price_min, s.base_price_max,
+              s.default_duration_min_weeks, s.default_duration_max_weeks, s.is_active
+       FROM services s
+       JOIN service_categories c ON c.id=s.category_id
+       ORDER BY c.sort_order, s.name`,
+    ),
+    db.queryAll<any>('SELECT key, label, value, min_value, max_value FROM pricing_parameters ORDER BY key'),
+    db.queryAll<any>('SELECT key, label, value, is_public FROM estimator_settings ORDER BY key'),
+    db.queryAll<any>(
+      `SELECT q.id, q.service_id, COALESCE(s.name, 'Common / all services') AS service_name,
+              q.question_key, q.label, q.help_text, q.field_type, q.required, q.complexity_dimension,
+              q.weight, q.quick_mode, q.detailed_mode, q.is_active, q.sort_order
+       FROM estimator_questions q
+       LEFT JOIN services s ON s.id=q.service_id
+       ORDER BY COALESCE(s.name, ''), q.sort_order, q.label`,
+    ),
+    db.queryAll<any>(
+      `SELECT id, question_id, value, label, score, effort_multiplier, price_multiplier,
+              sort_order, is_active
+       FROM estimator_question_options
+       ORDER BY question_id, sort_order, label`,
+    ),
+    db.queryAll<any>(
+      `SELECT id, question_id, source_question_key, operator, compare_value, is_active
+       FROM estimator_question_conditions
+       ORDER BY question_id, id`,
+    ),
+    db.queryAll<any>(
+      `SELECT r.id, r.service_id, COALESCE(s.name, 'Common / all services') AS service_name,
+              r.name, r.condition_json, r.effects_json, r.sort_order, r.is_active
+       FROM estimator_rules r
+       LEFT JOIN services s ON s.id=r.service_id
+       ORDER BY r.sort_order, r.name`,
+    ),
+    db.queryAll<any>('SELECT id, role_key, name, internal_day_rate, is_active FROM resource_roles ORDER BY name'),
+    db.queryAll<any>(
+      `SELECT d.service_id, s.name AS service_name, d.related_service_id,
+              rs.name AS related_service_name, d.relation_type, d.reason, d.sort_order, d.is_active
+       FROM service_dependencies d
+       JOIN services s ON s.id=d.service_id
+       JOIN services rs ON rs.id=d.related_service_id
+       ORDER BY s.name, d.sort_order, rs.name`,
+    ),
+    db.queryAll<any>(
+      `SELECT sr.service_id, s.name AS service_name, sr.resource_role_id,
+              rr.name AS resource_name, sr.quantity, sr.effort_share
+       FROM service_resource_defaults sr
+       JOIN services s ON s.id=sr.service_id
+       JOIN resource_roles rr ON rr.id=sr.resource_role_id
+       ORDER BY s.name, rr.name`,
+    ),
+    scalar(db, "SELECT COUNT(DISTINCT session_id) AS value FROM estimator_events WHERE event_type='ESTIMATOR_STARTED'"),
+    scalar(db, "SELECT COUNT(DISTINCT session_id) AS value FROM estimator_events WHERE event_type='ESTIMATE_CALCULATED'"),
+    scalar(db, "SELECT COUNT(DISTINCT session_id) AS value FROM estimator_events WHERE event_type='RFQ_GENERATED'"),
+    scalar(db, "SELECT COUNT(DISTINCT session_id) AS value FROM estimator_events WHERE event_type='RFQ_SUBMITTED'"),
+    db.queryAll<{ name: string; count: number }>(
+      `SELECT s.name, COUNT(*) AS count
+       FROM estimator_sessions es
+       JOIN services s ON s.id=es.selected_service_id
+       GROUP BY s.id, s.name
+       ORDER BY count DESC, s.name
+       LIMIT 8`,
+    ),
+    db.queryAll<{ name: string; count: number }>(
+      `SELECT COALESCE(NULLIF(TRIM(o.industry),''),'Unspecified') AS name, COUNT(*) AS count
+       FROM estimator_sessions es
+       JOIN organizations o ON o.id=es.organization_id
+       GROUP BY COALESCE(NULLIF(TRIM(o.industry),''),'Unspecified')
+       ORDER BY count DESC, name
+       LIMIT 8`,
+    ),
+    db.queryOne<{ min_value?: number; max_value?: number }>(
+      `SELECT COALESCE(AVG(NULLIF(price_min,0)),0) AS min_value,
+              COALESCE(AVG(NULLIF(price_max,0)),0) AS max_value
+       FROM project_estimates`,
+    ),
+    scalar(db, 'SELECT COUNT(*) AS value FROM estimator_sessions'),
+    scalar(db, 'SELECT COUNT(*) AS value FROM project_estimates'),
+    scalar(db, 'SELECT COUNT(*) AS value FROM rfqs'),
+    scalar(db, "SELECT COUNT(*) AS value FROM rfqs WHERE status <> 'draft'"),
+    scalar(db, 'SELECT COUNT(*) AS value FROM opportunities'),
+    scalar(db, 'SELECT COALESCE(SUM(estimated_value_min),0) AS value FROM opportunities'),
+    scalar(db, 'SELECT COALESCE(SUM(estimated_value_max),0) AS value FROM opportunities'),
+  ]);
 
   return {
     analytics: {
@@ -358,13 +383,13 @@ export function getEstimatorAdminDashboard(): EstimatorAdminDashboard {
       averageIndicativeMax: Math.round(Number(averageValues?.max_value || 0)),
     },
     metrics: {
-      sessions: scalar('SELECT COUNT(*) AS value FROM estimator_sessions'),
-      completedEstimates: scalar('SELECT COUNT(*) AS value FROM project_estimates'),
-      rfqs: scalar('SELECT COUNT(*) AS value FROM rfqs'),
-      submittedRfqs: scalar("SELECT COUNT(*) AS value FROM rfqs WHERE status <> 'draft'"),
-      opportunities: scalar('SELECT COUNT(*) AS value FROM opportunities'),
-      pipelineMin: scalar('SELECT COALESCE(SUM(estimated_value_min),0) AS value FROM opportunities'),
-      pipelineMax: scalar('SELECT COALESCE(SUM(estimated_value_max),0) AS value FROM opportunities'),
+      sessions,
+      completedEstimates,
+      rfqs: rfqCount,
+      submittedRfqs,
+      opportunities,
+      pipelineMin,
+      pipelineMax,
     },
     rfqs: rfqs.map((row) => ({
       id: row.id,
@@ -396,109 +421,62 @@ export function getEstimatorAdminDashboard(): EstimatorAdminDashboard {
       updatedAt: row.updated_at,
     })),
     categories: categories.map((row) => ({
-      id: row.id,
-      slug: row.slug,
-      name: row.name,
-      description: row.description || '',
-      sortOrder: Number(row.sort_order),
-      active: Number(row.is_active) === 1,
+      id: row.id, slug: row.slug, name: row.name, description: row.description || '',
+      sortOrder: Number(row.sort_order), active: Number(row.is_active) === 1,
     })),
     services: services.map((row) => ({
-      id: row.id,
-      categoryId: row.category_id,
-      categoryName: row.category_name,
-      slug: row.slug,
-      name: row.name,
-      description: row.description || '',
-      baseEffortDays: Number(row.base_effort_days),
-      basePriceMin: Number(row.base_price_min),
-      basePriceMax: Number(row.base_price_max),
-      durationMinWeeks: Number(row.default_duration_min_weeks),
-      durationMaxWeeks: Number(row.default_duration_max_weeks),
-      active: Number(row.is_active) === 1,
+      id: row.id, categoryId: row.category_id, categoryName: row.category_name,
+      slug: row.slug, name: row.name, description: row.description || '',
+      baseEffortDays: Number(row.base_effort_days), basePriceMin: Number(row.base_price_min),
+      basePriceMax: Number(row.base_price_max), durationMinWeeks: Number(row.default_duration_min_weeks),
+      durationMaxWeeks: Number(row.default_duration_max_weeks), active: Number(row.is_active) === 1,
     })),
     pricing: pricing.map((row) => ({
-      key: row.key,
-      label: row.label,
-      value: Number(row.value),
+      key: row.key, label: row.label, value: Number(row.value),
       minValue: row.min_value == null ? null : Number(row.min_value),
       maxValue: row.max_value == null ? null : Number(row.max_value),
     })),
     settings: settings.map((row) => ({
-      key: row.key,
-      label: row.label,
-      value: String(row.value || ''),
-      public: Number(row.is_public) === 1,
+      key: row.key, label: row.label, value: String(row.value || ''), public: Number(row.is_public) === 1,
     })),
     questions: questions.map((row) => ({
-      id: row.id,
-      serviceId: row.service_id || null,
-      serviceName: row.service_name,
-      key: row.question_key,
-      label: row.label,
-      helpText: row.help_text || '',
-      fieldType: row.field_type,
-      required: Number(row.required) === 1,
-      dimension: row.complexity_dimension || null,
-      weight: Number(row.weight),
-      quickMode: Number(row.quick_mode) === 1,
-      detailedMode: Number(row.detailed_mode) === 1,
-      active: Number(row.is_active) === 1,
-      sortOrder: Number(row.sort_order),
+      id: row.id, serviceId: row.service_id || null, serviceName: row.service_name,
+      key: row.question_key, label: row.label, helpText: row.help_text || '',
+      fieldType: row.field_type, required: Number(row.required) === 1,
+      dimension: row.complexity_dimension || null, weight: Number(row.weight),
+      quickMode: Number(row.quick_mode) === 1, detailedMode: Number(row.detailed_mode) === 1,
+      active: Number(row.is_active) === 1, sortOrder: Number(row.sort_order),
     })),
     questionConditions: questionConditions.map((row) => ({
-      id: row.id,
-      questionId: row.question_id,
-      sourceQuestionKey: row.source_question_key,
-      operator: row.operator,
-      compareValue: row.compare_value || '',
-      active: Number(row.is_active) === 1,
+      id: row.id, questionId: row.question_id, sourceQuestionKey: row.source_question_key,
+      operator: row.operator, compareValue: row.compare_value || '', active: Number(row.is_active) === 1,
     })),
     questionOptions: questionOptions.map((row) => ({
-      id: row.id,
-      questionId: row.question_id,
-      value: row.value,
-      label: row.label,
-      score: Number(row.score),
-      effortMultiplier: Number(row.effort_multiplier),
-      priceMultiplier: Number(row.price_multiplier),
-      sortOrder: Number(row.sort_order),
+      id: row.id, questionId: row.question_id, value: row.value, label: row.label,
+      score: Number(row.score), effortMultiplier: Number(row.effort_multiplier),
+      priceMultiplier: Number(row.price_multiplier), sortOrder: Number(row.sort_order),
       active: Number(row.is_active) === 1,
     })),
     rules: rules.map((row) => ({
-      id: row.id,
-      serviceId: row.service_id || null,
-      serviceName: row.service_name,
-      name: row.name,
-      conditionsJson: row.condition_json,
-      effectsJson: row.effects_json,
-      sortOrder: Number(row.sort_order),
-      active: Number(row.is_active) === 1,
+      id: row.id, serviceId: row.service_id || null, serviceName: row.service_name,
+      name: row.name, conditionsJson: row.condition_json, effectsJson: row.effects_json,
+      sortOrder: Number(row.sort_order), active: Number(row.is_active) === 1,
     })),
     resources: resources.map((row) => ({
-      id: row.id,
-      roleKey: row.role_key,
-      name: row.name,
+      id: row.id, roleKey: row.role_key, name: row.name,
       internalDayRate: row.internal_day_rate == null ? null : Number(row.internal_day_rate),
       active: Number(row.is_active) === 1,
     })),
     serviceDependencies: serviceDependencies.map((row) => ({
-      serviceId: row.service_id,
-      serviceName: row.service_name,
-      relatedServiceId: row.related_service_id,
-      relatedServiceName: row.related_service_name,
-      relationType: row.relation_type,
-      reason: row.reason || '',
-      sortOrder: Number(row.sort_order),
+      serviceId: row.service_id, serviceName: row.service_name,
+      relatedServiceId: row.related_service_id, relatedServiceName: row.related_service_name,
+      relationType: row.relation_type, reason: row.reason || '', sortOrder: Number(row.sort_order),
       active: Number(row.is_active) === 1,
     })),
     serviceResources: serviceResources.map((row) => ({
-      serviceId: row.service_id,
-      serviceName: row.service_name,
-      resourceRoleId: row.resource_role_id,
-      resourceName: row.resource_name,
-      quantity: Number(row.quantity),
-      effortShare: Number(row.effort_share),
+      serviceId: row.service_id, serviceName: row.service_name,
+      resourceRoleId: row.resource_role_id, resourceName: row.resource_name,
+      quantity: Number(row.quantity), effortShare: Number(row.effort_share),
     })),
   };
 }
