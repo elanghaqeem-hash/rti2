@@ -103,6 +103,11 @@ export default function AdminSystemPage() {
                 sistem menggunakan binding D1 <strong>RTI_DB</strong>; pada server Node
                 sistem menggunakan persistent SQLite melalui <strong>RTI_DB_PATH</strong>.
               </p>
+              <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
+                Jika Solution Finder menampilkan pesan aktivasi, pastikan binding RTI_DB
+                terpasang pada Worker yang sedang diakses. Setelah status database tersambung,
+                jalankan migrasi di bawah dan pastikan tabel enterprise_solution_finder berstatus READY.
+              </p>
             </div>
             <button
               onClick={logout}
