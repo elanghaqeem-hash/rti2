@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useParameterOptions } from '@/components/parameters/useParameterOptions';
 import {
   AlertTriangle,
   BarChart3,
@@ -35,6 +36,7 @@ export default function PdpAdminPage() {
   const [tab, setTab] = React.useState<Tab>('overview');
   const [loading, setLoading] = React.useState(true);
   const [message, setMessage] = React.useState('');
+  const criticalityOptions = useParameterOptions('pdp.criticalities');
 
   async function load() {
     setLoading(true);
@@ -240,7 +242,7 @@ export default function PdpAdminPage() {
                       {dashboard.config.questions
                         .filter((question: any) => question.domainCode === domain.code)
                         .map((question: any) => (
-                          <QuestionEditor key={question.id} question={question} onSave={patch} />
+                          <QuestionEditor key={question.id} question={question} criticalityOptions={criticalityOptions} onSave={patch} />
                         ))}
                     </div>
                   </div>
@@ -393,7 +395,7 @@ function DomainEditor({ frameworkVersion, domain, onSave }: any) {
   );
 }
 
-function QuestionEditor({ question, onSave }: any) {
+function QuestionEditor({ question, criticalityOptions, onSave }: any) {
   const [questionText, setQuestionText] = React.useState(question.questionText);
   const [legalReference, setLegalReference] = React.useState(question.legalReference || '');
   const [helpText, setHelpText] = React.useState(question.helpText || '');
@@ -419,7 +421,7 @@ function QuestionEditor({ question, onSave }: any) {
       <div className="grid gap-3 border-t border-line p-4 md:grid-cols-2">
         <label className="text-[10px] font-bold text-navy-900 md:col-span-2">Question<textarea rows={3} value={questionText} onChange={(e) => setQuestionText(e.target.value)} className="mt-1 w-full rounded-lg border border-line p-2 text-xs font-normal" /></label>
         <label className="text-[10px] font-bold text-navy-900">Legal reference<input value={legalReference} onChange={(e) => setLegalReference(e.target.value)} className="mt-1 w-full rounded-lg border border-line p-2 text-xs font-normal" /></label>
-        <label className="text-[10px] font-bold text-navy-900">Criticality<select value={criticality} onChange={(e) => setCriticality(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-white p-2 text-xs font-normal"><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select></label>
+        <label className="text-[10px] font-bold text-navy-900">Criticality<select value={criticality} onChange={(e) => setCriticality(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-white p-2 text-xs font-normal">{criticalityOptions.map((option: any) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
         <label className="text-[10px] font-bold text-navy-900 md:col-span-2">Guidance<textarea rows={2} value={helpText} onChange={(e) => setHelpText(e.target.value)} className="mt-1 w-full rounded-lg border border-line p-2 text-xs font-normal" /></label>
         <label className="text-[10px] font-bold text-navy-900">Expected evidence<textarea rows={3} value={expectedEvidence} onChange={(e) => setExpectedEvidence(e.target.value)} className="mt-1 w-full rounded-lg border border-line p-2 text-xs font-normal" /></label>
         <label className="text-[10px] font-bold text-navy-900">Risk if missing<textarea rows={3} value={riskIfMissing} onChange={(e) => setRiskIfMissing(e.target.value)} className="mt-1 w-full rounded-lg border border-line p-2 text-xs font-normal" /></label>
