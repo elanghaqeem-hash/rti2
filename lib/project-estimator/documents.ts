@@ -10,6 +10,7 @@ import {
   verifyEstimatorSessionAccess,
 } from '@/lib/project-estimator/repository';
 import type { EstimatorQuestion } from '@/lib/project-estimator/types';
+import { listEstimatorRiskFlags, refreshEstimatorRiskFlags } from '@/lib/project-estimator/risk';
 
 const ALLOWED = new Map<string, string[]>([
   ['application/pdf', ['.pdf']],
@@ -388,6 +389,14 @@ export async function storeAndParseScopingDocument(params: {
     );
   }
 
+  const riskFlags = estimate
+    ? await refreshEstimatorRiskFlags({
+        sessionId: params.sessionId,
+        resumeToken: params.resumeToken,
+        estimate,
+      })
+    : await listEstimatorRiskFlags(params.sessionId);
+
   return {
     id,
     fileName: params.file.name.slice(0, 240),
@@ -399,6 +408,7 @@ export async function storeAndParseScopingDocument(params: {
     securityFlags,
     error: errorMessage || null,
     estimate,
+    riskFlags,
   };
 }
 
