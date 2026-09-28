@@ -602,6 +602,9 @@ export function PdpReadinessAssessment() {
   if (stage === 'intro' && config) {
     const quickDuration = config.parameters.PDP_QUICK_DURATION || '7–10 menit';
     const detailedDuration = config.parameters.PDP_DETAILED_DURATION || '20–35 menit';
+    const legalBaseline =
+      config.parameters.PDP_LEGAL_BASELINE ||
+      'UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi.';
 
     return (
       <main className="min-h-screen bg-white">
@@ -668,6 +671,12 @@ export function PdpReadinessAssessment() {
                       area perhatian, dan tindakan prioritas. Bukan pengganti opini hukum atau keputusan regulator.
                     </p>
                   </div>
+                </div>
+                <div className="mt-4 rounded-xl border border-white/15 bg-black/10 p-3">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-gold-300">
+                    Legal baseline
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-slate-300">{legalBaseline}</p>
                 </div>
                 <div className="mt-5 border-t border-white/20 pt-4">
                   <Link href="/privacy" className="inline-flex items-center gap-2 text-xs font-extrabold text-gold-300 hover:text-gold-200">
