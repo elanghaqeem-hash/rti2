@@ -4,6 +4,7 @@ import {
   applyRuntimePendingMigrations,
   getRuntimeMigrationStatus,
 } from '@/lib/server/runtime-migrations';
+import { RuntimeDatabaseUnavailableError } from '@/lib/server/runtime-database';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,13 @@ function unauthorized() {
     { success: false, error: 'Admin authentication required.' },
     { status: 401, headers: { 'Cache-Control': 'no-store' } },
   );
+}
+
+function setupError(error: unknown) {
+  if (error instanceof RuntimeDatabaseUnavailableError && error.message.includes('RTI_DB')) {
+    return 'Binding D1 RTI_DB belum tersedia pada Worker ini. Hubungkan database D1 produksi pada konfigurasi deployment, lalu muat ulang halaman ini sebelum menjalankan migrasi.';
+  }
+  return error instanceof Error ? error.message : 'Database setup gagal.';
 }
 
 function publicStatus(
@@ -41,10 +49,7 @@ export async function GET(req: Request) {
     return NextResponse.json(
       {
         success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Database status check failed.',
+        error: setupError(error),
       },
       { status: 503, headers: { 'Cache-Control': 'no-store' } },
     );
@@ -64,10 +69,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Database migration failed.',
+        error: setupError(error),
       },
       { status: 500, headers: { 'Cache-Control': 'no-store' } },
     );

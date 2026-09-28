@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "npm run build:cloudflare",
     "build:cloudflare": "npm install --no-save --package-lock=false @opennextjs/cloudflare@1.20.6 wrangler@4.142.0 && next build && npx opennextjs-cloudflare build --skipNextBuild",
-    "deploy:cloudflare": "npx opennextjs-cloudflare deploy",
+    "deploy:cloudflare": "node scripts/check-cloudflare-d1.mjs && npx opennextjs-cloudflare deploy",
     "build:next": "next build",
     "start": "next start",
     "lint": "tsc --noEmit --pretty false",
