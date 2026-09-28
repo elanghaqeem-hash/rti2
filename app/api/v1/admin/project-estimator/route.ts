@@ -4,6 +4,7 @@ import {
   createEstimatorQuestion,
   createEstimatorService,
   getEstimatorAdminDashboard,
+  updateEstimateCommercial,
   updateEstimatorQuestion,
   updateEstimatorService,
   updateEstimatorSetting,
@@ -48,7 +49,20 @@ export async function PATCH(req: Request) {
   const action = typeof body?.action === 'string' ? body.action : '';
 
   try {
-    if (action === 'opportunity_stage') {
+    if (action === 'commercial') {
+      updateEstimateCommercial({
+        rfqId: String(body.rfqId || ''),
+        resourceCost: Number(body.commercial?.resourceCost ?? 0),
+        thirdPartyCost: Number(body.commercial?.thirdPartyCost ?? 0),
+        licenseCost: Number(body.commercial?.licenseCost ?? 0),
+        travelCost: Number(body.commercial?.travelCost ?? 0),
+        contingencyPct: Number(body.commercial?.contingencyPct ?? 0),
+        marginPct: Number(body.commercial?.marginPct ?? 0),
+        discountAmount: Number(body.commercial?.discountAmount ?? 0),
+        taxPct: Number(body.commercial?.taxPct ?? 0),
+        actor: auth.sub,
+      });
+    } else if (action === 'opportunity_stage') {
       updateOpportunityStage({
         rfqId: String(body.rfqId || ''),
         stage: String(body.stage || ''),
