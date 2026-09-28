@@ -114,7 +114,15 @@ export async function POST(
       return NextResponse.json(
         {
           success: true,
-          evidence,
+          evidence: {
+            ...evidence,
+            questionId: String(form.get('questionId') || '').trim() || null,
+            originalName: safeName(file.name),
+            mimeType: file.type,
+            sizeBytes: file.size,
+            classification: String(form.get('classification') || 'Confidential').slice(0, 80),
+            createdAt: new Date().toISOString(),
+          },
           message:
             'Evidence disimpan pada private RTI object storage. Status malware scan tetap pending sampai scanner produksi dikonfigurasi.',
         },
