@@ -106,6 +106,25 @@ export default function EstimatorPolicyPage() {
     }
   };
 
+  const runRetention = async () => {
+    setWorking(true);
+    setMessage('');
+    try {
+      const response = await fetch('/api/v1/admin/project-estimator/retention', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ olderThanDays: 90 }),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(body?.error || 'Retention cleanup failed.');
+      setMessage(`Retention completed: ${body.result.sessionsAnonymized} session(s) anonymized, ${body.result.storageDeleted} private object(s) removed.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Retention cleanup failed.');
+    } finally {
+      setWorking(false);
+    }
+  };
+
   const activate = async (policyId: string) => {
     setWorking(true);
     setMessage('');
@@ -238,6 +257,16 @@ export default function EstimatorPolicyPage() {
                   </div>
                 </>
               )}
+            </div>
+
+            <div className="rounded-2xl border border-line bg-white p-5 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-sm font-extrabold text-navy-900">Privacy Retention</h2>
+                  <p className="mt-1 text-[10px] leading-relaxed text-muted">Anonymize abandoned public drafts older than 90 days and remove their private scoping documents when storage is reachable.</p>
+                </div>
+                <button disabled={working} onClick={() => void runRetention()} className="shrink-0 rounded-xl border border-line px-3 py-2 text-[10px] font-extrabold text-navy-900 disabled:opacity-50">Run 90-Day Cleanup</button>
+              </div>
             </div>
 
             <div className="rounded-2xl border border-line bg-white p-5 shadow-sm">
