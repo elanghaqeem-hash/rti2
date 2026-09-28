@@ -12,8 +12,8 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
 
   const { id } = await context.params;
   const resumeToken = req.headers.get('x-rti-resume-token')?.trim() || '';
-  if (!verifyRfqAccess(id, resumeToken)) return NextResponse.json({ success: false, error: 'RFQ access denied.' }, { status: 403, headers });
-  return NextResponse.json({ success: true, attachments: listRfqAttachments(id) }, { headers });
+  if (!(await verifyRfqAccess(id, resumeToken))) return NextResponse.json({ success: false, error: 'RFQ access denied.' }, { status: 403, headers });
+  return NextResponse.json({ success: true, attachments: await listRfqAttachments(id) }, { headers });
 }
 
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
@@ -31,7 +31,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
   try {
     const attachment = await storeRfqAttachment({ rfqId: id, file });
-    return NextResponse.json({ success: true, attachment, attachments: listRfqAttachments(id) }, { status: 201, headers });
+    return NextResponse.json({ success: true, attachment, attachments: await listRfqAttachments(id) }, { status: 201, headers });
   } catch (error) {
     console.warn('RFQ attachment rejected:', error instanceof Error ? error.message : String(error));
     return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Attachment was rejected.' }, { status: 422, headers });
