@@ -40,6 +40,7 @@ type Dashboard = {
   };
   rfqs: Array<{
     id: string;
+    sessionId: string;
     rfqNumber: string;
     projectName: string;
     company: string;
@@ -333,6 +334,9 @@ export default function ProjectEstimatorAdminPage() {
                           <td className="px-4 py-4">
                             <div className="font-mono font-bold text-navy-900">{item.rfqNumber}</div>
                             <div className="mt-1 text-[10px] text-muted">{item.status}</div>
+                            <Link href={`/studio/${item.sessionId}`} className="mt-2 inline-flex rounded-lg border border-line px-2.5 py-1.5 text-[9px] font-extrabold text-navy-900 hover:border-gold-500">
+                              Open Studio
+                            </Link>
                           </td>
                           <td className="px-4 py-4">
                             <div className="font-bold text-navy-900">{item.projectName}</div>
