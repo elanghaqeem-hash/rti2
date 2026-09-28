@@ -11,7 +11,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
   const body = await req.json().catch(() => null) as any;
   const { id } = await context.params;
-  if (!verifyRfqAccess(id, String(body?.resumeToken || ''))) return NextResponse.json({ success: false, error: 'RFQ access denied.' }, { status: 403, headers });
+  if (!(await verifyRfqAccess(id, String(body?.resumeToken || '')))) return NextResponse.json({ success: false, error: 'RFQ access denied.' }, { status: 403, headers });
   if (body?.consent !== true) return NextResponse.json({ success: false, error: 'Privacy consent is required before RFQ submission.' }, { status: 400, headers });
   const turnstile = await verifyTurnstile(req, body?.turnstileToken);
   if (!turnstile.success) return NextResponse.json({ success: false, error: turnstile.error || 'Bot verification failed.' }, { status: turnstile.configured ? 400 : 503, headers });
