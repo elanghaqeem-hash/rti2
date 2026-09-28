@@ -9,16 +9,16 @@
  * avoids importing Cloudflare-only packages into the standard Node build.
  */
 
-export type SqlValue = string | number | bigint | boolean | null;
+export type SqlValue = string | number | bigint | null;
 
 export interface RuntimeDatabase {
   readonly kind: 'cloudflare-d1' | 'node-sqlite';
   readonly descriptor: string;
-  queryAll<T extends Record<string, unknown> = Record<string, unknown>>(
+  queryAll<T = Record<string, unknown>>(
     sql: string,
     params?: SqlValue[],
   ): Promise<T[]>;
-  queryOne<T extends Record<string, unknown> = Record<string, unknown>>(
+  queryOne<T = Record<string, unknown>>(
     sql: string,
     params?: SqlValue[],
   ): Promise<T | null>;
@@ -118,7 +118,7 @@ function createD1Adapter(database: D1DatabaseLike): RuntimeDatabase {
     kind: 'cloudflare-d1',
     descriptor: 'Cloudflare D1 binding RTI_DB',
 
-    async queryAll<T extends Record<string, unknown>>(
+    async queryAll<T>(
       sql: string,
       params: SqlValue[] = [],
     ) {
@@ -130,7 +130,7 @@ function createD1Adapter(database: D1DatabaseLike): RuntimeDatabase {
       return Array.isArray(result.results) ? result.results : [];
     },
 
-    async queryOne<T extends Record<string, unknown>>(
+    async queryOne<T>(
       sql: string,
       params: SqlValue[] = [],
     ) {
@@ -174,14 +174,14 @@ async function createNodeSqliteAdapter(): Promise<RuntimeDatabase> {
     kind: 'node-sqlite',
     descriptor: getDatabasePath(),
 
-    async queryAll<T extends Record<string, unknown>>(
+    async queryAll<T>(
       sql: string,
       params: SqlValue[] = [],
     ) {
       return database.prepare(sql).all(...params) as T[];
     },
 
-    async queryOne<T extends Record<string, unknown>>(
+    async queryOne<T>(
       sql: string,
       params: SqlValue[] = [],
     ) {
