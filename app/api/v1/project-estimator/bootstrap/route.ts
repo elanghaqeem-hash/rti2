@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 export async function GET() {
   try {
     return NextResponse.json(
-      { success: true, ...getEstimatorBootstrap() },
+      { success: true, ...(await getEstimatorBootstrap()) },
       { headers: { 'Cache-Control': 'no-store' } },
     );
   } catch (error) {
