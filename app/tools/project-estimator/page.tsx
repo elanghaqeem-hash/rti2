@@ -36,7 +36,7 @@ type SolutionFinderHandoff = {
   assessmentId?: string;
   complexity?: string;
   expectedDuration?: string;
-  organization?: { organizationScale?: string };
+  organization?: { organizationScale?: string; industry?: string };
   priorities?: unknown;
   solutions?: Array<{ serviceKey?: string; name?: string; matchScore?: number }>;
 };
@@ -173,6 +173,11 @@ export default function ProjectEstimatorPage() {
       const parsed = JSON.parse(raw) as SolutionFinderHandoff;
       if (parsed?.source !== 'enterprise-solution-finder') return;
       setSolutionFinderHandoff(parsed);
+      setProfile((current) => ({
+        ...current,
+        industry: current.industry || String(parsed.organization?.industry || ''),
+      }));
+      setTargetTimeline((current) => current || String(parsed.expectedDuration || ''));
     } catch {
       setSolutionFinderHandoff(null);
     }
@@ -231,6 +236,11 @@ export default function ProjectEstimatorPage() {
         setServiceId(data.input.serviceId || '');
         setTargetTimeline(data.input.targetTimeline || '');
         setBudgetExpectation(data.input.budgetExpectation || '');
+        setSolutionFinderHandoff(
+          data.input.sourceContext?.source === 'enterprise-solution-finder'
+            ? data.input.sourceContext as SolutionFinderHandoff
+            : null,
+        );
         setProfile({ ...defaultProfile, ...(data.input.profile || {}) });
         setAnswers(data.input.answers || {});
         if (data.estimate) setEstimate(data.estimate);
