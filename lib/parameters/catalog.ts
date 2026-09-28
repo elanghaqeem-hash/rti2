@@ -27,6 +27,12 @@ function option(
 
 export const PARAMETER_GROUPS: ParameterGroupDefinition[] = [
   {
+    key: 'pdp_readiness.scalar',
+    label: 'UU PDP Readiness - System Settings',
+    description: 'CTA, report title, duration labels, dan disclaimer untuk RTI UU PDP Data Protection Readiness.',
+    options: [],
+  },
+  {
     key: 'contact.sectors',
     label: 'Sektor / Industri',
     description: 'Digunakan pada form kontak, lead capture, dan diagnostic tools.',
