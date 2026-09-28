@@ -739,14 +739,23 @@ export default function SolutionFinderPage() {
               Enterprise Solution Finder
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              {configError ||
-                'Enterprise Solution Finder configuration is unavailable.'}
+              {locale === 'id'
+                ? 'Enterprise Solution Finder sedang dalam proses aktivasi. Silakan coba kembali beberapa saat lagi.'
+                : 'Enterprise Solution Finder is being activated. Please try again shortly.'}
             </p>
             <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
               {locale === 'id'
-                ? 'Tidak ada fallback, dummy questionnaire, atau rekomendasi palsu yang ditampilkan. Admin RTI perlu memastikan migration Enterprise Solution Finder telah diterapkan pada database production.'
-                : 'No fallback, dummy questionnaire, or fabricated recommendations are displayed. An RTI administrator must ensure the Enterprise Solution Finder migration has been applied to the production database.'}
+                ? 'Data assessment dan rekomendasi hanya akan ditampilkan setelah layanan data siap. RTI tidak menampilkan data dummy atau hasil yang tidak terverifikasi.'
+                : 'Assessment data and recommendations will only be shown when the data service is ready. RTI does not display dummy data or unverified results.'}
             </p>
+            <button
+              type="button"
+              onClick={() => loadConfig(locale)}
+              className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-navy-900 px-4 py-2.5 text-xs font-extrabold text-white hover:bg-navy-700"
+            >
+              <RefreshCw className="h-4 w-4 text-gold-300" />
+              {locale === 'id' ? 'Coba Lagi' : 'Try Again'}
+            </button>
           </div>
         </div>
       </main>
