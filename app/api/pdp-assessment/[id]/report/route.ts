@@ -1,8 +1,8 @@
-import { randomUUID } from 'node:crypto';
 import { hasPdpAssessmentAccess } from '@/lib/pdp/access';
 import {
   getPdpAssessmentRuntime,
   getPdpResultRuntime,
+  recordPdpGeneratedReportRuntime,
   writePdpAuditRuntime,
 } from '@/lib/pdp/runtime-repository';
 import { buildPdpReadinessPdf } from '@/lib/pdp/pdf';
@@ -51,7 +51,8 @@ export async function GET(
       disclaimer,
     });
 
-    const reportId = randomUUID();
+    const reportRecord = await recordPdpGeneratedReportRuntime(id);
+    const reportId = reportRecord.id;
     await writePdpAuditRuntime({
       actor: 'Public Assessment User',
       action: 'report.generated',
