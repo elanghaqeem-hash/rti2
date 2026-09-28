@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import {
-  FinderDatabaseUnavailableError,
-  getFinderConfig,
-} from '@/lib/enterprise-finder/repository';
+  FinderRuntimeDatabaseUnavailableError,
+  getFinderConfigRuntime,
+} from '@/lib/enterprise-finder/runtime-repository';
 import type { FinderLocale } from '@/lib/enterprise-finder/types';
 
 export const runtime = 'nodejs';
@@ -16,7 +16,7 @@ function localeFromRequest(req: Request): FinderLocale {
 
 export async function GET(req: Request) {
   try {
-    const config = getFinderConfig(localeFromRequest(req));
+    const config = await getFinderConfigRuntime(localeFromRequest(req));
     return NextResponse.json(
       {
         success: true,
@@ -30,14 +30,14 @@ export async function GET(req: Request) {
       },
     );
   } catch (error) {
-    const unavailable = error instanceof FinderDatabaseUnavailableError;
+    const unavailable = error instanceof FinderRuntimeDatabaseUnavailableError;
     return NextResponse.json(
       {
         success: false,
         config: null,
         database: { connected: false },
         error: unavailable
-          ? 'Enterprise Solution Finder belum diinisialisasi pada database production. Jalankan pending migrations melalui Admin System Setup.'
+          ? 'Enterprise Solution Finder sedang dalam proses aktivasi. Silakan coba kembali beberapa saat lagi.'
           : 'Konfigurasi Enterprise Solution Finder tidak dapat dimuat.',
       },
       {

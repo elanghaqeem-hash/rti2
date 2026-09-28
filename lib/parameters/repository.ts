@@ -3,9 +3,9 @@ import {
   type ParameterOption,
 } from '@/lib/parameters/catalog';
 import {
-  DatabaseUnavailableError,
-  getDatabase,
-} from '@/lib/server/database';
+  getRuntimeDatabase,
+  RuntimeDatabaseUnavailableError,
+} from '@/lib/server/runtime-database';
 
 type ParameterRow = {
   group_key: string;
@@ -36,11 +36,11 @@ function rowToOption(row: ParameterRow): ParameterOption {
   };
 }
 
-function parameterDatabase() {
+async function parameterDatabase() {
   try {
-    return getDatabase();
+    return await getRuntimeDatabase();
   } catch (error) {
-    if (error instanceof DatabaseUnavailableError) {
+    if (error instanceof RuntimeDatabaseUnavailableError) {
       throw new ParameterDatabaseUnavailableError(error.message);
     }
     throw error;
@@ -53,16 +53,15 @@ export async function listParameterOverrides(
   if (groupKeys.length === 0) return [];
 
   try {
-    const database = parameterDatabase();
+    const database = await parameterDatabase();
     const placeholders = groupKeys.map(() => '?').join(',');
-    const rows = database
-      .prepare(
-        `SELECT group_key, value, label, description, sort_order, is_active, is_system
-         FROM system_parameters
-         WHERE group_key IN (${placeholders})
-         ORDER BY group_key, sort_order, label`,
-      )
-      .all(...groupKeys) as ParameterRow[];
+    const rows = await database.queryAll<ParameterRow>(
+      `SELECT group_key, value, label, description, sort_order, is_active, is_system
+       FROM system_parameters
+       WHERE group_key IN (${placeholders})
+       ORDER BY group_key, sort_order, label`,
+      groupKeys,
+    );
 
     return rows.map(rowToOption);
   } catch (error) {
@@ -113,23 +112,21 @@ export async function upsertParameterOption(
   option: ParameterOption,
 ): Promise<void> {
   try {
-    const database = parameterDatabase();
+    const database = await parameterDatabase();
     const now = new Date().toISOString();
 
-    database
-      .prepare(
-        `INSERT INTO system_parameters (
-          group_key, value, label, description, sort_order, is_active, is_system, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(group_key, value) DO UPDATE SET
-          label = excluded.label,
-          description = excluded.description,
-          sort_order = excluded.sort_order,
-          is_active = excluded.is_active,
-          is_system = excluded.is_system,
-          updated_at = excluded.updated_at`,
-      )
-      .run(
+    await database.run(
+      `INSERT INTO system_parameters (
+        group_key, value, label, description, sort_order, is_active, is_system, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(group_key, value) DO UPDATE SET
+        label = excluded.label,
+        description = excluded.description,
+        sort_order = excluded.sort_order,
+        is_active = excluded.is_active,
+        is_system = excluded.is_system,
+        updated_at = excluded.updated_at`,
+      [
         option.group,
         option.value,
         option.label,
@@ -138,7 +135,8 @@ export async function upsertParameterOption(
         option.active ? 1 : 0,
         option.system ? 1 : 0,
         now,
-      );
+      ],
+    );
   } catch (error) {
     if (error instanceof ParameterDatabaseUnavailableError) throw error;
     throw new ParameterDatabaseUnavailableError(
@@ -160,10 +158,11 @@ export async function deactivateParameterOption(
   }
 
   try {
-    const database = parameterDatabase();
-    database
-      .prepare('DELETE FROM system_parameters WHERE group_key = ? AND value = ?')
-      .run(groupKey, value);
+    const database = await parameterDatabase();
+    await database.run(
+      'DELETE FROM system_parameters WHERE group_key = ? AND value = ?',
+      [groupKey, value],
+    );
   } catch (error) {
     if (error instanceof ParameterDatabaseUnavailableError) throw error;
     throw new ParameterDatabaseUnavailableError(

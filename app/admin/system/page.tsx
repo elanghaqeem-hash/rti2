@@ -14,6 +14,7 @@ import {
 
 type Status = {
   databasePath: string;
+  databaseKind?: 'cloudflare-d1' | 'node-sqlite';
   connected: boolean;
   applied: string[];
   pending: string[];
@@ -98,8 +99,9 @@ export default function AdminSystemPage() {
                 RTI System Setup
               </h1>
               <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
-                Inisialisasi database dan migration dilakukan dari server produksi RTI.
-                Tidak ada dependency terhadap Cloudflare D1 untuk proses ini.
+                Inisialisasi database mengikuti runtime aktif. Pada Cloudflare Workers,
+                sistem menggunakan binding D1 <strong>RTI_DB</strong>; pada server Node
+                sistem menggunakan persistent SQLite melalui <strong>RTI_DB_PATH</strong>.
               </p>
             </div>
             <button
@@ -154,7 +156,10 @@ export default function AdminSystemPage() {
                   <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                   {status.connected ? 'Connected' : 'Unavailable'}
                 </div>
-                <div className="mt-2 break-all font-mono text-[10px] text-muted">{status.databasePath}</div>
+                <div className="mt-2 text-[10px] font-bold uppercase tracking-wider text-blue-600">
+                  {status.databaseKind === 'cloudflare-d1' ? 'Cloudflare D1' : 'Node SQLite'}
+                </div>
+                <div className="mt-1 break-all font-mono text-[10px] text-muted">{status.databasePath}</div>
               </div>
 
               <div className="rounded-xl border border-line bg-grey-50 p-4">

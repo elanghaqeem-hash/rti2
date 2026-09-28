@@ -14,7 +14,10 @@
     "test": "node --test tests/*.test.js",
     "watch-sync": "node watch-sync.js",
     "preview:cloudflare": "npx opennextjs-cloudflare preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "d1:create": "npx wrangler d1 create rti-production --binding RTI_DB --update-config",
+    "d1:migrate": "npx wrangler d1 migrations apply rti-production --remote",
+    "d1:info": "npx wrangler d1 info rti-production"
   },
   "dependencies": {
     "clsx": "^2.1.1",

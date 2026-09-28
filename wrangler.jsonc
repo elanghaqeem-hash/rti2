@@ -9,6 +9,11 @@
   // Cloudflare/OpenNext staging configuration.
   // Production may still target the standard Node.js deployment path.
   // The OpenNext build generates .open-next/worker.js before Wrangler deploys.
+  //
+  // Runtime database on Workers: Cloudflare D1 binding RTI_DB.
+  // Create it once with: npm run d1:create
+  // Wrangler will append the d1_databases block with the real database_id.
+  // Apply schema/config with: npm run d1:migrate
 
   "assets": {
     "directory": ".open-next/assets",
