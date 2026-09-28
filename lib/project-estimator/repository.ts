@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
-import { getDatabase } from '@/lib/server/database';
+import { getRuntimeDatabase } from '@/lib/server/runtime-database';
 import { generateAiWithFailover } from '@/lib/ai/provider-router';
 import { calculateLeadScore, type Lead } from '@/lib/scoring/leads';
 import { createPersistentLead } from '@/lib/data/lead-repository';
@@ -82,44 +82,51 @@ function safeTokenEqual(left: string, right: string) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export function verifyEstimatorSessionAccess(sessionId: string, resumeToken: string) {
+export async function verifyEstimatorSessionAccess(sessionId: string, resumeToken: string) {
   if (!sessionId || !resumeToken) return false;
-  const row = getDatabase()
-    .prepare('SELECT secure_token_hash FROM estimator_sessions WHERE id=?')
-    .get(sessionId) as { secure_token_hash?: string | null } | undefined;
+  const db = await getRuntimeDatabase();
+  const row = await db.queryOne<{ secure_token_hash?: string | null }>(
+    'SELECT secure_token_hash FROM estimator_sessions WHERE id=?',
+    [sessionId],
+  );
   if (!row?.secure_token_hash) return false;
   return safeTokenEqual(row.secure_token_hash, hashResumeToken(resumeToken));
 }
 
-export function verifyRfqAccess(rfqId: string, resumeToken: string) {
+export async function verifyRfqAccess(rfqId: string, resumeToken: string) {
   if (!rfqId || !resumeToken) return false;
-  const row = getDatabase().prepare(
+  const db = await getRuntimeDatabase();
+  const row = await db.queryOne<{ session_id: string; secure_token_hash: string | null }>(
     `SELECT es.id AS session_id, es.secure_token_hash
      FROM rfqs r
      JOIN estimator_sessions es ON es.id=r.session_id
      WHERE r.id=?`,
-  ).get(rfqId) as { session_id: string; secure_token_hash: string | null } | undefined;
-  return Boolean(row?.secure_token_hash) && safeTokenEqual(row!.secure_token_hash!, hashResumeToken(resumeToken));
+    [rfqId],
+  );
+  return Boolean(row?.secure_token_hash) &&
+    safeTokenEqual(row!.secure_token_hash!, hashResumeToken(resumeToken));
 }
 
-function getSetting(key: string, fallback = ''): string {
+async function getSetting(key: string, fallback = ''): Promise<string> {
   try {
-    const row = getDatabase()
-      .prepare('SELECT value FROM estimator_settings WHERE key = ?')
-      .get(key) as { value?: string } | undefined;
+    const db = await getRuntimeDatabase();
+    const row = await db.queryOne<{ value?: string }>(
+      'SELECT value FROM estimator_settings WHERE key = ?',
+      [key],
+    );
     return typeof row?.value === 'string' ? row.value : fallback;
   } catch {
     return fallback;
   }
 }
 
-function getNumberSetting(
+async function getNumberSetting(
   key: string,
   fallback: number,
   min = Number.NEGATIVE_INFINITY,
   max = Number.POSITIVE_INFINITY,
 ) {
-  const raw = Number(getSetting(key, String(fallback)));
+  const raw = Number(await getSetting(key, String(fallback)));
   if (!Number.isFinite(raw)) return fallback;
   return Math.min(max, Math.max(min, raw));
 }
@@ -141,25 +148,27 @@ function serviceFromRow(row: ServiceRow): EstimatorService {
   };
 }
 
-function loadServiceRecommendations(serviceId: string): ProjectEstimate['recommendations'] {
-  const rows = getDatabase().prepare(
+async function loadServiceRecommendations(serviceId: string): Promise<ProjectEstimate['recommendations']> {
+  const db = await getRuntimeDatabase();
+  const rows = await db.queryAll<{
+    related_service_id: string;
+    name: string;
+    relation_type: 'requires' | 'recommends';
+    reason: string | null;
+  }>(
     `SELECT d.related_service_id, s.name, d.relation_type, d.reason
      FROM service_dependencies d
      JOIN services s ON s.id = d.related_service_id
      WHERE d.service_id = ? AND d.is_active = 1 AND s.is_active = 1
      ORDER BY d.sort_order, s.name`,
-  ).all(serviceId) as Array<{
-    related_service_id: string;
-    name: string;
-    relation_type: 'requires' | 'recommends';
-    reason: string | null;
-  }>;
+    [serviceId],
+  );
 
   return rows.map((row) => ({
     serviceId: row.related_service_id,
     name: row.name,
     relationType: row.relation_type,
-    reason: row.reason || `Related RTI service for the selected project scope.`,
+    reason: row.reason || 'Related RTI service for the selected project scope.',
   }));
 }
 
