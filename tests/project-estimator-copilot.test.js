@@ -29,7 +29,7 @@ test('Estimator Copilot: public route is capability-protected and rate-limited',
 test('Estimator Copilot: AI cannot directly create estimator numbers', () => {
   const service = read('lib/project-estimator/copilot.ts');
   assert.match(service, /Jangan pernah membuat angka effort, durasi, MD, minggu, atau harga/);
-  assert.match(service, /blocksUntrustedEstimateNumbers/);
+  assert.match(service, /containsUntrustedEstimateNumbers/);
   assert.match(service, /calculateEstimatorSession/);
   assert.match(service, /set_scope_params/);
   assert.match(service, /compute_estimate/);

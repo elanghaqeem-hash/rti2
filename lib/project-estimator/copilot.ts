@@ -10,6 +10,7 @@ import {
 } from '@/lib/project-estimator/repository';
 import type { EstimatorQuestion, ProjectEstimate } from '@/lib/project-estimator/types';
 import { listEstimatorRiskFlags, refreshEstimatorRiskFlags } from '@/lib/project-estimator/risk';
+import { containsUntrustedEstimateNumbers, redactSensitiveForAi } from '@/packages/engine/ai-guardrails.js';
 
 type CopilotProposal = {
   key: string;
@@ -87,13 +88,6 @@ export function planNextQuestions(
     .slice(0, Math.max(1, Math.min(3, maxQuestions)));
 }
 
-function redactSensitive(text: string) {
-  return text
-    .replace(/\b\d{16}\b/g, '[REDACTED_NUMBER]')
-    .replace(/\b\d{10,16}\b/g, '[REDACTED_ID_OR_ACCOUNT]')
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[REDACTED_EMAIL]');
-}
-
 function stripCodeFence(value: string) {
   return value
     .replace(/^\s*```(?:json)?\s*/i, '')
@@ -114,10 +108,6 @@ function parseJsonOutput(text: string): CopilotModelOutput | null {
       return null;
     }
   }
-}
-
-function blocksUntrustedEstimateNumbers(text: string) {
-  return /(?:Rp\.?\s*\d|IDR\s*\d|\b\d+(?:[.,]\d+)?\s*(?:MD|man[- ]?days?|minggu|weeks?)\b)/i.test(text);
 }
 
 function deterministicReply(next: EstimatorQuestion[]) {
@@ -169,7 +159,7 @@ async function callAnthropic(params: {
 
   const model =
     String(process.env.AI_MODEL_PRIMARY || process.env.ANTHROPIC_MODEL || 'claude-sonnet-5').trim();
-  const safeMessage = redactSensitive(params.message).slice(0, 4000);
+  const safeMessage = redactSensitiveForAi(params.message).slice(0, 4000);
   const allowed = params.questions.map((question) => ({
     key: question.key,
     label: question.label,
@@ -393,7 +383,7 @@ export async function runEstimatorCopilot(params: {
     degraded = true;
     reply = deterministicReply(nextBefore);
   }
-  if (blocksUntrustedEstimateNumbers(reply)) {
+  if (containsUntrustedEstimateNumbers(reply)) {
     blockedNumbers += 1;
     degraded = true;
     reply = deterministicReply(nextBefore);
