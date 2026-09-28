@@ -138,42 +138,12 @@ export function scorePdpAssessment(params: {
     );
   });
 
-  const implementationScore = weightedAverage(
-    validQuestions.map((question) => ({
-      value: clamp(answerByQuestion.get(question.id)?.answerScore ?? 0),
-      weight: question.weight,
-    })),
-  );
-
-  const evidenceScore = weightedAverage(
-    validQuestions.map((question) => ({
-      value:
-        clamp(
-          (evidenceMap.get(
-            answerByQuestion.get(question.id)?.evidenceStatus || 'none',
-          ) || 0) * 100,
-        ),
-      weight: question.weight,
-    })),
-  );
-
   const scoringWeights = new Map(
     config.scoringWeights.map((item) => [item.key, item.weight]),
   );
   const implementationWeight = scoringWeights.get('implementation') ?? 0.75;
   const evidenceWeight = scoringWeights.get('evidence') ?? 0.25;
   const totalWeight = implementationWeight + evidenceWeight || 1;
-  const overallScore =
-    (implementationScore * implementationWeight +
-      evidenceScore * evidenceWeight) /
-    totalWeight;
-
-  const readinessLevel =
-    config.scoringThresholds.find(
-      (threshold) =>
-        overallScore >= threshold.minScore &&
-        overallScore <= threshold.maxScore,
-    )?.label || 'Unclassified';
 
   const domainScores: PdpDomainScore[] = config.domains.map((domain) => {
     const questions = validQuestions.filter(
@@ -206,10 +176,42 @@ export function scorePdpAssessment(params: {
       implementationScore: round(implementation),
       evidenceScore: round(evidence),
       overallScore: round(overall),
-      gap: round(Math.max(0, 100 - overall)),
-      status: domainStatus(overall),
+      gap: questions.length > 0 ? round(Math.max(0, 100 - overall)) : 0,
+      status: questions.length > 0 ? domainStatus(overall) : 'Not Applicable',
+      applicableQuestions: questions.length,
     };
   });
+
+  const activeDomainScores = domainScores.filter(
+    (domain) => domain.applicableQuestions > 0,
+  );
+  const domainWeight = new Map(
+    config.domains.map((domain) => [domain.code, domain.weight]),
+  );
+
+  const implementationScore = weightedAverage(
+    activeDomainScores.map((domain) => ({
+      value: domain.implementationScore,
+      weight: domainWeight.get(domain.domainCode) ?? 1,
+    })),
+  );
+  const evidenceScore = weightedAverage(
+    activeDomainScores.map((domain) => ({
+      value: domain.evidenceScore,
+      weight: domainWeight.get(domain.domainCode) ?? 1,
+    })),
+  );
+  const overallScore =
+    (implementationScore * implementationWeight +
+      evidenceScore * evidenceWeight) /
+    totalWeight;
+
+  const readinessLevel =
+    config.scoringThresholds.find(
+      (threshold) =>
+        overallScore >= threshold.minScore &&
+        overallScore <= threshold.maxScore,
+    )?.label || 'Unclassified';
 
   const findings: PdpGapFinding[] = [];
   for (const question of validQuestions) {
@@ -288,7 +290,11 @@ export function scorePdpAssessment(params: {
       const score = domainScores.find(
         (domain) => domain.domainCode === mapping.domainCode,
       );
-      return Boolean(score && score.overallScore < 75);
+      return Boolean(
+        score &&
+        score.applicableQuestions > 0 &&
+        score.overallScore < 75,
+      );
     })
     .sort((a, b) => a.priorityOrder - b.priorityOrder)
     .slice(0, 5);
