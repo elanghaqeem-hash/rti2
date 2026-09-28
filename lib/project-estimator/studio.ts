@@ -699,3 +699,30 @@ export async function verifyPortalQuotationAccess(quotationId: string, resumeTok
     ['approved','sent','accepted','rejected','expired'].includes(row.status),
   );
 }
+
+
+export async function addPortalMessage(params: {
+  resumeToken: string;
+  content: string;
+  senderName?: string;
+}) {
+  const state = await getEstimatorSessionByToken(params.resumeToken);
+  const content = String(params.content || '').trim().slice(0, 4000);
+  if (!content) throw new Error('Message is required.');
+  const db = await getRuntimeDatabase();
+  await db.run(
+    `INSERT INTO estimator_client_messages
+      (id,session_id,sender_type,sender_name,content,created_at)
+     VALUES (?,?,'client',?,?,?)`,
+    [
+      randomUUID(),
+      state.sessionId,
+      String(params.senderName || state.input.profile.contactName || '').slice(0, 180) || null,
+      content,
+      new Date().toISOString(),
+    ],
+  );
+  await audit('estimator_client_message', state.sessionId, 'client_message', 'portal-client', null, {
+    length: content.length,
+  });
+}
