@@ -13,6 +13,7 @@ import type { EstimatorQuestion } from '@/lib/project-estimator/types';
 
 type ExtractedParam = { key: string; value: string; confidence: number; evidence: string };
 import { listEstimatorRiskFlags, refreshEstimatorRiskFlags } from '@/lib/project-estimator/risk';
+import { detectPromptInjection, redactSensitiveForAi } from '@/packages/engine/ai-guardrails.js';
 
 const ALLOWED = new Map<string, string[]>([
   ['application/pdf', ['.pdf']],
@@ -136,15 +137,7 @@ async function extractOfficeText(buffer: Uint8Array, mime: string) {
 }
 
 function injectionFlags(text: string) {
-  const patterns = [
-    /ignore (all|any|the) previous instructions/i,
-    /system prompt/i,
-    /developer message/i,
-    /you are (chatgpt|claude|an ai)/i,
-    /override (the )?(instructions|rules)/i,
-    /reveal (the )?(prompt|secret|api key)/i,
-  ];
-  return patterns.some((pattern) => pattern.test(text)) ? ['PROMPT_INJECTION_IN_DOC'] : [];
+  return detectPromptInjection(text) ? ['PROMPT_INJECTION_IN_DOC'] : [];
 }
 
 function visibleQuestions(
@@ -157,6 +150,7 @@ function visibleQuestions(
 }
 
 async function anthropicExtractText(buffer: Uint8Array, mime: string) {
+  if (String(process.env.RTI_ALLOW_BINARY_AI_EXTRACTION || '').toLowerCase() !== 'true') return '';
   const apiKey = String(process.env.ANTHROPIC_API_KEY || '').trim();
   if (!apiKey) return '';
   const model = String(process.env.AI_MODEL_FAST || process.env.AI_MODEL_PRIMARY || 'claude-haiku-4-5-20251001').trim();
@@ -225,7 +219,7 @@ async function extractParams(
       messages: [
         {
           role: 'user',
-          content: `ALLOWED_FIELDS:\n${JSON.stringify(allowed)}\n\nDOCUMENT_DATA:\n<document>\n${text.slice(0, 70000)}\n</document>`,
+          content: `ALLOWED_FIELDS:\n${JSON.stringify(allowed)}\n\nDOCUMENT_DATA:\n<document>\n${redactSensitiveForAi(text).slice(0, 70000)}\n</document>`,
         },
       ],
     }),
@@ -306,7 +300,7 @@ export async function storeAndParseScopingDocument(params: {
       text = await anthropicExtractText(buffer, mime);
       if (!text) {
         parseStatus = 'stored';
-        errorMessage = 'File stored securely; AI document extraction is not configured.';
+        errorMessage = 'File stored securely; binary AI extraction is disabled or not configured.';
       }
     }
   } catch (error) {
