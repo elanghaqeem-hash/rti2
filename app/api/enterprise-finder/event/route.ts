@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import {
-  FinderDatabaseUnavailableError,
-  getFinderAssessmentResult,
-  recordFinderEvent,
-} from '@/lib/enterprise-finder/repository';
+  FinderRuntimeDatabaseUnavailableError,
+  getFinderAssessmentResultRuntime,
+  recordFinderEventRuntime,
+} from '@/lib/enterprise-finder/runtime-repository';
 import {
   enforceRateLimit,
   rateLimitHeaders,
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
 
   try {
     // Token verification is intentionally reused from the result repository path.
-    const result = getFinderAssessmentResult(assessmentId, token);
+    const result = await getFinderAssessmentResultRuntime(assessmentId, token);
     if (!result) {
       return NextResponse.json(
         { success: false, error: 'Assessment result belum tersedia.' },
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
         ? (body.payload as Record<string, unknown>)
         : undefined;
 
-    recordFinderEvent(assessmentId, eventType, payload);
+    await recordFinderEventRuntime(assessmentId, eventType, payload);
 
     return NextResponse.json(
       { success: true },
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
   } catch (error) {
     const invalidToken =
       error instanceof Error && error.message === 'invalid-assessment-token';
-    const unavailable = error instanceof FinderDatabaseUnavailableError;
+    const unavailable = error instanceof FinderRuntimeDatabaseUnavailableError;
 
     return NextResponse.json(
       {
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
         error: invalidToken
           ? 'Assessment token tidak valid.'
           : unavailable
-            ? 'Database Enterprise Solution Finder belum siap.'
+            ? 'Enterprise Solution Finder sedang dalam proses aktivasi. Silakan coba kembali beberapa saat lagi.'
             : 'Event tidak dapat dicatat.',
       },
       {
