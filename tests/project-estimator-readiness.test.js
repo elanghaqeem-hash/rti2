@@ -153,3 +153,71 @@ test('Project Estimator: save and continue restores latest RFQ without localStor
   assert.match(repository, /latestRfq/);
   assert.match(repository, /secure_token_hash/);
 });
+
+test('Project Estimator: estimate persistence includes versioned recommendations without persisting public pricing flags', () => {
+  const repository = read('lib/project-estimator/repository.ts');
+  const migration = read('migrations/0003_project_estimator_rfq.sql');
+  assert.match(migration, /recommendations_json TEXT NOT NULL DEFAULT '\[\]'/);
+  assert.match(repository, /loadServiceRecommendations/);
+  assert.match(repository, /JSON\.stringify\(recommendations\)/);
+  assert.match(repository, /recommendations: safeJson\(estimateRow\.recommendations_json/);
+  assert.doesNotMatch(
+    repository,
+    /priceMax,\s*priceConfigured,\s*readinessScore,\s*JSON\.stringify\(team\)/s,
+  );
+});
+
+test('Project Estimator: complexity size and readiness thresholds are database settings', () => {
+  const repository = read('lib/project-estimator/repository.ts');
+  for (const key of [
+    'complexity_threshold_very_low',
+    'complexity_threshold_low',
+    'complexity_threshold_moderate',
+    'complexity_threshold_high',
+    'project_size_micro_max_effort',
+    'project_size_small_max_effort',
+    'project_size_medium_max_effort',
+    'project_size_large_max_effort',
+    'readiness_required_weight',
+    'readiness_profile_weight',
+  ]) {
+    assert.match(repository, new RegExp(key));
+  }
+  assert.match(repository, /getNumberSetting/);
+});
+
+test('Project Estimator: internal commercial model remains behind authenticated admin API', () => {
+  const adminApi = read('app/api/v1/admin/project-estimator/route.ts');
+  const admin = read('lib/project-estimator/admin.ts');
+  const publicRoute = read('app/api/v1/project-estimator/calculate/route.ts');
+  assert.match(adminApi, /adminSessionFromRequest/);
+  assert.match(adminApi, /action === 'commercial'/);
+  assert.match(admin, /updateEstimateCommercial/);
+  assert.match(admin, /estimate_commercials/);
+  assert.doesNotMatch(publicRoute, /estimate_commercials|resourceCost|thirdPartyCost|marginPct/);
+});
+
+test('Project Estimator: funnel analytics are based on persisted operational events', () => {
+  const repository = read('lib/project-estimator/repository.ts');
+  const admin = read('lib/project-estimator/admin.ts');
+  const migration = read('migrations/0003_project_estimator_rfq.sql');
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS estimator_events/);
+  assert.match(repository, /ESTIMATOR_STARTED/);
+  assert.match(repository, /ESTIMATE_CALCULATED/);
+  assert.match(repository, /RFQ_GENERATED/);
+  assert.match(repository, /RFQ_SUBMITTED/);
+  assert.match(admin, /estimateConversionPct/);
+  assert.match(admin, /topServices/);
+  assert.match(admin, /topIndustries/);
+});
+
+test('Project Estimator: service recommendations are configurable and exposed without auto-changing scope', () => {
+  const migration = read('migrations/0003_project_estimator_rfq.sql');
+  const admin = read('lib/project-estimator/admin.ts');
+  const page = read('app/tools/project-estimator/page.tsx');
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS service_dependencies/);
+  assert.match(admin, /upsertServiceDependency/);
+  assert.match(page, /Recommended RTI Services/);
+  assert.match(page, /do not change the selected project scope automatically/);
+});
+
