@@ -29,10 +29,12 @@ export function EstimatorCopilotPanel({
   sessionId,
   resumeToken,
   onEstimateUpdate,
+  onRiskFlags,
 }: {
   sessionId: string;
   resumeToken: string;
   onEstimateUpdate: (estimate: Omit<ProjectEstimate, 'trace'>) => void;
+  onRiskFlags?: (flags: any[]) => void;
 }) {
   const [open, setOpen] = useState(true);
   const [input, setInput] = useState('');
@@ -74,6 +76,7 @@ export function EstimatorCopilotPanel({
       setDegraded(Boolean(data.degraded));
       setProvider(String(data.provider || ''));
       if (data.estimate) onEstimateUpdate(data.estimate);
+      if (Array.isArray(data.riskFlags)) onRiskFlags?.(data.riskFlags);
     } catch (error) {
       setMessages((current) => [
         ...current,
