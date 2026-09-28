@@ -531,7 +531,7 @@ INSERT OR IGNORE INTO pdp_questions(
 'UU 27/2022 Pasal 51–52',
 'DPA/data-processing clause, security schedule, breach clause, exit clause.',
 'Instruksi dan tanggung jawab vendor dapat tidak jelas atau sulit ditegakkan.',
-'Standarkan DPA dan clause library berbasis risk tier.','Critical',1.4,1,30,1,520,'1.0',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+'Standarkan DPA dan clause library berbasis risk tier.','Critical',1.4,0,30,1,520,'1.0',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
 ('pdp-q-tpr-03','UU-PDP-27-2022-RTI-1.0','PDP-2026.1','TPR','TPR.Q3',
 'Apakah penggunaan subprocessor oleh vendor dikendalikan dan transparan sesuai pengaturan kontraktual yang berlaku?',
 'Ketahui rantai pemrosesan dan lokasi data hingga subprocessor material.',
