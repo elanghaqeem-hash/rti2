@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { TurnstileWidget } from '@/components/security/TurnstileWidget';
 import { useParameterGroups } from '@/components/parameters/useParameterOptions';
 import { QuickEstimateWorkspace } from '@/components/project-estimator/QuickEstimateWorkspace';
+import { EstimatorCopilotPanel } from '@/components/project-estimator/EstimatorCopilotPanel';
 import {
   ArrowLeft,
   ArrowRight,
@@ -918,9 +919,17 @@ export default function ProjectEstimatorPage() {
                 </div>
               )}
 
+              {sessionId && resumeToken && (
+                <EstimatorCopilotPanel
+                  sessionId={sessionId}
+                  resumeToken={resumeToken}
+                  onEstimateUpdate={(nextEstimate) => setEstimate(nextEstimate)}
+                />
+              )}
+
               <label className="mt-5 flex items-start gap-2 rounded-xl border border-line p-4 text-xs text-navy-900">
                 <input type="checkbox" checked={useAi} onChange={(e) => setUseAi(e.target.checked)} className="mt-0.5" />
-                <span><strong>AI-assisted RFQ note</strong><br /><span className="text-muted">Optional. AI may improve narrative clarity but cannot change approved pricing parameters or invent customer requirements.</span></span>
+                <span><strong>AI-assisted RFQ note</strong><br /><span className="text-muted">Optional. AI may improve narrative clarity but cannot change deterministic effort/pricing calculations or invent customer requirements.</span></span>
               </label>
               <button onClick={generateRfq} disabled={working} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-gold-500 px-5 py-3 text-xs font-extrabold text-navy-900 hover:bg-gold-300 disabled:opacity-50">
                 {working ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileCheck2 className="h-4 w-4" />} Generate RFQ
