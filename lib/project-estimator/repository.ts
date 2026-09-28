@@ -228,6 +228,26 @@ function audit(entityType: string, entityId: string, action: string, after?: unk
   );
 }
 
+export function trackEstimatorEvent(
+  sessionId: string,
+  eventType: string,
+  metadata?: Record<string, unknown>,
+  rfqId?: string,
+) {
+  getDatabase().prepare(
+    `INSERT INTO estimator_events
+      (id, session_id, rfq_id, event_type, metadata_json, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run(
+    randomUUID(),
+    sessionId || null,
+    rfqId || null,
+    eventType.trim().slice(0, 80),
+    metadata ? JSON.stringify(metadata) : null,
+    new Date().toISOString(),
+  );
+}
+
 export function getEstimatorBootstrap(): EstimatorBootstrap {
   const db = getDatabase();
   const categories = db.prepare(
@@ -424,6 +444,11 @@ export function upsertEstimatorSession(
     mode: input.mode,
     serviceId: input.serviceId,
   });
+  trackEstimatorEvent(
+    sessionId,
+    existing ? 'DRAFT_SAVED' : 'ESTIMATOR_STARTED',
+    { mode: input.mode, serviceId: input.serviceId },
+  );
 
   return { sessionId, resumeToken: nextResumeToken };
 }
@@ -913,6 +938,14 @@ export function calculateEstimatorSession(sessionId: string): ProjectEstimate {
 
   db.prepare("UPDATE estimator_sessions SET status='estimated', updated_at=? WHERE id=?").run(now, sessionId);
   audit('project_estimate', estimateId, 'calculate', { version, complexityIndex, readinessScore });
+  trackEstimatorEvent(sessionId, 'ESTIMATE_CALCULATED', {
+    estimateId,
+    version,
+    serviceId: service.id,
+    projectSize,
+    complexityLevel,
+    readinessScore,
+  });
 
   return {
     id: estimateId,
@@ -1113,6 +1146,11 @@ export async function createRfqDraft(params: {
   }
 
   audit('rfq', rfqId, 'create_draft', { rfqNumber, estimateId: params.estimateId });
+  trackEstimatorEvent(params.sessionId, 'RFQ_GENERATED', {
+    rfqId,
+    estimateId: params.estimateId,
+    aiAssisted: Boolean(content.aiAssistedDraft),
+  }, rfqId);
 
   return {
     id: rfqId,
@@ -1237,6 +1275,7 @@ export async function submitRfq(rfqId: string) {
   }
 
   audit('rfq', rfqId, 'submit', { leadId, opportunityId }, 'customer');
+  trackEstimatorEvent(context.session_id, 'RFQ_SUBMITTED', { rfqId, leadId, opportunityId }, rfqId);
   await sendRfqNotifications({
     rfqNumber: rfq.rfqNumber,
     projectName: context.project_name,
