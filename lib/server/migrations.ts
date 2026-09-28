@@ -8,6 +8,7 @@ const MIGRATIONS = [
   '0003_enterprise_solution_finder.sql',
   '0004_nist_cyber_quick_check.sql',
   '0005_project_estimator_rfq.sql',
+  '0006_project_estimator_ai_scoping.sql',
 ] as const;
 
 export interface MigrationStatus {
