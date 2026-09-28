@@ -23,6 +23,21 @@ type Dashboard = {
     pipelineMin: number;
     pipelineMax: number;
   };
+  analytics: {
+    funnel: {
+      started: number;
+      estimated: number;
+      rfqGenerated: number;
+      submitted: number;
+      estimateConversionPct: number;
+      rfqConversionPct: number;
+      submitConversionPct: number;
+    };
+    topServices: Array<{ name: string; count: number }>;
+    topIndustries: Array<{ name: string; count: number }>;
+    averageIndicativeMin: number;
+    averageIndicativeMax: number;
+  };
   rfqs: Array<{
     id: string;
     rfqNumber: string;
@@ -212,6 +227,35 @@ export default function ProjectEstimatorAdminPage() {
               <Metric label="Pipeline Range" value={`${money(dashboard.metrics.pipelineMin)} – ${money(dashboard.metrics.pipelineMax)}`} compact />
             </section>
 
+            <section className="grid gap-4 lg:grid-cols-3">
+              <div className="rounded-2xl border border-line bg-white p-5 shadow-sm lg:col-span-2">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-gold-600" />
+                  <h2 className="text-sm font-extrabold text-navy-900">Estimator Conversion Funnel</h2>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                  <FunnelMetric label="Started" value={dashboard.analytics.funnel.started} sub="100% baseline" />
+                  <FunnelMetric label="Estimated" value={dashboard.analytics.funnel.estimated} sub={`${dashboard.analytics.funnel.estimateConversionPct}% of starts`} />
+                  <FunnelMetric label="RFQ Generated" value={dashboard.analytics.funnel.rfqGenerated} sub={`${dashboard.analytics.funnel.rfqConversionPct}% of estimates`} />
+                  <FunnelMetric label="Submitted" value={dashboard.analytics.funnel.submitted} sub={`${dashboard.analytics.funnel.submitConversionPct}% of RFQs`} />
+                </div>
+              </div>
+              <div className="rounded-2xl border border-line bg-white p-5 shadow-sm">
+                <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted">Average Indicative Project Value</div>
+                <div className="mt-2 text-sm font-extrabold leading-relaxed text-navy-900">
+                  {dashboard.analytics.averageIndicativeMax > 0
+                    ? `${money(dashboard.analytics.averageIndicativeMin)} – ${money(dashboard.analytics.averageIndicativeMax)}`
+                    : 'Not calibrated yet'}
+                </div>
+                <p className="mt-2 text-[11px] text-muted">Only estimates with configured commercial baselines contribute to this metric.</p>
+              </div>
+            </section>
+
+            <section className="grid gap-4 lg:grid-cols-2">
+              <RankPanel title="Top Requested Services" items={dashboard.analytics.topServices} />
+              <RankPanel title="Top Industries" items={dashboard.analytics.topIndustries} />
+            </section>
+
             <nav className="flex gap-1 overflow-x-auto rounded-2xl border border-line bg-white p-1.5 shadow-sm">
               {[
                 ['pipeline', 'RFQ & Pipeline', FileCheck2],
@@ -376,6 +420,32 @@ export default function ProjectEstimatorAdminPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function FunnelMetric({ label, value, sub }: { label: string; value: number; sub: string }) {
+  return (
+    <div className="rounded-xl bg-grey-50 p-3">
+      <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted">{label}</div>
+      <div className="mt-1 text-xl font-extrabold text-navy-900">{value}</div>
+      <div className="mt-1 text-[10px] text-muted">{sub}</div>
+    </div>
+  );
+}
+
+function RankPanel({ title, items }: { title: string; items: Array<{ name: string; count: number }> }) {
+  return (
+    <div className="rounded-2xl border border-line bg-white p-5 shadow-sm">
+      <h2 className="text-sm font-extrabold text-navy-900">{title}</h2>
+      <div className="mt-3 space-y-2">
+        {items.length ? items.map((item, index) => (
+          <div key={item.name} className="flex items-center justify-between gap-3 rounded-xl bg-grey-50 px-3 py-2 text-xs">
+            <span className="min-w-0 truncate font-semibold text-navy-900">{index + 1}. {item.name}</span>
+            <span className="shrink-0 rounded-full bg-white px-2 py-1 font-extrabold text-navy-900">{item.count}</span>
+          </div>
+        )) : <div className="text-xs text-muted">No operational data yet.</div>}
+      </div>
+    </div>
   );
 }
 
