@@ -589,7 +589,7 @@ INSERT OR IGNORE INTO pdp_questions(
 'UU 27/2022 Pasal 46',
 'Incident response plan, breach playbook, escalation matrix, exercise record.',
 'Insiden dapat terlambat diidentifikasi, dinilai, atau dikomunikasikan.',
-'Bangun personal-data breach playbook dan lakukan tabletop exercise.','Critical',1.5,1,30,1,640,'1.0',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+'Bangun personal-data breach playbook dan lakukan tabletop exercise.','Critical',1.5,0,30,1,640,'1.0',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
 ('pdp-q-sec-05','UU-PDP-27-2022-RTI-1.0','PDP-2026.1','SEC','SEC.Q5',
 'Apakah organisasi mampu menyiapkan dan menyampaikan pemberitahuan tertulis atas kegagalan Pelindungan Data Pribadi paling lambat 3x24 jam kepada pihak yang diwajibkan oleh UU?',
 'Kesiapan mencakup deteksi awal, legal trigger, data yang harus dikomunikasikan, approval, evidence, dan jalur pemberitahuan.',
