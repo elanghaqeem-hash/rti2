@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getEstimatorSessionByToken, upsertEstimatorSession } from '@/lib/project-estimator/repository';
+import { getEstimatorSessionByToken, upsertEstimatorSession, validateEstimatorSessionInput } from '@/lib/project-estimator/repository';
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/security/request-protection';
 import type { SessionInput } from '@/lib/project-estimator/types';
 
@@ -41,6 +41,13 @@ export async function POST(req: Request) {
   }
 
   try {
+    const validationErrors = validateEstimatorSessionInput(input);
+    if (validationErrors.length) {
+      return NextResponse.json(
+        { success: false, error: validationErrors[0], details: validationErrors },
+        { status: 400, headers },
+      );
+    }
     const result = upsertEstimatorSession(input, validText(body?.sessionId, 80) || undefined, validText(body?.resumeToken, 256) || undefined);
     return NextResponse.json({ success: true, ...result }, { status: 201, headers });
   } catch (error) {
