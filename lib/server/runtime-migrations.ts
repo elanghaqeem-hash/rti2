@@ -22,6 +22,9 @@ export interface RuntimeMigrationStatus {
     projectEstimator: boolean;
     rfq: boolean;
     estimatorServices: boolean;
+    pdpAssessments: boolean;
+    pdpQuestions: boolean;
+    pdpEvidence: boolean;
   };
 }
 
@@ -73,6 +76,9 @@ export async function getRuntimeMigrationStatus(): Promise<RuntimeMigrationStatu
     rfqVersions,
     services,
     estimatorQuestions,
+    pdpAssessments,
+    pdpQuestions,
+    pdpEvidence,
   ] = await Promise.all([
     tableExists(database, 'leads'),
     tableExists(database, 'system_parameters'),
@@ -87,6 +93,9 @@ export async function getRuntimeMigrationStatus(): Promise<RuntimeMigrationStatu
     tableExists(database, 'rfq_versions'),
     tableExists(database, 'services'),
     tableExists(database, 'estimator_questions'),
+    tableExists(database, 'pdp_assessments'),
+    tableExists(database, 'pdp_questions'),
+    tableExists(database, 'pdp_evidence_files'),
   ]);
 
   return {
@@ -107,6 +116,9 @@ export async function getRuntimeMigrationStatus(): Promise<RuntimeMigrationStatu
       projectEstimator: estimatorSessions && projectEstimates,
       rfq: rfqs && rfqVersions,
       estimatorServices: services && estimatorQuestions,
+      pdpAssessments,
+      pdpQuestions,
+      pdpEvidence,
     },
   };
 }
