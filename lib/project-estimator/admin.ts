@@ -11,6 +11,21 @@ export type EstimatorAdminDashboard = {
     pipelineMin: number;
     pipelineMax: number;
   };
+  analytics: {
+    funnel: {
+      started: number;
+      estimated: number;
+      rfqGenerated: number;
+      submitted: number;
+      estimateConversionPct: number;
+      rfqConversionPct: number;
+      submitConversionPct: number;
+    };
+    topServices: Array<{ name: string; count: number }>;
+    topIndustries: Array<{ name: string; count: number }>;
+    averageIndicativeMin: number;
+    averageIndicativeMax: number;
+  };
   rfqs: Array<{
     id: string;
     rfqNumber: string;
@@ -252,7 +267,51 @@ export function getEstimatorAdminDashboard(): EstimatorAdminDashboard {
      ORDER BY s.name, rr.name`,
   ).all() as any[];
 
+  const started = scalar("SELECT COUNT(DISTINCT session_id) AS value FROM estimator_events WHERE event_type='ESTIMATOR_STARTED'");
+  const estimated = scalar("SELECT COUNT(DISTINCT session_id) AS value FROM estimator_events WHERE event_type='ESTIMATE_CALCULATED'");
+  const rfqGenerated = scalar("SELECT COUNT(DISTINCT session_id) AS value FROM estimator_events WHERE event_type='RFQ_GENERATED'");
+  const submitted = scalar("SELECT COUNT(DISTINCT session_id) AS value FROM estimator_events WHERE event_type='RFQ_SUBMITTED'");
+
+  const topServices = db.prepare(
+    `SELECT s.name, COUNT(*) AS count
+     FROM estimator_sessions es
+     JOIN services s ON s.id=es.selected_service_id
+     GROUP BY s.id, s.name
+     ORDER BY count DESC, s.name
+     LIMIT 8`,
+  ).all() as Array<{ name: string; count: number }>;
+
+  const topIndustries = db.prepare(
+    `SELECT COALESCE(NULLIF(TRIM(o.industry),''),'Unspecified') AS name, COUNT(*) AS count
+     FROM estimator_sessions es
+     JOIN organizations o ON o.id=es.organization_id
+     GROUP BY COALESCE(NULLIF(TRIM(o.industry),''),'Unspecified')
+     ORDER BY count DESC, name
+     LIMIT 8`,
+  ).all() as Array<{ name: string; count: number }>;
+
+  const averageValues = db.prepare(
+    `SELECT COALESCE(AVG(NULLIF(price_min,0)),0) AS min_value,
+            COALESCE(AVG(NULLIF(price_max,0)),0) AS max_value
+     FROM project_estimates`,
+  ).get() as { min_value?: number; max_value?: number } | undefined;
+
   return {
+    analytics: {
+      funnel: {
+        started,
+        estimated,
+        rfqGenerated,
+        submitted,
+        estimateConversionPct: started ? Math.round((estimated / started) * 1000) / 10 : 0,
+        rfqConversionPct: estimated ? Math.round((rfqGenerated / estimated) * 1000) / 10 : 0,
+        submitConversionPct: rfqGenerated ? Math.round((submitted / rfqGenerated) * 1000) / 10 : 0,
+      },
+      topServices: topServices.map((row) => ({ name: row.name, count: Number(row.count) })),
+      topIndustries: topIndustries.map((row) => ({ name: row.name, count: Number(row.count) })),
+      averageIndicativeMin: Math.round(Number(averageValues?.min_value || 0)),
+      averageIndicativeMax: Math.round(Number(averageValues?.max_value || 0)),
+    },
     metrics: {
       sessions: scalar('SELECT COUNT(*) AS value FROM estimator_sessions'),
       completedEstimates: scalar('SELECT COUNT(*) AS value FROM project_estimates'),
