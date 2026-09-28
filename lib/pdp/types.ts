@@ -150,6 +150,7 @@ export type PdpDomainScore = {
   overallScore: number;
   gap: number;
   status: string;
+  applicableQuestions: number;
 };
 
 export type PdpGapFinding = {
