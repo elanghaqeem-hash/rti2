@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { TurnstileWidget } from '@/components/security/TurnstileWidget';
 import { useParameterGroups } from '@/components/parameters/useParameterOptions';
+import { QuickEstimateWorkspace } from '@/components/project-estimator/QuickEstimateWorkspace';
 import {
   ArrowLeft,
   ArrowRight,
@@ -648,19 +649,21 @@ export default function ProjectEstimatorPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-gold-500/30 bg-gold-500/10 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-gold-300">
-              <Calculator className="h-3.5 w-3.5" /> RTI Digital Advisory Platform
+              <Calculator className="h-3.5 w-3.5" /> Sizing &amp; Effort Calculator
             </div>
-            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Project Estimator & RFQ Builder</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Project Estimator &amp; RFQ Builder</h1>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-300 sm:text-base">
-              Turn a business need into structured scope, complexity, delivery effort, indicative investment and a reviewable RFQ.
+              Hitung effort, komposisi tim, timeline, tingkat keyakinan scope, dan draft RFQ untuk seluruh lini layanan RTI secara terstruktur.
             </p>
           </div>
-          <div className="mt-7">
-            <div className="mb-2 flex justify-between text-[11px] font-bold text-slate-300">
-              <span>Step {step + 1} of 7</span><span>{progress}% complete</span>
+          {!(step === 0 && mode === 'quick') && (
+            <div className="mt-7">
+              <div className="mb-2 flex justify-between text-[11px] font-bold text-slate-300">
+                <span>Step {step + 1} of 7</span><span>{progress}% complete</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-navy-700"><div className="h-full bg-gold-500 transition-all" style={{ width: `${progress}%` }} /></div>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-navy-700"><div className="h-full bg-gold-500 transition-all" style={{ width: `${progress}%` }} /></div>
-          </div>
+          )}
         </div>
       </section>
 
@@ -706,19 +709,56 @@ export default function ProjectEstimatorPage() {
         <div className="rounded-2xl border border-line bg-white p-5 shadow-sm sm:p-7">
           {step === 0 && (
             <div>
-              <h2 className="text-xl font-extrabold text-navy-900">Choose assessment mode</h2>
-              <p className="mt-1 text-sm text-muted">Quick Estimate focuses on core sizing. Detailed RFQ adds more discovery information.</p>
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                {[
-                  ['quick','Quick Estimate','3–5 minute indicative scope, complexity, duration and investment.'],
-                  ['detailed','Detailed RFQ Builder','Deeper discovery designed for a more complete request for quotation.'],
-                ].map(([value,title,desc]) => (
-                  <button key={value} onClick={() => setMode(value as 'quick' | 'detailed')} className={`rounded-2xl border p-5 text-left transition ${mode === value ? 'border-gold-500 bg-gold-500/5 ring-2 ring-gold-500/20' : 'border-line hover:border-navy-500'}`}>
-                    <div className="flex items-center gap-2 text-sm font-extrabold text-navy-900">{mode === value && <CheckCircle2 className="h-4 w-4 text-gold-600" />}{title}</div>
-                    <p className="mt-2 text-xs leading-relaxed text-muted">{desc}</p>
+              <div className="mb-6 flex flex-col gap-3 border-b border-line pb-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-extrabold text-navy-900">Pilih mode scoping</h2>
+                  <p className="mt-1 text-xs leading-relaxed text-muted sm:text-sm">Quick Estimate dapat digunakan tanpa login. Data kontak baru diminta saat Anda melanjutkan ke export RFQ.</p>
+                </div>
+                <div className="inline-flex w-fit rounded-xl border border-line bg-grey-50 p-1 text-[11px] font-extrabold">
+                  <button
+                    type="button"
+                    onClick={() => setMode('quick')}
+                    className={`rounded-lg px-4 py-2 transition ${mode === 'quick' ? 'bg-navy-900 text-white shadow-sm' : 'text-muted hover:text-navy-900'}`}
+                  >
+                    Quick Estimate
                   </button>
-                ))}
+                  <button
+                    type="button"
+                    onClick={() => setMode('detailed')}
+                    className={`rounded-lg px-4 py-2 transition ${mode === 'detailed' ? 'bg-navy-900 text-white shadow-sm' : 'text-muted hover:text-navy-900'}`}
+                  >
+                    Detailed RFQ
+                  </button>
+                </div>
               </div>
+
+              {mode === 'quick' ? (
+                <QuickEstimateWorkspace
+                  bootstrap={bootstrap}
+                  initialServiceId={serviceId}
+                  onExport={({ serviceId: nextServiceId, answers: quickAnswers }) => {
+                    setServiceId(nextServiceId);
+                    setAnswers(quickAnswers);
+                    setMessage('Quick scope tersimpan di sesi ini. Lengkapi data kontak dan kebutuhan bisnis untuk membuat Draft RFQ Package.');
+                    setStep(1);
+                  }}
+                  onStartDetailed={({ serviceId: nextServiceId, answers: quickAnswers }) => {
+                    setMode('detailed');
+                    setServiceId(nextServiceId);
+                    setAnswers(quickAnswers);
+                    setMessage('Parameter Quick Estimate dibawa ke Detailed RFQ Builder untuk validasi lebih lanjut.');
+                    setStep(1);
+                  }}
+                />
+              ) : (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+                  <div className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-blue-700">Detailed RFQ Builder</div>
+                  <h3 className="mt-2 text-base font-extrabold text-navy-900">Scoping lebih lengkap untuk kebutuhan proposal</h3>
+                  <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
+                    Mode ini mengumpulkan profil organisasi, business requirement, service scope, parameter teknis, dokumen pendukung, serta menghasilkan estimasi dan RFQ yang dapat direview RTI.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -1011,7 +1051,7 @@ export default function ProjectEstimatorPage() {
             </div>
           )}
 
-          {step < 5 && (
+          {step < 5 && !(step === 0 && mode === 'quick') && (
             <div className="mt-8 flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap items-center gap-2">
                 {step >= 2 && (
