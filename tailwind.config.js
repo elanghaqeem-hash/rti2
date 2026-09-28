@@ -35,7 +35,7 @@ export default {
         muted: '#5A6A80',
       },
       fontFamily: {
-        sans: ['var(--font-jakarta)', 'system-ui', 'sans-serif'],
+        sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
       },
       backgroundImage: {
         'gold-grad': 'linear-gradient(45deg, #EE7A1E, #EFA41C 55%, #F1D21B)',
