@@ -24,6 +24,7 @@ export const Header: React.FC = () => {
   const [servicesDropdown, setServicesDropdown] = useState(false);
   const [assessmentDropdown, setAssessmentDropdown] = useState(false);
   const [toolsDropdown, setToolsDropdown] = useState(false);
+  const [companyDropdown, setCompanyDropdown] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -42,26 +43,30 @@ export const Header: React.FC = () => {
           : 'bg-navy-900 border-b border-navy-700/40 py-1'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 xl:px-8">
+        <div className="flex items-center justify-between gap-5 h-20">
           {/* Brand Logo - Light variant on Dark Navy header */}
           <div className="flex-shrink-0 flex items-center">
             <LogoFull variant="light" size="md" href="/" showLegalSubtext={false} />
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1 xl:gap-2 text-[13px] font-semibold tracking-wide text-slate-200">
+          <nav className="hidden xl:flex flex-1 items-center justify-center gap-1 text-[13px] font-semibold text-slate-200 whitespace-nowrap">
             {/* Services Mega Dropdown */}
             <div
               className="relative"
               onMouseEnter={() => setServicesDropdown(true)}
               onMouseLeave={() => setServicesDropdown(false)}
+              onFocus={() => setServicesDropdown(true)}
+              onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setServicesDropdown(false); }}
             >
               <button
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition-colors hover:text-white hover:bg-navy-700/60 ${
+                className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg transition-colors hover:text-white hover:bg-navy-700/60 ${
                   servicesDropdown ? 'text-white bg-navy-700/70' : ''
                 }`}
                 aria-expanded={servicesDropdown}
+                aria-haspopup="true"
+                type="button"
               >
                 <span>Services</span>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-gold-300" />
@@ -163,12 +168,16 @@ export const Header: React.FC = () => {
               className="relative"
               onMouseEnter={() => setAssessmentDropdown(true)}
               onMouseLeave={() => setAssessmentDropdown(false)}
+              onFocus={() => setAssessmentDropdown(true)}
+              onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setAssessmentDropdown(false); }}
             >
               <button
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition-colors hover:text-white hover:bg-navy-700/60 ${
+                className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg transition-colors hover:text-white hover:bg-navy-700/60 ${
                   assessmentDropdown ? 'text-white bg-navy-700/70' : ''
                 }`}
                 aria-expanded={assessmentDropdown}
+                aria-haspopup="true"
+                type="button"
               >
                 <span>Assessment</span>
                 <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-gold-500 text-navy-900">
@@ -244,12 +253,16 @@ export const Header: React.FC = () => {
               className="relative"
               onMouseEnter={() => setToolsDropdown(true)}
               onMouseLeave={() => setToolsDropdown(false)}
+              onFocus={() => setToolsDropdown(true)}
+              onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setToolsDropdown(false); }}
             >
               <button
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition-colors hover:text-white hover:bg-navy-700/60 ${
+                className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg transition-colors hover:text-white hover:bg-navy-700/60 ${
                   toolsDropdown ? 'text-white bg-navy-700/70' : ''
                 }`}
                 aria-expanded={toolsDropdown}
+                aria-haspopup="true"
+                type="button"
               >
                 <span>Interactive Tools</span>
                 <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-gold-500/20 text-gold-300 border border-gold-500/30">
@@ -313,54 +326,43 @@ export const Header: React.FC = () => {
               )}
             </div>
 
-            <Link
-              href="/industries"
-              className="px-3.5 py-2 rounded-lg transition hover:text-white hover:bg-navy-700/60"
-            >
-              Industries
-            </Link>
-
-            <Link
-              href="/clients"
-              className="px-3.5 py-2 rounded-lg transition hover:text-white hover:bg-navy-700/60"
-            >
-              Clients
-            </Link>
-
-            <Link
-              href="/how-we-work"
-              className="px-3.5 py-2 rounded-lg transition hover:text-white hover:bg-navy-700/60"
-            >
-              How We Work
-            </Link>
-
-            <Link
-              href="/about"
-              className="px-3.5 py-2 rounded-lg transition hover:text-white hover:bg-navy-700/60"
-            >
-              About
-            </Link>
-
-            <Link
-              href="/contact"
-              className="px-3.5 py-2 rounded-lg transition hover:text-white hover:bg-navy-700/60"
-            >
-              Contact
-            </Link>
+            <div className="relative" onMouseEnter={() => setCompanyDropdown(true)} onMouseLeave={() => setCompanyDropdown(false)} onFocus={() => setCompanyDropdown(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setCompanyDropdown(false); }}>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg transition-colors hover:text-white hover:bg-navy-700/60"
+                aria-expanded={companyDropdown}
+                aria-haspopup="true"
+              >
+                Explore RTI <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+              {companyDropdown && (
+                <div className="absolute top-full right-0 w-52 rounded-xl border border-navy-700/80 bg-navy-900 shadow-2xl p-2 text-white">
+                  {[
+                    ['/industries', 'Industries'],
+                    ['/clients', 'Clients'],
+                    ['/how-we-work', 'How We Work'],
+                    ['/about', 'About'],
+                    ['/contact', 'Contact'],
+                  ].map(([href, label]) => (
+                    <Link key={href} href={href} className="block rounded-lg px-3 py-2.5 hover:bg-navy-700/70 hover:text-gold-300" onClick={() => setCompanyDropdown(false)}>{label}</Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </nav>
 
           {/* Action CTAs */}
-          <div className="hidden lg:flex items-center gap-3">
+          <div className="hidden xl:flex shrink-0 items-center gap-2">
             <Link
               href="/assessment"
-              className="px-4 py-2 rounded-lg bg-navy-700/80 border border-navy-500/80 text-xs font-bold text-slate-200 hover:text-white hover:bg-navy-700 transition"
+              className="whitespace-nowrap px-3 py-2.5 rounded-lg bg-transparent border border-navy-500/80 text-xs font-bold text-slate-200 hover:text-white hover:bg-navy-700 transition"
             >
-              Start Free Assessment
+              Free Assessment
             </Link>
 
             <Link
               href="/contact"
-              className="px-5 py-2.5 rounded-lg bg-gold-500 hover:bg-gold-300 text-navy-900 text-xs font-extrabold transition-all shadow-md hover:shadow-gold-500/20 flex items-center gap-2 group"
+              className="whitespace-nowrap px-4 py-2.5 rounded-lg bg-gold-500 hover:bg-gold-300 text-navy-900 text-xs font-extrabold transition-all flex items-center gap-2 group"
             >
               <MessageSquare className="w-3.5 h-3.5 text-navy-900 group-hover:scale-110 transition-transform" />
               <span>Talk to Risetin</span>
@@ -368,11 +370,13 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="lg:hidden flex items-center">
+          <div className="xl:hidden flex items-center">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-navy-700/60"
-              aria-label="Toggle Menu"
+              aria-label={mobileMenuOpen ? 'Tutup menu' : 'Buka menu'}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="rti-mobile-menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -382,7 +386,7 @@ export const Header: React.FC = () => {
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-navy-900/98 backdrop-blur-2xl border-b border-navy-700 px-5 pt-4 pb-6 space-y-2 text-white">
+        <div id="rti-mobile-menu" className="xl:hidden max-h-[calc(100dvh-5rem)] overflow-y-auto bg-navy-900/98 backdrop-blur-2xl border-b border-navy-700 px-5 pt-4 pb-6 space-y-2 text-white">
           <Link
             href="/services"
             className="block px-3 py-2 rounded-lg font-bold text-slate-200 hover:text-white hover:bg-navy-700/50"
