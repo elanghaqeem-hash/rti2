@@ -19,6 +19,9 @@ export interface RuntimeMigrationStatus {
     enterpriseFinder: boolean;
     nistAssessments: boolean;
     nistQuestions: boolean;
+    projectEstimator: boolean;
+    rfq: boolean;
+    estimatorServices: boolean;
   };
 }
 
@@ -64,6 +67,12 @@ export async function getRuntimeMigrationStatus(): Promise<RuntimeMigrationStatu
     finderServices,
     nistAssessments,
     nistQuestions,
+    estimatorSessions,
+    projectEstimates,
+    rfqs,
+    rfqVersions,
+    services,
+    estimatorQuestions,
   ] = await Promise.all([
     tableExists(database, 'leads'),
     tableExists(database, 'system_parameters'),
@@ -72,6 +81,12 @@ export async function getRuntimeMigrationStatus(): Promise<RuntimeMigrationStatu
     tableExists(database, 'enterprise_finder_services'),
     tableExists(database, 'nist_assessments'),
     tableExists(database, 'nist_questions'),
+    tableExists(database, 'estimator_sessions'),
+    tableExists(database, 'project_estimates'),
+    tableExists(database, 'rfqs'),
+    tableExists(database, 'rfq_versions'),
+    tableExists(database, 'services'),
+    tableExists(database, 'estimator_questions'),
   ]);
 
   return {
@@ -89,6 +104,9 @@ export async function getRuntimeMigrationStatus(): Promise<RuntimeMigrationStatu
         finderQuestions && finderAssessments && finderServices,
       nistAssessments,
       nistQuestions,
+      projectEstimator: estimatorSessions && projectEstimates,
+      rfq: rfqs && rfqVersions,
+      estimatorServices: services && estimatorQuestions,
     },
   };
 }
