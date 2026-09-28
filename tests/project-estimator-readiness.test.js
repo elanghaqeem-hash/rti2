@@ -30,7 +30,7 @@ test('Project Estimator: production schema is database-driven and has no transac
 test('Project Estimator: migration is registered in protected system setup', () => {
   const migrations = read('lib/server/migrations.ts');
   const setup = read('app/api/admin/system/setup/route.ts');
-  assert.match(migrations, /0003_project_estimator_rfq\.sql/);
+  assert.match(migrations, /0005_project_estimator_rfq\\.sql/);
   assert.match(setup, /isAdminRequest/);
 });
 
@@ -221,3 +221,23 @@ test('Project Estimator: service recommendations are configurable and exposed wi
   assert.match(page, /do not change the selected project scope automatically/);
 });
 
+
+
+test('Project Estimator: server validates answer types and option allowlists before persistence', () => {
+  const sessionApi = read('app/api/v1/project-estimator/session/route.ts');
+  const repository = read('lib/project-estimator/repository.ts');
+  assert.match(sessionApi, /validateEstimatorSessionInput/);
+  assert.match(repository, /Unknown estimator question/);
+  assert.match(repository, /Invalid option submitted/);
+  assert.match(repository, /estimator_question_options/);
+});
+
+test('Project Estimator: Solution Finder handoff is persisted as source context', () => {
+  const page = read('app/tools/project-estimator/page.tsx');
+  const repository = read('lib/project-estimator/repository.ts');
+  const migration = read('migrations/0005_project_estimator_rfq.sql');
+  assert.match(page, /rti\.enterprise-solution-finder\.rfq-handoff\.v1/);
+  assert.match(page, /sourceContext/);
+  assert.match(repository, /source_context_json/);
+  assert.match(migration, /source_context_json TEXT/);
+});
