@@ -210,7 +210,7 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ success: false, error: 'Unsupported admin action.' }, noStore(400));
     }
 
-    return NextResponse.json({ success: true, dashboard: getEstimatorAdminDashboard() }, noStore());
+    return NextResponse.json({ success: true, dashboard: await getEstimatorAdminDashboard() }, noStore());
   } catch (error) {
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Estimator configuration update failed.' },
