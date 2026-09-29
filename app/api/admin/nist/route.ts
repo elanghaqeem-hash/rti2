@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { isAdminRequest } from '@/lib/admin/auth';
+import { adminSessionFromRequest, adminSessionHasPermission } from '@/lib/admin/auth';
+import { enforceSameOriginMutation } from '@/lib/security/request-protection';
 import { getDatabase } from '@/lib/server/database';
 import {
   getNistAssessmentConfig,
@@ -10,11 +11,20 @@ export const runtime = 'nodejs';
 
 const NO_STORE = { 'Cache-Control': 'no-store, no-cache, must-revalidate' };
 
-function unauthorized() {
+function unauthorized(status=401,error='Admin authentication required.') {
   return NextResponse.json(
-    { success: false, error: 'Admin authentication required.' },
-    { status: 401, headers: NO_STORE },
+    { success: false, error },
+    { status, headers: NO_STORE },
   );
+}
+
+function requireNistAdmin(req:Request){
+  const session=adminSessionFromRequest(req);
+  if(!session)return {session:null as any,response:unauthorized()};
+  if(!adminSessionHasPermission(session,'nist:admin')){
+    return {session,response:unauthorized(403,session.mustChangePassword?'Password change required.':'Insufficient permission.')};
+  }
+  return {session,response:null};
 }
 
 function text(value: unknown, max: number, required = false) {
@@ -37,7 +47,7 @@ function booleanValue(value: unknown) {
 }
 
 function adminActor(req: Request) {
-  return 'RTI Admin';
+  return adminSessionFromRequest(req)?.sub || 'RTI Internal';
 }
 
 function getAdminDashboard() {
@@ -97,7 +107,8 @@ function getAdminDashboard() {
 }
 
 export async function GET(req: Request) {
-  if (!isAdminRequest(req)) return unauthorized();
+  const gate=requireNistAdmin(req);
+  if(gate.response)return gate.response;
 
   try {
     return NextResponse.json(
@@ -119,7 +130,10 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  if (!isAdminRequest(req)) return unauthorized();
+  const gate=requireNistAdmin(req);
+  if(gate.response)return gate.response;
+  const origin=enforceSameOriginMutation(req);
+  if(!origin.allowed)return unauthorized(403,origin.reason||'Cross-origin request denied.');
 
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
