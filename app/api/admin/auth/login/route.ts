@@ -6,10 +6,40 @@ import {
   createAdminSession,
   validateAdminCredentials,
 } from '@/lib/admin/auth';
+import { enforceRateLimit, rateLimitHeaders, enforceSameOriginMutation } from '@/lib/security/request-protection';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
+  const origin = enforceSameOriginMutation(req);
+  if (!origin.allowed) {
+    return NextResponse.json(
+      { success: false, error: origin.reason || 'Cross-origin request denied.' },
+      { status: 403, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+
+  const rateLimit = await enforceRateLimit(req, {
+    bucket: 'admin-login',
+    limit: 5,
+    windowSeconds: 900,
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          rateLimit.reason === 'limit-exceeded'
+            ? 'Terlalu banyak percobaan login. Silakan coba kembali nanti.'
+            : 'Proteksi login belum siap.',
+      },
+      {
+        status: rateLimit.reason === 'limit-exceeded' ? 429 : 503,
+        headers: { 'Cache-Control': 'no-store', ...rateLimitHeaders(rateLimit) },
+      },
+    );
+  }
+
   if (!adminAuthConfigured()) {
     return NextResponse.json(
       {
