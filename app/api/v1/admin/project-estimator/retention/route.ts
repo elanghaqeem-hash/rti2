@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { adminSessionFromRequest } from '@/lib/admin/auth';
+import { adminSessionFromRequest, adminSessionHasPermission } from '@/lib/admin/auth';
 import { enforceSameOriginMutation } from '@/lib/security/request-protection';
 import {
   previewEstimatorRetention,
@@ -15,6 +15,9 @@ function noStore(status=200){
 export async function GET(req:Request){
   const auth=adminSessionFromRequest(req);
   if(!auth)return NextResponse.json({success:false,error:'Admin authentication required.'},noStore(401));
+  if(!adminSessionHasPermission(auth,'retention:read')){
+    return NextResponse.json({success:false,error:auth.mustChangePassword?'Password change required.':'Insufficient permission.'},noStore(403));
+  }
   try{
     return NextResponse.json({success:true,retention:await previewEstimatorRetention()},noStore());
   }catch(error){
@@ -25,6 +28,9 @@ export async function GET(req:Request){
 export async function POST(req:Request){
   const auth=adminSessionFromRequest(req);
   if(!auth)return NextResponse.json({success:false,error:'Admin authentication required.'},noStore(401));
+  if(!adminSessionHasPermission(auth,'retention:run')){
+    return NextResponse.json({success:false,error:auth.mustChangePassword?'Password change required.':'Insufficient permission.'},noStore(403));
+  }
   const origin=enforceSameOriginMutation(req);
   if(!origin.allowed)return NextResponse.json({success:false,error:origin.reason||'Cross-origin request denied.'},noStore(403));
   const body=await req.json().catch(()=>null) as any;
