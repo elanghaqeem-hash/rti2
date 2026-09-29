@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminSessionFromRequest } from '@/lib/admin/auth';
+import { enforceSameOriginMutation } from '@/lib/security/request-protection';
 import {
   createStudioQuotation,
   decideStudioQuotation,
@@ -38,6 +39,8 @@ export async function PATCH(
 ) {
   const auth = adminSessionFromRequest(req);
   if (!auth) return NextResponse.json({ success: false, error: 'Admin authentication required.' }, noStore(401));
+  const origin = enforceSameOriginMutation(req);
+  if (!origin.allowed) return NextResponse.json({ success: false, error: origin.reason || 'Cross-origin request denied.' }, noStore(403));
   const { sessionId } = await params;
   const body = await req.json().catch(() => null) as any;
   const action = String(body?.action || '');
