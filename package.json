@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "npm run build:cloudflare",
     "build:cloudflare": "npm install --no-save --package-lock=false @opennextjs/cloudflare@1.20.6 wrangler@4.142.0 && next build && npx opennextjs-cloudflare build --skipNextBuild",
-    "deploy:cloudflare": "node scripts/check-cloudflare-d1.mjs && npx opennextjs-cloudflare deploy",
+    "deploy:cloudflare": "npm run production:preflight && npx opennextjs-cloudflare deploy",
     "build:next": "next build",
     "start": "next start",
     "lint": "tsc --noEmit --pretty false",
@@ -19,7 +19,10 @@
     "d1:migrate": "npx wrangler d1 migrations apply rti-production --remote",
     "d1:info": "npx wrangler d1 info rti-production",
     "eval:estimator": "node scripts/run-estimator-ai-evals.mjs",
-    "eval:estimator:live": "RUN_LIVE_AI_EVALS=true node scripts/run-estimator-ai-evals.mjs"
+    "eval:estimator:live": "RUN_LIVE_AI_EVALS=true node scripts/run-estimator-ai-evals.mjs",
+    "production:preflight": "node scripts/check-estimator-production.mjs",
+    "r2:create": "npx wrangler r2 bucket create rti-files-production",
+    "deploy:cloudflare:production": "npm run production:preflight && npm run d1:migrate && npm run build:cloudflare && npx opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "clsx": "^2.1.1",
