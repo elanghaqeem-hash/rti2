@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { adminSessionFromRequest } from '@/lib/admin/auth';
+import { adminSessionFromRequest, adminSessionHasPermission } from '@/lib/admin/auth';
 import { enforceSameOriginMutation } from '@/lib/security/request-protection';
 import {
   createStudioQuotation,
@@ -22,6 +22,12 @@ export async function GET(
 ) {
   const auth = adminSessionFromRequest(req);
   if (!auth) return NextResponse.json({ success: false, error: 'Admin authentication required.' }, noStore(401));
+  if (!adminSessionHasPermission(auth, 'scoping:read')) {
+    return NextResponse.json(
+      { success: false, error: auth.mustChangePassword ? 'Password change required.' : 'Insufficient permission.' },
+      noStore(403),
+    );
+  }
   const { sessionId } = await params;
   try {
     return NextResponse.json({ success: true, studio: await getStudioSession(sessionId) }, noStore());
@@ -44,6 +50,19 @@ export async function PATCH(
   const { sessionId } = await params;
   const body = await req.json().catch(() => null) as any;
   const action = String(body?.action || '');
+  const requiredPermission =
+    action === 'boq' ? 'pricing:write' :
+    action === 'quotation' ? 'quotation:create' :
+    action === 'approve_quotation' ? 'quotation:approve' :
+    action === 'send_quotation' ? 'quotation:send' :
+    action === 'actual' ? 'scoping:write' :
+    null;
+  if (requiredPermission && !adminSessionHasPermission(auth, requiredPermission)) {
+    return NextResponse.json(
+      { success: false, error: auth.mustChangePassword ? 'Password change required.' : 'Insufficient permission.' },
+      noStore(403),
+    );
+  }
 
   try {
     if (action === 'boq') {
