@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { isAdminRequest } from '@/lib/admin/auth';
+import { adminSessionFromRequest, adminSessionHasPermission } from '@/lib/admin/auth';
+import { enforceSameOriginMutation } from '@/lib/security/request-protection';
 import {
   applyRuntimePendingMigrations,
   getRuntimeMigrationStatus,
@@ -9,10 +10,10 @@ import { RuntimeDatabaseUnavailableError } from '@/lib/server/runtime-database';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-function unauthorized() {
+function unauthorized(status=401, error='Admin authentication required.') {
   return NextResponse.json(
-    { success: false, error: 'Admin authentication required.' },
-    { status: 401, headers: { 'Cache-Control': 'no-store' } },
+    { success: false, error },
+    { status, headers: { 'Cache-Control': 'no-store' } },
   );
 }
 
@@ -37,7 +38,11 @@ function publicStatus(
 }
 
 export async function GET(req: Request) {
-  if (!isAdminRequest(req)) return unauthorized();
+  const session=adminSessionFromRequest(req);
+  if (!session) return unauthorized();
+  if (!adminSessionHasPermission(session,'system:admin')) {
+    return unauthorized(403, session.mustChangePassword ? 'Password change required.' : 'Insufficient permission.');
+  }
 
   try {
     const status = await getRuntimeMigrationStatus();
@@ -57,7 +62,13 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!isAdminRequest(req)) return unauthorized();
+  const session=adminSessionFromRequest(req);
+  if (!session) return unauthorized();
+  if (!adminSessionHasPermission(session,'system:admin')) {
+    return unauthorized(403, session.mustChangePassword ? 'Password change required.' : 'Insufficient permission.');
+  }
+  const origin=enforceSameOriginMutation(req);
+  if(!origin.allowed) return unauthorized(403, origin.reason || 'Cross-origin request denied.');
 
   try {
     const status = await applyRuntimePendingMigrations();
