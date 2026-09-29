@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import {
   adminSessionFromRequest,
-  isAdminRequest,
+  adminSessionHasPermission,
 } from '@/lib/admin/auth';
+import { enforceSameOriginMutation } from '@/lib/security/request-protection';
 import {
   FinderAdminRuntimeDatabaseUnavailableError,
   getFinderAdminConfigRuntime,
@@ -22,15 +23,19 @@ function clientIp(req: Request) {
   ).slice(0, 100);
 }
 
-function unauthorized() {
+function unauthorized(status=401,error='Admin authentication required.') {
   return NextResponse.json(
-    { success: false, error: 'Admin authentication required.' },
-    { status: 401, headers: NO_STORE },
+    { success: false, error },
+    { status, headers: NO_STORE },
   );
 }
 
 export async function GET(req: Request) {
-  if (!isAdminRequest(req)) return unauthorized();
+  const session=adminSessionFromRequest(req);
+  if(!session) return unauthorized();
+  if(!adminSessionHasPermission(session,'solution_finder:admin')){
+    return unauthorized(403,session.mustChangePassword?'Password change required.':'Insufficient permission.');
+  }
 
   try {
     return NextResponse.json(
@@ -60,6 +65,11 @@ export async function GET(req: Request) {
 export async function PUT(req: Request) {
   const session = adminSessionFromRequest(req);
   if (!session) return unauthorized();
+  if(!adminSessionHasPermission(session,'solution_finder:admin')){
+    return unauthorized(403,session.mustChangePassword?'Password change required.':'Insufficient permission.');
+  }
+  const origin=enforceSameOriginMutation(req);
+  if(!origin.allowed) return unauthorized(403,origin.reason||'Cross-origin request denied.');
 
   const contentLength = Number(req.headers.get('content-length') || 0);
   if (contentLength > 100_000) {
