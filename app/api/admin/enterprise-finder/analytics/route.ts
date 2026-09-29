@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { isAdminRequest } from '@/lib/admin/auth';
+import { adminSessionFromRequest, adminSessionHasPermission } from '@/lib/admin/auth';
 import {
   FinderRuntimeDatabaseUnavailableError,
   getFinderAnalyticsRuntime,
@@ -8,10 +8,17 @@ import {
 export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
-  if (!isAdminRequest(req)) {
+  const session=adminSessionFromRequest(req);
+  if (!session) {
     return NextResponse.json(
       { success: false, error: 'Admin authentication required.' },
       { status: 401, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+  if(!adminSessionHasPermission(session,'solution_finder:admin')){
+    return NextResponse.json(
+      { success: false, error: session.mustChangePassword ? 'Password change required.' : 'Insufficient permission.' },
+      { status: 403, headers: { 'Cache-Control': 'no-store' } },
     );
   }
 
