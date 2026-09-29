@@ -3,11 +3,25 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 export const ADMIN_SESSION_COOKIE = 'rti_admin_session';
 const SESSION_TTL_SECONDS = 8 * 60 * 60;
 
-type AdminSessionPayload = {
+export type AdminSessionPayload = {
   sub: string;
   role: 'admin';
+  userId?: string | null;
+  roles: string[];
+  permissions: string[];
+  mustChangePassword?: boolean;
+  authSource?: 'database' | 'legacy-env';
   iat: number;
   exp: number;
+};
+
+export type AdminSessionIdentity = {
+  sub: string;
+  userId?: string | null;
+  roles?: string[];
+  permissions?: string[];
+  mustChangePassword?: boolean;
+  authSource?: 'database' | 'legacy-env';
 };
 
 function sessionSecret() {
@@ -52,15 +66,25 @@ export function validateAdminCredentials(username: string, password: string) {
   return safeEqual(username, configuredUser) && safeEqual(password, configuredPassword);
 }
 
-export function createAdminSession(username: string) {
+export function createAdminSession(identity: string | AdminSessionIdentity) {
   if (!sessionSecret()) {
     throw new Error('ADMIN_SESSION_SECRET is not configured.');
   }
 
+  const normalized: AdminSessionIdentity =
+    typeof identity === 'string'
+      ? { sub: identity, roles: ['super_admin'], permissions: ['*'], authSource: 'legacy-env' }
+      : identity;
+
   const now = Math.floor(Date.now() / 1000);
   const payload: AdminSessionPayload = {
-    sub: username,
+    sub: normalized.sub,
     role: 'admin',
+    userId: normalized.userId ?? null,
+    roles: Array.from(new Set(normalized.roles || [])).slice(0, 16),
+    permissions: Array.from(new Set(normalized.permissions || [])).slice(0, 128),
+    mustChangePassword: normalized.mustChangePassword === true,
+    authSource: normalized.authSource,
     iat: now,
     exp: now + SESSION_TTL_SECONDS,
   };
@@ -92,10 +116,30 @@ export function verifyAdminSession(token: string | undefined | null) {
       return null;
     }
 
+    if (!Array.isArray(payload.roles)) payload.roles = ['super_admin'];
+    if (!Array.isArray(payload.permissions)) payload.permissions = ['*'];
     return payload;
   } catch {
     return null;
   }
+}
+
+export function adminSessionHasPermission(
+  session: AdminSessionPayload | null | undefined,
+  permission: string,
+) {
+  if (!session) return false;
+  if (session.roles.includes('super_admin')) return true;
+  if (session.permissions.includes('*') || session.permissions.includes(permission)) return true;
+  const namespace = permission.includes(':') ? permission.split(':')[0] : permission;
+  return session.permissions.includes(namespace + ':*');
+}
+
+export function adminSessionHasAnyPermission(
+  session: AdminSessionPayload | null | undefined,
+  permissions: string[],
+) {
+  return permissions.some((permission) => adminSessionHasPermission(session, permission));
 }
 
 export function adminSessionFromRequest(req: Request) {
