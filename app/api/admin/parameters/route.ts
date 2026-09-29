@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { isAdminRequest } from '@/lib/admin/auth';
+import { adminSessionFromRequest, adminSessionHasPermission } from '@/lib/admin/auth';
+import { enforceSameOriginMutation } from '@/lib/security/request-protection';
 import {
   PARAMETER_GROUP_MAP,
   PARAMETER_GROUPS,
@@ -14,11 +15,20 @@ import {
 
 export const runtime = 'nodejs';
 
-function unauthorized() {
+function unauthorized(status=401, error='Admin authentication required.') {
   return NextResponse.json(
-    { success: false, error: 'Admin authentication required.' },
-    { status: 401, headers: { 'Cache-Control': 'no-store' } },
+    { success: false, error },
+    { status, headers: { 'Cache-Control': 'no-store' } },
   );
+}
+
+function requirePermission(req: Request, permission: string) {
+  const session=adminSessionFromRequest(req);
+  if(!session) return {session:null as any,response:unauthorized()};
+  if(!adminSessionHasPermission(session,permission)){
+    return {session,response:unauthorized(403,session.mustChangePassword?'Password change required.':'Insufficient permission.')};
+  }
+  return {session,response:null};
 }
 
 function validateOption(value: unknown): ParameterOption {
@@ -50,7 +60,8 @@ function validateOption(value: unknown): ParameterOption {
 }
 
 export async function GET(req: Request) {
-  if (!isAdminRequest(req)) return unauthorized();
+  const gate=requirePermission(req,'parameters:read');
+  if(gate.response) return gate.response;
 
   const groupKeys = PARAMETER_GROUPS.map((group) => group.key);
   let overrides: ParameterOption[] = [];
@@ -96,7 +107,10 @@ export async function GET(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  if (!isAdminRequest(req)) return unauthorized();
+  const gate=requirePermission(req,'parameters:write');
+  if(gate.response) return gate.response;
+  const origin=enforceSameOriginMutation(req);
+  if(!origin.allowed) return unauthorized(403,origin.reason||'Cross-origin request denied.');
 
   const body = await req.json().catch(() => null);
   let option: ParameterOption;
@@ -128,7 +142,10 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  if (!isAdminRequest(req)) return unauthorized();
+  const gate=requirePermission(req,'parameters:write');
+  if(gate.response) return gate.response;
+  const origin=enforceSameOriginMutation(req);
+  if(!origin.allowed) return unauthorized(403,origin.reason||'Cross-origin request denied.');
 
   const body = await req.json().catch(() => null);
   const group = String(body?.group || '').trim();
