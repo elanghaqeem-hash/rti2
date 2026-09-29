@@ -193,3 +193,58 @@ export async function verifyTurnstile(
     };
   }
 }
+
+
+export function enforceSameOriginMutation(req: Request): {
+  allowed: boolean;
+  reason?: string;
+} {
+  const originHeader = req.headers.get('origin')?.trim();
+  if (!originHeader) {
+    // Non-browser/server-to-server requests may omit Origin. Cookie SameSite=Strict
+    // remains the primary browser CSRF control; explicit cross-origin browser
+    // mutations are rejected below.
+    return { allowed: true };
+  }
+
+  let origin: URL;
+  try {
+    origin = new URL(originHeader);
+  } catch {
+    return { allowed: false, reason: 'Invalid Origin header.' };
+  }
+
+  const forwardedHost =
+    req.headers.get('x-forwarded-host')?.split(',')[0]?.trim() ||
+    req.headers.get('host')?.trim() ||
+    '';
+  const forwardedProto =
+    req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() ||
+    (process.env.NODE_ENV === 'production' ? 'https' : origin.protocol.replace(':', ''));
+
+  const allowedOrigins = new Set<string>();
+  if (forwardedHost) allowedOrigins.add(`${forwardedProto}://${forwardedHost}`);
+
+  const publicSite = String(process.env.NEXT_PUBLIC_SITE_URL || '').trim();
+  if (publicSite) {
+    try {
+      allowedOrigins.add(new URL(publicSite).origin);
+    } catch {
+      // Invalid configured public URL is ignored here; production preflight checks it.
+    }
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    allowedOrigins.add('http://localhost:3000');
+    allowedOrigins.add('http://127.0.0.1:3000');
+  }
+
+  if (!allowedOrigins.has(origin.origin)) {
+    return {
+      allowed: false,
+      reason: 'Cross-origin state-changing request is not allowed.',
+    };
+  }
+
+  return { allowed: true };
+}
