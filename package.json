@@ -17,7 +17,9 @@
     "typecheck": "tsc --noEmit",
     "d1:create": "npx wrangler d1 create rti-production --binding RTI_DB --update-config",
     "d1:migrate": "npx wrangler d1 migrations apply rti-production --remote",
-    "d1:info": "npx wrangler d1 info rti-production"
+    "d1:info": "npx wrangler d1 info rti-production",
+    "eval:estimator": "node scripts/run-estimator-ai-evals.mjs",
+    "eval:estimator:live": "RUN_LIVE_AI_EVALS=true node scripts/run-estimator-ai-evals.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
