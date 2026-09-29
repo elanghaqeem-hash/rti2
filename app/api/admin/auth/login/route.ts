@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 import {
   ADMIN_SESSION_COOKIE,
   ADMIN_SESSION_TTL_SECONDS,
-  adminAuthConfigured,
+  adminSessionConfigured,
   createAdminSession,
-  validateAdminCredentials,
 } from '@/lib/admin/auth';
+import { authenticateInternalUser } from '@/lib/admin/rbac';
 import { enforceRateLimit, rateLimitHeaders, enforceSameOriginMutation } from '@/lib/security/request-protection';
 
 export const runtime = 'nodejs';
@@ -40,11 +40,11 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!adminAuthConfigured()) {
+  if (!adminSessionConfigured()) {
     return NextResponse.json(
       {
         success: false,
-        error: 'Admin authentication belum dikonfigurasi pada server.',
+        error: 'Internal session signing belum dikonfigurasi pada server.',
       },
       { status: 503, headers: { 'Cache-Control': 'no-store' } },
     );
@@ -62,7 +62,8 @@ export async function POST(req: Request) {
   const username = typeof body?.username === 'string' ? body.username.trim() : '';
   const password = typeof body?.password === 'string' ? body.password : '';
 
-  if (!validateAdminCredentials(username, password)) {
+  const identity = await authenticateInternalUser(username, password);
+  if (!identity) {
     return NextResponse.json(
       { success: false, error: 'Username atau password tidak valid.' },
       { status: 401, headers: { 'Cache-Control': 'no-store' } },
@@ -70,11 +71,18 @@ export async function POST(req: Request) {
   }
 
   const response = NextResponse.json(
-    { success: true, role: 'admin' },
+    {
+      success: true,
+      role: 'admin',
+      roles: identity.roles,
+      permissions: identity.permissions,
+      mustChangePassword: identity.mustChangePassword,
+      authSource: identity.authSource,
+    },
     { headers: { 'Cache-Control': 'no-store' } },
   );
 
-  response.cookies.set(ADMIN_SESSION_COOKIE, createAdminSession(username), {
+  response.cookies.set(ADMIN_SESSION_COOKIE, createAdminSession(identity), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
