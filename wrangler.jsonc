@@ -5,6 +5,7 @@
   "compatibility_date": "2026-09-25",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
+  "keep_vars": true,
 
   // Cloudflare/OpenNext staging configuration.
   // Production may still target the standard Node.js deployment path.
@@ -22,6 +23,14 @@
   "images": {
     "binding": "IMAGES"
   },
+
+  "d1_databases": [
+    {
+      "binding": "RTI_DB",
+      "database_name": "rti-production",
+      "migrations_dir": "migrations"
+    }
+  ],
 
   // Private Project Estimator document/RFQ storage.
   // Create before production deploy:
