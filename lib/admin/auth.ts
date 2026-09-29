@@ -49,6 +49,10 @@ function safeEqual(left: string, right: string) {
   return timingSafeEqual(a, b);
 }
 
+export function adminSessionConfigured() {
+  return Boolean(sessionSecret());
+}
+
 export function adminAuthConfigured() {
   return Boolean(
     String(process.env.ADMIN_USERNAME || '').trim() &&
