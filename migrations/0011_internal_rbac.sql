@@ -93,7 +93,14 @@ INSERT OR IGNORE INTO permissions (id,code,name,description,created_at) VALUES
   ('perm-portal-manage','portal:manage','Manage client portal','Respond to client portal communication.',CURRENT_TIMESTAMP),
   ('perm-retention-read','retention:read','Read retention','Preview privacy retention candidates.',CURRENT_TIMESTAMP),
   ('perm-retention-run','retention:run','Run retention','Execute approved anonymization retention jobs.',CURRENT_TIMESTAMP),
-  ('perm-ai-audit','ai:audit','Read AI audit','Review AI scoping audit/provenance records.',CURRENT_TIMESTAMP);
+  ('perm-ai-audit','ai:audit','Read AI audit','Review AI scoping audit/provenance records.',CURRENT_TIMESTAMP),
+  ('perm-system-admin','system:admin','System administration','Run database migrations and system setup operations.',CURRENT_TIMESTAMP),
+  ('perm-parameters-read','parameters:read','Read parameters','View global system parameters.',CURRENT_TIMESTAMP),
+  ('perm-parameters-write','parameters:write','Edit parameters','Edit global system parameters.',CURRENT_TIMESTAMP),
+  ('perm-leads-read','leads:read','Read leads','View lead database and contact pipeline.',CURRENT_TIMESTAMP),
+  ('perm-leads-write','leads:write','Manage leads','Update lead status and ownership.',CURRENT_TIMESTAMP),
+  ('perm-solution-admin','solution_finder:admin','Manage solution finder','Manage Enterprise Solution Finder configuration and analytics.',CURRENT_TIMESTAMP),
+  ('perm-nist-admin','nist:admin','Manage NIST tool','Manage NIST Cyber Quick Check configuration.',CURRENT_TIMESTAMP);
 
 -- Super Admin and Management receive full permissions.
 INSERT OR IGNORE INTO role_permissions(role_id,permission_id)
@@ -106,21 +113,21 @@ INSERT OR IGNORE INTO role_permissions(role_id,permission_id)
 SELECT 'role-sales-head', id FROM permissions WHERE code IN (
   'scoping:read','scoping:write','scoping:validate','pricing:read',
   'quotation:read','quotation:create','quotation:approve','quotation:send',
-  'analytics:read','portal:manage'
+  'analytics:read','portal:manage','leads:read','leads:write'
 );
 
 -- Sales
 INSERT OR IGNORE INTO role_permissions(role_id,permission_id)
 SELECT 'role-sales', id FROM permissions WHERE code IN (
   'scoping:read','scoping:write','quotation:read','quotation:create','quotation:send',
-  'analytics:read','portal:manage'
+  'analytics:read','portal:manage','leads:read','leads:write'
 );
 
 -- Pre-Sales
 INSERT OR IGNORE INTO role_permissions(role_id,permission_id)
 SELECT 'role-presales', id FROM permissions WHERE code IN (
   'scoping:read','scoping:write','scoping:validate','pricing:read',
-  'quotation:read','quotation:create','analytics:read','ai:audit','portal:manage'
+  'quotation:read','quotation:create','analytics:read','ai:audit','portal:manage','leads:read'
 );
 
 -- Technical leads
