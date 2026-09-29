@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { adminSessionFromRequest } from '@/lib/admin/auth';
+import { adminSessionFromRequest, adminSessionHasPermission } from '@/lib/admin/auth';
 import { enforceSameOriginMutation } from '@/lib/security/request-protection';
 import {
   createEstimatorQuestion,
@@ -30,9 +30,27 @@ function noStore(status = 200) {
   return { status, headers: { 'Cache-Control': 'no-store' } };
 }
 
+function permissionForAction(action: string) {
+  if (action === 'commercial' || action === 'pricing' || action === 'resource') return 'pricing:write';
+  if (action === 'opportunity_stage') return 'scoping:write';
+  if (
+    [
+      'category','create_service','service','setting','create_question','question',
+      'question_condition','question_option','rule','service_dependency','service_resource',
+    ].includes(action)
+  ) return 'catalog:write';
+  return null;
+}
+
 export async function GET(req: Request) {
   const auth = session(req);
   if (!auth) return NextResponse.json({ success: false, error: 'Admin authentication required.' }, noStore(401));
+  if (!adminSessionHasPermission(auth, 'analytics:read')) {
+    return NextResponse.json(
+      { success: false, error: auth.mustChangePassword ? 'Password change required.' : 'Insufficient permission.' },
+      noStore(403),
+    );
+  }
   try {
     return NextResponse.json({ success: true, dashboard: await getEstimatorAdminDashboard() }, noStore());
   } catch (error) {
@@ -51,6 +69,13 @@ export async function PATCH(req: Request) {
   if (!origin.allowed) return NextResponse.json({ success: false, error: origin.reason || 'Cross-origin request denied.' }, noStore(403));
   const body = await req.json().catch(() => null) as any;
   const action = typeof body?.action === 'string' ? body.action : '';
+  const requiredPermission = permissionForAction(action);
+  if (requiredPermission && !adminSessionHasPermission(auth, requiredPermission)) {
+    return NextResponse.json(
+      { success: false, error: auth.mustChangePassword ? 'Password change required.' : 'Insufficient permission.' },
+      noStore(403),
+    );
+  }
 
   try {
     if (action === 'commercial') {
