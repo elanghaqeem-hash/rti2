@@ -133,6 +133,7 @@ export function adminSessionHasPermission(
   permission: string,
 ) {
   if (!session) return false;
+  if (session.mustChangePassword === true) return false;
   if (session.roles.includes('super_admin')) return true;
   if (session.permissions.includes('*') || session.permissions.includes(permission)) return true;
   const namespace = permission.includes(':') ? permission.split(':')[0] : permission;
