@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { adminSessionFromRequest } from '@/lib/admin/auth';
+import { adminSessionFromRequest, adminSessionHasPermission } from '@/lib/admin/auth';
 import { enforceSameOriginMutation } from '@/lib/security/request-protection';
 import {
   cloneEstimatorPolicy,
@@ -25,6 +25,12 @@ export async function GET(req: Request) {
     return NextResponse.json(
       { success: false, error: 'Admin authentication required.' },
       noStore(401),
+    );
+  }
+  if (!adminSessionHasPermission(auth, 'policy:read')) {
+    return NextResponse.json(
+      { success: false, error: auth.mustChangePassword ? 'Password change required.' : 'Insufficient permission.' },
+      noStore(403),
     );
   }
 
@@ -60,6 +66,13 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => null)) as any;
   const action = String(body?.action || '');
+  const requiredPermission = action === 'publish' ? 'policy:publish' : 'policy:write';
+  if (!adminSessionHasPermission(auth, requiredPermission)) {
+    return NextResponse.json(
+      { success: false, error: auth.mustChangePassword ? 'Password change required.' : 'Insufficient permission.' },
+      noStore(403),
+    );
+  }
 
   try {
     let result: unknown = null;
