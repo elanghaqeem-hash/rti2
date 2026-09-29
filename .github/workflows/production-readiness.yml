@@ -39,6 +39,9 @@ jobs:
       - name: Run integrity tests
         run: npm test
 
+      - name: Run Project Estimator AI eval contract
+        run: npm run eval:estimator
+
       - name: Run lint
         run: npm run lint
 
