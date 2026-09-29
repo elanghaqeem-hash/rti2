@@ -135,6 +135,20 @@ async function extractOfficeText(buffer: Uint8Array, mime: string) {
   return entries.map((entry) => `[${entry.name}] ${decodeXml(entry.text)}`).join('\n').slice(0, 120000);
 }
 
+function redactSensitiveText(text: string) {
+  return String(text || '')
+    .replace(/\b\d{16}\b/g, '[REDACTED_NIK_OR_ACCOUNT]')
+    .replace(/\b\d{10,18}\b/g, '[REDACTED_ACCOUNT_OR_IDENTIFIER]')
+    .replace(/(?:\+62|62|0)8\d{7,12}\b/g, '[REDACTED_PHONE]')
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[REDACTED_EMAIL]');
+}
+
+function externalDocumentExtractionEnabled() {
+  return String(process.env.RTI_AI_DOCUMENT_EXTERNAL_EXTRACTION_ENABLED || '')
+    .trim()
+    .toLowerCase() === 'true';
+}
+
 function injectionFlags(text: string) {
   const patterns = [
     /ignore (all|any|the) previous instructions/i,
@@ -303,10 +317,16 @@ export async function storeAndParseScopingDocument(params: {
     } else if (mime.includes('officedocument')) {
       text = await extractOfficeText(buffer, mime);
     } else {
-      text = await anthropicExtractText(buffer, mime);
-      if (!text) {
+      if (!externalDocumentExtractionEnabled()) {
         parseStatus = 'stored';
-        errorMessage = 'File stored securely; AI document extraction is not configured.';
+        errorMessage =
+          'File stored securely. External AI extraction for PDF/image is disabled by privacy policy configuration.';
+      } else {
+        text = await anthropicExtractText(buffer, mime);
+        if (!text) {
+          parseStatus = 'stored';
+          errorMessage = 'File stored securely; AI document extraction is not configured.';
+        }
       }
     }
   } catch (error) {
@@ -315,10 +335,11 @@ export async function storeAndParseScopingDocument(params: {
   }
 
   const securityFlags = injectionFlags(text);
+  const redactedText = redactSensitiveText(text);
   const state = await getEstimatorSessionByToken(params.resumeToken);
   const bootstrap = await getEstimatorBootstrap();
   const questions = visibleQuestions(bootstrap.questions, state.input.serviceId);
-  const updates = securityFlags.length ? [] : await extractParams(text, questions);
+  const updates = securityFlags.length ? [] : await extractParams(redactedText, questions);
 
   let estimate = state.estimate;
   if (updates.length) {
@@ -362,7 +383,7 @@ export async function storeAndParseScopingDocument(params: {
     [
       parseStatus,
       JSON.stringify({
-        textPreview: text.slice(0, 4000),
+        textPreview: redactSensitiveText(text).slice(0, 4000),
         updates,
         error: errorMessage || undefined,
       }),

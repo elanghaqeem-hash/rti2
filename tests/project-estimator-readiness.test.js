@@ -132,9 +132,13 @@ test('Project Estimator: production pricing seed does not fabricate commercial v
 
 test('Project Estimator: RFQ attachment handling is private, validated and fail-closed in production', () => {
   const attachments = read('lib/project-estimator/attachments.ts');
+  const storage = read('lib/server/object-storage.ts');
   const route = read('app/api/v1/project-estimator/rfq/[id]/attachments/route.ts');
-  assert.match(attachments, /RTI_UPLOAD_DIR/);
-  assert.match(attachments, /outside the public web root/);
+  assert.match(attachments, /putPrivateObject/);
+  assert.match(attachments, /getPrivateObject/);
+  assert.match(storage, /RTI_UPLOAD_DIR/);
+  assert.match(storage, /outside the public web root/);
+  assert.match(storage, /RTI_FILES/);
   assert.match(attachments, /fileMagicMatches/);
   assert.match(attachments, /createHash\('sha256'\)/);
   assert.match(attachments, /RTI_MALWARE_SCAN_URL/);
@@ -279,12 +283,14 @@ test('Project Estimator: async capability checks are awaited by public routes', 
   }
 });
 
-test('Project Estimator: Cloudflare attachment upload fails closed until object storage is configured', () => {
+test('Project Estimator: Cloudflare attachment storage uses private R2 and Node uses private filesystem fallback', () => {
   const attachments = read('lib/project-estimator/attachments.ts');
-  assert.match(attachments, /db\.kind !== 'node-sqlite'/);
-  assert.match(attachments, /configured object storage on Cloudflare/);
-  assert.match(attachments, /await import\('node:fs\/promises'\)/);
-  assert.doesNotMatch(attachments, /^import .*node:fs/m);
+  const storage = read('lib/server/object-storage.ts');
+  assert.match(attachments, /putPrivateObject/);
+  assert.match(attachments, /getPrivateObject/);
+  assert.match(storage, /Cloudflare R2 binding RTI_FILES/);
+  assert.match(storage, /await import\('node:fs\/promises'\)/);
+  assert.doesNotMatch(storage, /^import .*node:fs/m);
 });
 
 test('Project Estimator: branded RFQ PDF is generated server-side behind capability access', () => {

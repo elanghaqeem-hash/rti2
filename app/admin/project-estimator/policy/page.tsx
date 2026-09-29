@@ -89,7 +89,7 @@ export default function EstimatorPolicyPage(){
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href="/admin/project-estimator/configuration" className="rounded-xl border border-line px-4 py-2.5 text-xs font-bold text-navy-900">Configuration</Link>
-            <Link href="/admin/project-estimator" className="rounded-xl border border-line px-4 py-2.5 text-xs font-bold text-navy-900">RFQ Dashboard</Link>
+            <Link href="/admin/project-estimator" className="rounded-xl border border-line px-4 py-2.5 text-xs font-bold text-navy-900">RFQ Dashboard</Link>\n            <Link href="/admin/project-estimator/privacy" className="rounded-xl border border-line px-4 py-2.5 text-xs font-bold text-navy-900">Privacy & Retention</Link>
             <button onClick={()=>void load()} className="inline-flex items-center gap-2 rounded-xl bg-navy-900 px-4 py-2.5 text-xs font-extrabold text-white"><RefreshCw className="h-4 w-4"/>Refresh</button>
           </div>
         </div>
