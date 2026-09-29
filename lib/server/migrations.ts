@@ -12,6 +12,7 @@ const MIGRATIONS = [
   '0007_project_estimator_copilot.sql',
   '0008_project_estimator_studio_quotation.sql',
   '0009_project_estimator_policy_governance.sql',
+  '0010_project_estimator_privacy_retention.sql',
 ] as const;
 
 export interface MigrationStatus {
