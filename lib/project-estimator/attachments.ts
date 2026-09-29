@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { getRuntimeDatabase } from '@/lib/server/runtime-database';
+import { getPrivateObject, putPrivateObject } from '@/lib/server/object-storage';
 
 const ALLOWED = new Map<string, string[]>([
   ['application/pdf', ['.pdf']],
@@ -43,29 +44,12 @@ async function malwareScan(buffer: Buffer, fileName: string, mimeType: string) {
   return { clean, reason: clean ? 'clean' : 'Scanner rejected file.' };
 }
 
-async function resolveUploadDirectory() {
-  const path = await import('node:path');
-  const configured = String(process.env.RTI_UPLOAD_DIR || '').trim();
-  if (!configured) throw new Error('RFQ file storage is not configured.');
-  const resolved = path.resolve(configured);
-  const publicRoot = path.resolve(process.cwd(), 'public');
-  if (resolved === publicRoot || resolved.startsWith(publicRoot + path.sep)) {
-    throw new Error('RFQ upload directory must be outside the public web root.');
-  }
-  return { directory: resolved, path };
-}
-
 export async function storeRfqAttachment(params: {
   rfqId: string;
   file: File;
   actor?: string;
 }) {
   const db = await getRuntimeDatabase();
-  if (db.kind !== 'node-sqlite') {
-    throw new Error(
-      'RFQ supporting-document upload requires configured object storage on Cloudflare. Upload is disabled until that storage is enabled.',
-    );
-  }
   if (process.env.NODE_ENV === 'production' && process.env.RTI_FILE_UPLOADS_ENABLED !== 'true') {
     throw new Error('RFQ file uploads are disabled in production.');
   }
@@ -89,13 +73,13 @@ export async function storeRfqAttachment(params: {
   const scan = await malwareScan(buffer, params.file.name, mimeType);
   if (!scan.clean) throw new Error(scan.reason || 'File did not pass malware scanning.');
 
-  const { directory, path } = await resolveUploadDirectory();
-  const { mkdir, writeFile } = await import('node:fs/promises');
-  await mkdir(directory, { recursive: true });
   const attachmentId = randomUUID();
-  const storageKey = `${attachmentId}${extension}`;
-  const storagePath = path.join(directory, storageKey);
-  await writeFile(storagePath, buffer, { flag: 'wx', mode: 0o600 });
+  const storageKey = `rfq/${params.rfqId}/${attachmentId}${extension}`;
+  await putPrivateObject({
+    key: storageKey,
+    buffer: new Uint8Array(buffer),
+    contentType: mimeType,
+  });
 
   const sha256 = createHash('sha256').update(buffer).digest('hex');
   const now = new Date().toISOString();
@@ -129,11 +113,6 @@ export async function storeRfqAttachment(params: {
 
 export async function readRfqAttachment(rfqId: string, attachmentId: string) {
   const db = await getRuntimeDatabase();
-  if (db.kind !== 'node-sqlite') {
-    throw new Error(
-      'RFQ attachment download requires configured object storage on Cloudflare. Download is disabled until that storage is enabled.',
-    );
-  }
 
   const row = await db.queryOne<{
     file_name: string;
@@ -149,11 +128,10 @@ export async function readRfqAttachment(rfqId: string, attachmentId: string) {
   if (!row) throw new Error('RFQ attachment not found.');
   if (row.scan_status !== 'clean') throw new Error('RFQ attachment is not cleared for download.');
 
-  const { directory, path } = await resolveUploadDirectory();
-  if (path.basename(row.storage_key) !== row.storage_key) throw new Error('Invalid RFQ attachment storage key.');
-  const storagePath = path.join(directory, row.storage_key);
-  const { readFile } = await import('node:fs/promises');
-  const buffer = await readFile(storagePath);
+  if (!row.storage_key || row.storage_key.includes('..')) throw new Error('Invalid RFQ attachment storage key.');
+  const bytes = await getPrivateObject(row.storage_key);
+  if (!bytes) throw new Error('RFQ attachment object is missing.');
+  const buffer = Buffer.from(bytes);
   const sha256 = createHash('sha256').update(buffer).digest('hex');
   if (sha256 !== row.sha256) throw new Error('RFQ attachment integrity verification failed.');
 
