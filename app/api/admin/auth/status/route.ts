@@ -11,6 +11,11 @@ export async function GET(req: Request) {
       authenticated: Boolean(session),
       role: session?.role || null,
       username: session?.sub || null,
+      userId: session?.userId || null,
+      roles: session?.roles || [],
+      permissions: session?.permissions || [],
+      mustChangePassword: session?.mustChangePassword === true,
+      authSource: session?.authSource || null,
     },
     {
       status: session ? 200 : 401,
