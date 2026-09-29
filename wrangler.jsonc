@@ -22,6 +22,17 @@
   "images": {
     "binding": "IMAGES"
   },
+
+  // Private Project Estimator document/RFQ storage.
+  // Create before production deploy:
+  //   npx wrangler r2 bucket create rti-files-production
+  "r2_buckets": [
+    {
+      "binding": "RTI_FILES",
+      "bucket_name": "rti-files-production"
+    }
+  ],
+
   "observability": {
     "enabled": true
   }
