@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminSessionFromRequest } from '@/lib/admin/auth';
+import { enforceSameOriginMutation } from '@/lib/security/request-protection';
 import {
   createEstimatorQuestion,
   createEstimatorService,
@@ -46,6 +47,8 @@ export async function GET(req: Request) {
 export async function PATCH(req: Request) {
   const auth = session(req);
   if (!auth) return NextResponse.json({ success: false, error: 'Admin authentication required.' }, noStore(401));
+  const origin = enforceSameOriginMutation(req);
+  if (!origin.allowed) return NextResponse.json({ success: false, error: origin.reason || 'Cross-origin request denied.' }, noStore(403));
   const body = await req.json().catch(() => null) as any;
   const action = typeof body?.action === 'string' ? body.action : '';
 
