@@ -29,7 +29,7 @@ export default function AdminAccessPage() {
         return;
       }
 
-      router.replace('/admin/system');
+      router.replace(data?.mustChangePassword ? '/admin/change-password' : '/admin/system');
       router.refresh();
     } catch {
       setError('Koneksi ke layanan autentikasi gagal.');
@@ -51,10 +51,10 @@ export default function AdminAccessPage() {
               RTI Secure Administration
             </p>
             <h1 className="mt-2 text-2xl font-extrabold text-navy-900">
-              Admin Sign In
+              Internal Sign In
             </h1>
             <p className="mt-2 text-xs leading-relaxed text-muted">
-              Akses konfigurasi sistem, parameter, database, dan lead hanya untuk user Admin RTI.
+              Akses internal RTI menggunakan akun bernama dan role sesuai tanggung jawab. Hak akses ditentukan oleh permission server-side.
             </p>
           </div>
 
@@ -101,7 +101,7 @@ export default function AdminAccessPage() {
               className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-navy-900 px-5 py-3 text-sm font-extrabold text-white disabled:opacity-50"
             >
               <LogIn className="h-4 w-4 text-gold-400" />
-              {loading ? 'Memverifikasi...' : 'Masuk sebagai Admin'}
+              {loading ? 'Memverifikasi...' : 'Masuk ke RTI Internal'}
             </button>
           </form>
         </div>
