@@ -20,7 +20,7 @@ const nextConfig = {
           },
           {
             key: 'X-Frame-Options',
-            value: 'DENY',
+            value: 'SAMEORIGIN',
           },
           {
             key: 'X-Content-Type-Options',
@@ -39,6 +39,10 @@ const nextConfig = {
             value: 'same-origin',
           },
           {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-site',
+          },
+          {
             key: 'X-Permitted-Cross-Domain-Policies',
             value: 'none',
           },
@@ -55,7 +59,7 @@ const nextConfig = {
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
-              "frame-ancestors 'none'",
+              "frame-ancestors 'self'",
             ].join('; '),
           },
         ],
