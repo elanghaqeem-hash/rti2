@@ -118,7 +118,7 @@ try {
   }
 
   if (!args.has('--skip-preflight')) {
-    run('npm', ['run', 'production:preflight']);
+    run('npm', ['run', 'production:preflight:node']);
   }
 
   if (!args.has('--skip-build')) {
