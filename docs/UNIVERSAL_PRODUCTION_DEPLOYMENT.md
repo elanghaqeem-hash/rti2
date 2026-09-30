@@ -320,3 +320,19 @@ Application rollback:
 5. verifikasi health endpoint sebelum membuka trafik.
 
 Migration database harus diperlakukan sebagai perubahan forward-only kecuali migration tertentu mempunyai prosedur rollback yang telah diuji.
+
+## 14. Preflight profiles
+
+Node/Docker:
+
+```bash
+npm run production:preflight:node
+```
+
+Cloudflare:
+
+```bash
+npm run production:preflight
+```
+
+Kedua preflight sengaja dipisahkan. Preflight Node tidak mensyaratkan D1/R2, sedangkan preflight Cloudflare tetap memeriksa resource binding Cloudflare.
