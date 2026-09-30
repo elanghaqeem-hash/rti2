@@ -34,16 +34,19 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 ENV RTI_DB_PATH=/data/rti.sqlite
 ENV RTI_UPLOAD_DIR=/data/uploads
+ENV RTI_BACKUP_DIR=/data/backups
 ENV RTI_RUN_MIGRATIONS_ON_START=true
 
 RUN groupadd --system --gid 1001 nodejs \
     && useradd --system --uid 1001 --gid nodejs --home-dir /app nextjs \
-    && mkdir -p /data/uploads /app/scripts /app/migrations \
+    && mkdir -p /data/uploads /data/backups /app/scripts /app/migrations \
     && chown -R nextjs:nodejs /data /app
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/migrations ./migrations
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/db-migrate.mjs ./scripts/db-migrate.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/backup.mjs ./scripts/backup.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/restore.mjs ./scripts/restore.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/container-entrypoint.mjs ./scripts/container-entrypoint.mjs
 
 USER nextjs
