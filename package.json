@@ -28,7 +28,8 @@
     "db:verify:node": "node scripts/db-migrate.mjs verify",
     "backup:node": "node scripts/backup.mjs",
     "restore:node": "node scripts/restore.mjs",
-    "deploy:node": "node scripts/deploy-node.mjs"
+    "deploy:node": "node scripts/deploy-node.mjs",
+    "production:preflight:node": "node scripts/check-node-production.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
