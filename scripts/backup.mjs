@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 
 function timestamp() {
@@ -65,6 +66,10 @@ try {
   db.close();
   fs.chmodSync(databaseBackup, 0o600);
 
+  const databaseSha256 = createHash('sha256')
+    .update(fs.readFileSync(databaseBackup))
+    .digest('hex');
+
   const includeUploads =
     String(process.env.RTI_BACKUP_INCLUDE_UPLOADS || 'true').toLowerCase() !== 'false';
   const uploadDir = String(process.env.RTI_UPLOAD_DIR || '').trim();
@@ -98,6 +103,7 @@ try {
       file: 'database.sqlite',
       sourceBasename: path.basename(sourceDb),
       integrity: 'ok',
+      sha256: databaseSha256,
     },
     uploads,
   };
