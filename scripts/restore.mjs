@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 
 function argValue(name) {
@@ -60,6 +61,15 @@ try {
     throw new Error('Unsupported RTI backup format.');
   }
 
+  if (manifest.database?.sha256) {
+    const actualSha256 = createHash('sha256')
+      .update(fs.readFileSync(sourceDb))
+      .digest('hex');
+    if (actualSha256 !== manifest.database.sha256) {
+      throw new Error('Backup database SHA-256 checksum mismatch.');
+    }
+  }
+
   const candidate = new DatabaseSync(sourceDb, { readOnly: true });
   const integrity = candidate.prepare('PRAGMA integrity_check;').get();
   candidate.close();
@@ -100,7 +110,10 @@ try {
     }
 
     const targetUploads = path.resolve(uploadDir);
-    const preservedUploads = targetUploads + '.pre-restore';
+    const preservedUploads =
+      targetUploads +
+      '.pre-restore-' +
+      new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
     if (fs.existsSync(preservedUploads)) {
       throw new Error(`Refusing to overwrite existing preserved uploads: ${preservedUploads}`);
     }
