@@ -22,7 +22,14 @@
     "eval:estimator:live": "RUN_LIVE_AI_EVALS=true node scripts/run-estimator-ai-evals.mjs",
     "production:preflight": "node scripts/check-estimator-production.mjs",
     "r2:create": "npx wrangler r2 bucket create rti-files-production",
-    "deploy:cloudflare:production": "npm run production:preflight && npm run d1:migrate && npm run build:cloudflare && npx opennextjs-cloudflare deploy"
+    "deploy:cloudflare:production": "npm run production:preflight && npm run d1:migrate && npm run build:cloudflare && npx opennextjs-cloudflare deploy",
+    "db:status:node": "node scripts/db-migrate.mjs status",
+    "db:migrate:node": "node scripts/db-migrate.mjs up",
+    "db:verify:node": "node scripts/db-migrate.mjs verify",
+    "backup:node": "node scripts/backup.mjs",
+    "restore:node": "node scripts/restore.mjs",
+    "deploy:node": "node scripts/deploy-node.mjs",
+    "production:preflight:node": "node scripts/check-node-production.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

@@ -1,0 +1,15 @@
+.git
+.github
+.next
+.open-next
+node_modules
+data
+backups
+coverage
+*.log
+.DS_Store
+
+.env
+.env.*
+!.env.example
+!.env.production.example
