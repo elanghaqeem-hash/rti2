@@ -182,7 +182,7 @@ Application storage berada di `lib/server/object-storage.ts` dan memilih backend
 
 Gunakan storage abstraction tersebut dari application code; jangan menulis file upload langsung ke `public/`.
 
-Untuk Docker, tempatkan `RTI_UPLOAD_DIR` di persistent volume yang sama atau volume terpisah.
+Untuk Docker, tempatkan `RTI_UPLOAD_DIR` di persistent volume yang sama atau volume terpisah. Image juga membawa `scripts/backup.mjs` dan `scripts/restore.mjs`; default container memakai `/data/backups` agar backup berada pada persistent volume.
 
 ## 7. Health and readiness
 
@@ -221,7 +221,7 @@ RTI_BACKUP_INCLUDE_UPLOADS=true
 RTI_BACKUP_RETENTION_DAYS=14
 ```
 
-Database backup dibuat dengan SQLite `VACUUM INTO` sehingga menghasilkan database backup konsisten. Backup directory juga mempunyai `manifest.json`.
+Database backup dibuat dengan SQLite `VACUUM INTO` sehingga menghasilkan database backup konsisten. `manifest.json` menyimpan SHA-256 database backup dan restore akan memverifikasi checksum tersebut sebelum mengganti database aktif.
 
 Contoh cron harian pukul 02:15:
 
