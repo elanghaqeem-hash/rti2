@@ -24,6 +24,12 @@ CREATE TABLE IF NOT EXISTS rti_product_scopes (
  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
  UNIQUE(product_sku,name)
 );
+CREATE TABLE IF NOT EXISTS rti_product_events (
+ id TEXT PRIMARY KEY, actor TEXT NOT NULL, action TEXT NOT NULL,
+ target_type TEXT NOT NULL, target_id TEXT NOT NULL,
+ before_json TEXT, after_json TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_rti_product_events_target ON rti_product_events(target_type,target_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_rti_products_category ON rti_products(category_code,is_active,name);
 CREATE INDEX IF NOT EXISTS idx_rti_scopes_product ON rti_product_scopes(product_sku,is_active,sort_order);
 INSERT OR IGNORE INTO rti_product_categories (code,name,sort_order,is_supporting) VALUES ('GRC','Governance, Risk & Compliance',10,0);
