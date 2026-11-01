@@ -44,6 +44,19 @@ export const PARAMETER_GROUPS: ParameterGroupDefinition[] = [
     ],
   },
   {
+    key: 'products.industries',
+    label: 'Master Produk - Filter Industri',
+    description: 'Pemilihan sektor sasaran pada katalog produk dan layanan RTI.',
+    logicBound: true,
+    options: [
+      option('ALL', 'Semua industri', 0),
+      option('FSI', 'Financial Services (FSI)', 10),
+      option('Manufacturing', 'Manufaktur & industri', 20),
+      option('Government', 'Pemerintahan / sektor publik', 30),
+      option('Other', 'Industri lainnya', 40),
+    ],
+  },
+  {
     key: 'services.primary',
     label: 'Layanan Utama RTI',
     description: 'Pilihan layanan pada RFQ, konsultasi, dan lead generation.',
