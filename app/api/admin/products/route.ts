@@ -18,15 +18,15 @@ function validate(input:unknown) {
  if(!name||name.length>220)throw new Error('Nama produk atau cakupan tidak valid.');
  if(entity==='product'){
   const sku=String(x.sku||'').trim().toUpperCase(),category_code=String(x.category_code||'').trim().toUpperCase();
-  if(!/^RTI-(GRC|OFF|DEF|ADV|TAL|RES)-[0-9]{3,5}$/.test(sku)||sku.split('-')[1]!==category_code)throw new Error('SKU/pilar tidak valid.');
+  if(!/^RTI-(GRC|OFF|DEF|ADV|TAL|RES|TRN|DEV|TPR)-[0-9]{3,5}$/.test(sku)||sku.split('-')[1]!==category_code)throw new Error('SKU/pilar tidak valid.');
   const description=String(x.description||'').trim(),unit=String(x.unit||'project').trim();
   if(description.length>1500||!['project','day','month','year','session','participant','asset','service'].includes(unit))throw new Error('Deskripsi/satuan tidak valid.');
   return {entity,create,product:{sku,category_code,name,description,unit,is_active:active}};
  }
  const product_sku=String(x.product_sku||'').trim().toUpperCase();
  const id=String(x.id||'').trim(),sort_order=Number(x.sort_order??10);
- if(!/^RTI-(GRC|OFF|DEF|ADV|TAL|RES)-[0-9]{3,5}$/.test(product_sku)
-    ||(!create&&!/^RTI-(GRC|OFF|DEF|ADV|TAL|RES)-[0-9]{3,5}-S[A-Z0-9]{2,16}$/.test(id))
+ if(!/^RTI-(GRC|OFF|DEF|ADV|TAL|RES|TRN|DEV|TPR)-[0-9]{3,5}$/.test(product_sku)
+    ||(!create&&!/^RTI-(GRC|OFF|DEF|ADV|TAL|RES|TRN|DEV|TPR)-[0-9]{3,5}-S[A-Z0-9]{2,16}$/.test(id))
     ||!Number.isInteger(sort_order)||sort_order<0||sort_order>100000)throw new Error('Scope tidak valid.');
  return {entity,create,scope:{id,product_sku,name,sort_order,is_active:active}};
 }
