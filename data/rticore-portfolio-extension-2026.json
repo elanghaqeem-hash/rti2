@@ -1,0 +1,1817 @@
+{
+  "version": "2026-11-01",
+  "extension": [
+    {
+      "code": "TRN",
+      "name": "Training Provider & Corporate Academy",
+      "sortOrder": 70,
+      "supporting": false,
+      "products": [
+        {
+          "sku": "RTI-TRN-001",
+          "categoryCode": "TRN",
+          "name": "Cybersecurity Awareness & Phishing Simulation",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TRN-001-S01",
+              "name": "Executive awareness",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-001-S02",
+              "name": "Awareness karyawan dan non-TI",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-001-S03",
+              "name": "Phishing simulation & reporting",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-001-S04",
+              "name": "Sektor-spesifik FSI/industri/pemerintahan",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TRN-002",
+          "categoryCode": "TRN",
+          "name": "Cybersecurity Technical Bootcamp",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TRN-002-S01",
+              "name": "Basic-to-advanced cybersecurity",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-002-S02",
+              "name": "VAPT / ethical hacking lab",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-002-S03",
+              "name": "Blue Team / SOC lab",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-002-S04",
+              "name": "Hands-on cyber range dan capstone",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TRN-003",
+          "categoryCode": "TRN",
+          "name": "SOC, SIEM, Threat Hunting & Incident Response Training",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TRN-003-S01",
+              "name": "SOC L1–L3 analyst track",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-003-S02",
+              "name": "SIEM engineering & detection use cases",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-003-S03",
+              "name": "Threat hunting tabletop",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-003-S04",
+              "name": "Incident handling / DFIR exercises",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TRN-004",
+          "categoryCode": "TRN",
+          "name": "GRC, ISO & Security Audit Training",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TRN-004-S01",
+              "name": "ISO/IEC 27001, ISO 22301, ISO 20000-1",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-004-S02",
+              "name": "ITGC / ITAC / ICOFR",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-004-S03",
+              "name": "COBIT / NIST CSF / audit internal",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-004-S04",
+              "name": "Policy, RCSA, KRI & compliance workshops",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TRN-005",
+          "categoryCode": "TRN",
+          "name": "Banking & Financial Risk Management Training",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TRN-005-S01",
+              "name": "ICAAP/ILAAP, LCR/NSFR",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-005-S02",
+              "name": "Credit risk & PSAK 71/ECL",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-005-S03",
+              "name": "Operational risk, RCSA, LED, KRI",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-005-S04",
+              "name": "OJK/BI regulatory governance & IT risk",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TRN-006",
+          "categoryCode": "TRN",
+          "name": "Privacy, PDP & Data Governance Training",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TRN-006-S01",
+              "name": "UU PDP compliance awareness",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-006-S02",
+              "name": "DPO / DPIA / ROPA workshops",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-006-S03",
+              "name": "Data classification & retention",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-006-S04",
+              "name": "Privacy incident response simulation",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TRN-007",
+          "categoryCode": "TRN",
+          "name": "Secure Coding, DevSecOps & Cloud Training",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TRN-007-S01",
+              "name": "OWASP Top 10 / secure coding",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-007-S02",
+              "name": "SAST/DAST/SCA pipeline workshop",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-007-S03",
+              "name": "Cloud security & container hardening",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-007-S04",
+              "name": "API security / IAM workshop",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TRN-008",
+          "categoryCode": "TRN",
+          "name": "OT/ICS, Smart Factory & Industry 4.0 Training",
+          "description": "",
+          "industries": [
+            "Manufacturing",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TRN-008-S01",
+              "name": "OT/ICS cybersecurity & IEC 62443 awareness",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-008-S02",
+              "name": "Industrial network segmentation & asset discovery",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-008-S03",
+              "name": "Smart factory / IoT operations security",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-008-S04",
+              "name": "Plant safety tabletop and ransomware drill",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TRN-009",
+          "categoryCode": "TRN",
+          "name": "Government SPBE & Digital Governance Training",
+          "description": "",
+          "industries": [
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TRN-009-S01",
+              "name": "SPBE governance & architecture",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-009-S02",
+              "name": "Satu Data Indonesia / interoperability",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-009-S03",
+              "name": "CSIRT / security incident management",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-009-S04",
+              "name": "Layanan publik digital & pengadaan TI",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TRN-010",
+          "categoryCode": "TRN",
+          "name": "BCM, Crisis Simulation & Disaster Recovery Training",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TRN-010-S01",
+              "name": "Business impact analysis (BIA) workshop",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-010-S02",
+              "name": "BCP/DRP/DR drill",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-010-S03",
+              "name": "Crisis leadership tabletop",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-010-S04",
+              "name": "Resilience testing & recovery metrics",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TRN-011",
+          "categoryCode": "TRN",
+          "name": "AI, Data Analytics & Digital Skills Training",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TRN-011-S01",
+              "name": "Applied generative AI for business",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-011-S02",
+              "name": "Responsible AI and AI governance",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-011-S03",
+              "name": "Data analytics / BI / SQL workshops",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-011-S04",
+              "name": "Automation, low-code & citizen developer",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TRN-012",
+          "categoryCode": "TRN",
+          "name": "Train-the-Trainer & Certification Preparation",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TRN-012-S01",
+              "name": "Trainer competency / ToT",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-012-S02",
+              "name": "BNSP-aligned preparation (subject to approval)",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-012-S03",
+              "name": "Global certification exam preparation",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-012-S04",
+              "name": "Assessment / competency evaluation",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TRN-013",
+          "categoryCode": "TRN",
+          "name": "Corporate Training Program Management",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TRN-013-S01",
+              "name": "Public / in-house / hybrid delivery",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-013-S02",
+              "name": "Curriculum & training needs analysis",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-013-S03",
+              "name": "LMS / e-learning content",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-013-S04",
+              "name": "Attendance, pre-post test & evaluation",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TRN-014",
+          "categoryCode": "TRN",
+          "name": "Executive Leadership & Cyber Risk Board Workshop",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TRN-014-S01",
+              "name": "Board & C-suite cyber risk briefing",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-014-S02",
+              "name": "Risk appetite, governance & strategy",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-014-S03",
+              "name": "Regulatory oversight for FSI / government",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TRN-014-S04",
+              "name": "Executive incident simulation",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "DEV",
+      "name": "System Development & Digital Solutions",
+      "sortOrder": 80,
+      "supporting": false,
+      "products": [
+        {
+          "sku": "RTI-DEV-001",
+          "categoryCode": "DEV",
+          "name": "Enterprise ERP & PSA Development",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-DEV-001-S01",
+              "name": "Finance GL/AP/AR, procurement & HR",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-001-S02",
+              "name": "CRM/sales/pipeline/quotation",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-001-S03",
+              "name": "Professional Services Automation (PSA)",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-001-S04",
+              "name": "Multi-company, approval & reporting",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-DEV-002",
+          "categoryCode": "DEV",
+          "name": "Banking & Financial Services Applications",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-DEV-002-S01",
+              "name": "CBS / API / payment integration (authorized interface)",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-002-S02",
+              "name": "Credit / financing origination",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-002-S03",
+              "name": "Risk, compliance & regulatory workflows",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-002-S04",
+              "name": "Reconciliation, reporting & financial dashboards",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-DEV-003",
+          "categoryCode": "DEV",
+          "name": "Government Digital Service & SPBE Systems",
+          "description": "",
+          "industries": [
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-DEV-003-S01",
+              "name": "Portal layanan publik dan perizinan",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-003-S02",
+              "name": "SPBE workflow & government services",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-003-S03",
+              "name": "Satu Data / interoperability API",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-003-S04",
+              "name": "E-office, e-signature & citizen service",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-DEV-004",
+          "categoryCode": "DEV",
+          "name": "Manufacturing MES, Production & Quality Systems",
+          "description": "",
+          "industries": [
+            "Manufacturing",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-DEV-004-S01",
+              "name": "Manufacturing Execution System (MES)",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-004-S02",
+              "name": "Production planning & scheduling",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-004-S03",
+              "name": "Quality management / CAPA",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-004-S04",
+              "name": "Plant performance / OEE dashboards",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-DEV-005",
+          "categoryCode": "DEV",
+          "name": "Supply Chain, Warehouse & Logistics Systems",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-DEV-005-S01",
+              "name": "WMS & inventory tracking",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-005-S02",
+              "name": "Procurement-to-pay & supplier portal",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-005-S03",
+              "name": "Transport / fleet / distribution management",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-005-S04",
+              "name": "Barcode, RFID and IoT integration",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-DEV-006",
+          "categoryCode": "DEV",
+          "name": "Cybersecurity GRC, Audit & Risk Platforms",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-DEV-006-S01",
+              "name": "ERM/RCSA/control testing",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-006-S02",
+              "name": "ICOFR / combined assurance / audit",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-006-S03",
+              "name": "Vendor risk and regulatory compliance",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-006-S04",
+              "name": "Remediation, risk dashboards & evidence",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-DEV-007",
+          "categoryCode": "DEV",
+          "name": "Climate Risk & Sustainability Applications",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-DEV-007-S01",
+              "name": "Scope 1–3 GHG accounting",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-007-S02",
+              "name": "Financed emissions / PCAF for FSI",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-007-S03",
+              "name": "Scenario analysis / climate risk reporting",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-007-S04",
+              "name": "ESG data collection & audit trail",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-DEV-008",
+          "categoryCode": "DEV",
+          "name": "Document Management, Records & e-Archive Systems",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-DEV-008-S01",
+              "name": "DMS / digital archive and search",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-008-S02",
+              "name": "Retention, legal hold & disposition",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-008-S03",
+              "name": "OCR, metadata & approval workflow",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-008-S04",
+              "name": "Access control and evidence logs",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-DEV-009",
+          "categoryCode": "DEV",
+          "name": "Web, Mobile & Customer Self-Service Development",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-DEV-009-S01",
+              "name": "Responsive web portal",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-009-S02",
+              "name": "Android / iOS mobile application",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-009-S03",
+              "name": "Customer / vendor / citizen portals",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-009-S04",
+              "name": "UX/UI design and accessibility",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-DEV-010",
+          "categoryCode": "DEV",
+          "name": "API, Integration & Middleware Development",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-DEV-010-S01",
+              "name": "API gateway / REST / webhook integration",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-010-S02",
+              "name": "Legacy system integration",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-010-S03",
+              "name": "Event-driven / middleware architecture",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-010-S04",
+              "name": "Identity federation / SSO integration",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-DEV-011",
+          "categoryCode": "DEV",
+          "name": "Data Warehouse, BI & AI Application Development",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-DEV-011-S01",
+              "name": "Data ingestion & ETL/ELT",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-011-S02",
+              "name": "Executive reporting and BI",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-011-S03",
+              "name": "Predictive analytics / AI assistants",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-011-S04",
+              "name": "Governed data quality and lineage",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-DEV-012",
+          "categoryCode": "DEV",
+          "name": "HRIS, LMS & Workforce Management Systems",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-DEV-012-S01",
+              "name": "Recruitment, payroll & attendance integration",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-012-S02",
+              "name": "Learning Management System (LMS)",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-012-S03",
+              "name": "Competency, skills & performance",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-012-S04",
+              "name": "Resource and utilization planning",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-DEV-013",
+          "categoryCode": "DEV",
+          "name": "Secure SDLC, Modernization & DevSecOps Engineering",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-DEV-013-S01",
+              "name": "Legacy modernization and refactoring",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-013-S02",
+              "name": "Cloud-native / container application",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-013-S03",
+              "name": "CI/CD security integration",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-013-S04",
+              "name": "Application penetration testing readiness",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-DEV-014",
+          "categoryCode": "DEV",
+          "name": "Custom Workflow, BPM & Case Management",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-DEV-014-S01",
+              "name": "No-code/low-code workflow design",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-014-S02",
+              "name": "Maker-checker and approval matrix",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-014-S03",
+              "name": "Case / complaint / incident management",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-DEV-014-S04",
+              "name": "Process SLA, escalation and audit trail",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "TPR",
+      "name": "Technology Provider & Infrastructure Solutions",
+      "sortOrder": 90,
+      "supporting": false,
+      "products": [
+        {
+          "sku": "RTI-TPR-001",
+          "categoryCode": "TPR",
+          "name": "Enterprise Server, Storage & Data Center Infrastructure",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TPR-001-S01",
+              "name": "Compute / virtualization & hyperconverged infrastructure",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-001-S02",
+              "name": "Enterprise SAN/NAS and storage",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-001-S03",
+              "name": "Data center sizing & installation",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-001-S04",
+              "name": "Warranty / refresh & lifecycle management",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TPR-002",
+          "categoryCode": "TPR",
+          "name": "Network, SD-WAN, Wi-Fi & Connectivity Solutions",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TPR-002-S01",
+              "name": "LAN/WAN, switching and routing",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-002-S02",
+              "name": "SD-WAN and secure remote access",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-002-S03",
+              "name": "Enterprise / campus Wi-Fi",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-002-S04",
+              "name": "Network monitoring and implementation",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TPR-003",
+          "categoryCode": "TPR",
+          "name": "Next-Generation Firewall, WAF & DDoS Protection",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TPR-003-S01",
+              "name": "NGFW / IPS / web filtering",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-003-S02",
+              "name": "Application WAF & API protection",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-003-S03",
+              "name": "DDoS mitigation & traffic protection",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-003-S04",
+              "name": "Rule hardening and support",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TPR-004",
+          "categoryCode": "TPR",
+          "name": "Endpoint Protection, EDR/XDR & Device Security",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TPR-004-S01",
+              "name": "Antivirus / EPP / EDR/XDR solutions",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-004-S02",
+              "name": "Endpoint device encryption",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-004-S03",
+              "name": "Mobile device / endpoint management",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-004-S04",
+              "name": "License, deployment & support",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TPR-005",
+          "categoryCode": "TPR",
+          "name": "SIEM, SOAR & SOC Technology Stack",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TPR-005-S01",
+              "name": "SIEM platform licensing and integration",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-005-S02",
+              "name": "SOAR playbook automation",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-005-S03",
+              "name": "Log management & collector integration",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-005-S04",
+              "name": "SOC infrastructure and managed support",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TPR-006",
+          "categoryCode": "TPR",
+          "name": "Identity, PAM, MFA & Zero Trust Technology",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TPR-006-S01",
+              "name": "IAM / SSO / directory integration",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-006-S02",
+              "name": "Privileged Access Management (PAM)",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-006-S03",
+              "name": "MFA / FIDO / passwordless",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-006-S04",
+              "name": "ZTNA / identity governance",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TPR-007",
+          "categoryCode": "TPR",
+          "name": "Backup, DR, BCP & Cyber Recovery Technology",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TPR-007-S01",
+              "name": "Backup appliances and recovery software",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-007-S02",
+              "name": "Immutable/offsite backup",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-007-S03",
+              "name": "DR orchestration and replication",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-007-S04",
+              "name": "Recovery test and managed maintenance",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TPR-008",
+          "categoryCode": "TPR",
+          "name": "Cloud, Hybrid Infrastructure & Managed Hosting",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TPR-008-S01",
+              "name": "Cloud landing zone & migration",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-008-S02",
+              "name": "Hybrid / private cloud",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-008-S03",
+              "name": "Container / Kubernetes platform",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-008-S04",
+              "name": "Cost management and operational support",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TPR-009",
+          "categoryCode": "TPR",
+          "name": "Industrial OT, ICS & IIoT Security Technology",
+          "description": "",
+          "industries": [
+            "Manufacturing",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TPR-009-S01",
+              "name": "Industrial firewall / secure remote access",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-009-S02",
+              "name": "OT network monitoring and asset discovery",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-009-S03",
+              "name": "IIoT gateway / industrial sensors",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-009-S04",
+              "name": "OT integration and hardening",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TPR-010",
+          "categoryCode": "TPR",
+          "name": "Government Secure Infrastructure & Public Service Technology",
+          "description": "",
+          "industries": [
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TPR-010-S01",
+              "name": "Secure government network / campus infrastructure",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-010-S02",
+              "name": "Government portal hosting and API platform",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-010-S03",
+              "name": "Digital signature / PKI integration",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-010-S04",
+              "name": "Resilient public-service infrastructure",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TPR-011",
+          "categoryCode": "TPR",
+          "name": "Banking, Financial & Transaction Security Technology",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TPR-011-S01",
+              "name": "Payment/channel API security integration",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-011-S02",
+              "name": "Fraud / transaction monitoring technology",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-011-S03",
+              "name": "Data security / encryption / HSM integration",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-011-S04",
+              "name": "Regulatory evidence & monitoring systems",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TPR-012",
+          "categoryCode": "TPR",
+          "name": "Collaboration, Endpoint Hardware & Productivity Stack",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TPR-012-S01",
+              "name": "Enterprise laptop / workstation / peripherals",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-012-S02",
+              "name": "Email and productivity licensing",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-012-S03",
+              "name": "Video conferencing and collaboration",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-012-S04",
+              "name": "Asset tagging and lifecycle support",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TPR-013",
+          "categoryCode": "TPR",
+          "name": "Data Protection, DLP & Database Security Solutions",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TPR-013-S01",
+              "name": "Data loss prevention / data classification",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-013-S02",
+              "name": "Database activity monitoring",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-013-S03",
+              "name": "Encryption / tokenization solutions",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-013-S04",
+              "name": "Data discovery and privacy compliance",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        },
+        {
+          "sku": "RTI-TPR-014",
+          "categoryCode": "TPR",
+          "name": "OEM Software Licensing, Procurement & Lifecycle",
+          "description": "",
+          "industries": [
+            "FSI",
+            "Manufacturing",
+            "Government",
+            "Other"
+          ],
+          "unit": "project",
+          "priceAmount": null,
+          "currency": "IDR",
+          "active": true,
+          "source": "RTICORE portfolio extension 2026-11-01",
+          "scopes": [
+            {
+              "id": "RTI-TPR-014-S01",
+              "name": "OEM software / subscription procurement",
+              "sortOrder": 10,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-014-S02",
+              "name": "Vendor-neutral architecture & product selection",
+              "sortOrder": 20,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-014-S03",
+              "name": "Implementation, renewals and license tracking",
+              "sortOrder": 30,
+              "active": true
+            },
+            {
+              "id": "RTI-TPR-014-S04",
+              "name": "Support SLA, vendor management & maintenance",
+              "sortOrder": 40,
+              "active": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
