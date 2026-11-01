@@ -120,6 +120,10 @@ export default function AdminSystemPage() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          <Link href="/admin/products" className="rounded-2xl border border-line bg-white p-4 shadow-sm hover:border-gold-500">
+            <Database className="h-5 w-5 text-gold-700" />
+            <div className="mt-2 text-sm font-extrabold text-navy-900">Master Produk RTICORE</div>
+          </Link>
           <Link href="/admin/parameters" className="rounded-2xl border border-line bg-white p-4 shadow-sm hover:border-gold-500">
             <Settings2 className="h-5 w-5 text-gold-700" />
             <div className="mt-2 text-sm font-extrabold text-navy-900">Parameter Manager</div>
