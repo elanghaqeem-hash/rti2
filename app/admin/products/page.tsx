@@ -6,7 +6,7 @@ import { Database,RefreshCw,Save,Plus,ShieldCheck } from 'lucide-react';
 
 type Category={code:string;name:string;sort_order:number;is_supporting:number;is_active:number};
 type Scope={id:string;product_sku:string;name:string;sort_order:number;is_active:number};
-type Product={sku:string;category_code:string;name:string;description:string;unit:string;price_amount:number|null;currency:string;is_active:number;source_ref:string;scopes:Scope[]};
+type Product={sku:string;category_code:string;name:string;description:string;unit:string;price_amount:number|null;currency:string;is_active:number;source_ref:string;scopes:Scope[];industries:string[]};
 type Catalog={success:boolean;categories:Category[];products:Product[];error?:string};
 const units=['project','day','month','year','session','participant','asset','service'];
 
@@ -16,6 +16,7 @@ export default function AdminProductsPage(){
  const [selected,setSelected]=useState('');
  const [category,setCategory]=useState('GRC');
  const [search,setSearch]=useState('');
+ const [industry,setIndustry]=useState('ALL');
  const [error,setError]=useState('');
  const [busy,setBusy]=useState(false);
  const [creating,setCreating]=useState(false);
@@ -24,7 +25,7 @@ export default function AdminProductsPage(){
  const [newScope,setNewScope]=useState('');
  const [draft,setDraft]=useState<Product|null>(null);
  const current=products.find(p=>p.sku===selected);
- const filtered=useMemo(()=>products.filter(p=>p.category_code===category&&[p.sku,p.name,p.description].join(' ').toLowerCase().includes(search.toLowerCase())),[products,category,search]);
+ const filtered=useMemo(()=>products.filter(p=>p.category_code===category&&(industry==='ALL'||!p.industries?.length||p.industries.includes(industry))&&[p.sku,p.name,p.description].join(' ').toLowerCase().includes(search.toLowerCase())),[products,category,industry,search]);
 
  const load=async()=>{
   setBusy(true);setError('');
@@ -96,10 +97,19 @@ export default function AdminProductsPage(){
      <select value={category} onChange={e=>{setCategory(e.target.value);setSelected('');}} className="mb-4 w-full rounded-xl border border-line px-3 py-2 text-sm">
       {categories.map(c=><option key={c.code} value={c.code}>{c.name}</option>)}
      </select>
+     <label className="mb-2 block text-xs font-bold">Sektor Industri</label>
+     <select value={industry} onChange={e=>setIndustry(e.target.value)} className="mb-4 w-full rounded-xl border border-line px-3 py-2 text-sm">
+      <option value="ALL">Semua industri</option>
+      <option value="FSI">Financial Services (FSI)</option>
+      <option value="Manufacturing">Manufaktur & industri</option>
+      <option value="Government">Pemerintahan / sektor publik</option>
+      <option value="Other">Industri lainnya</option>
+     </select>
      <div className="max-h-[60vh] space-y-1 overflow-auto">
       {filtered.map(p=><button key={p.sku} onClick={()=>setSelected(p.sku)}
        className={'w-full rounded-xl p-3 text-left text-sm '+(selected===p.sku?'bg-navy-900 text-white':'hover:bg-grey-50')}>
        <span className="block text-xs font-mono opacity-70">{p.sku}</span><span className="font-semibold">{p.name}</span>
+       {!!p.industries?.length&&<span className="mt-1 block text-[10px] opacity-70">{p.industries.join(" · ")}</span>}
        {!p.is_active&&<span className="ml-2 text-xs text-amber-600">(Nonaktif)</span>}
       </button>)}
      </div>
@@ -117,6 +127,7 @@ export default function AdminProductsPage(){
        <div><span className="font-mono text-xs text-blue-700">{draft.sku}</span><h2 className="text-xl font-bold">{draft.name}</h2></div>
        <button onClick={()=>void saveProduct()} disabled={busy} className="flex items-center gap-2 rounded-xl bg-navy-900 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"><Save className="h-4 w-4"/>Simpan Produk</button>
       </div>
+      {!!draft.industries?.length&&<p className="mb-4 text-xs font-semibold text-blue-700">Sektor terkait: {draft.industries.join(' · ')}</p>}
       <div className="grid gap-4 sm:grid-cols-2">
        <label className="text-xs font-semibold">Nama Produk<input value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})} className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
        <label className="text-xs font-semibold">Satuan<select value={draft.unit} onChange={e=>setDraft({...draft,unit:e.target.value})} className="mt-1 w-full rounded-lg border p-3 text-sm">{units.map(u=><option key={u} value={u}>{u}</option>)}</select></label>
