@@ -2,6 +2,7 @@
 
 import React,{useEffect,useMemo,useState} from 'react';
 import Link from 'next/link';
+import { useParameterOptions } from '@/components/parameters/useParameterOptions';
 import { Database,RefreshCw,Save,Plus,ShieldCheck } from 'lucide-react';
 
 type Category={code:string;name:string;sort_order:number;is_supporting:number;is_active:number};
@@ -11,6 +12,7 @@ type Catalog={success:boolean;categories:Category[];products:Product[];error?:st
 const units=['project','day','month','year','session','participant','asset','service'];
 
 export default function AdminProductsPage(){
+ const industryOptions=useParameterOptions('products.industries');
  const [categories,setCategories]=useState<Category[]>([]);
  const [products,setProducts]=useState<Product[]>([]);
  const [selected,setSelected]=useState('');
@@ -99,11 +101,7 @@ export default function AdminProductsPage(){
      </select>
      <label className="mb-2 block text-xs font-bold">Sektor Industri</label>
      <select value={industry} onChange={e=>setIndustry(e.target.value)} className="mb-4 w-full rounded-xl border border-line px-3 py-2 text-sm">
-      <option value="ALL">Semua industri</option>
-      <option value="FSI">Financial Services (FSI)</option>
-      <option value="Manufacturing">Manufaktur & industri</option>
-      <option value="Government">Pemerintahan / sektor publik</option>
-      <option value="Other">Industri lainnya</option>
+      {industryOptions.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}
      </select>
      <div className="max-h-[60vh] space-y-1 overflow-auto">
       {filtered.map(p=><button key={p.sku} onClick={()=>setSelected(p.sku)}
