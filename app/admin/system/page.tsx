@@ -27,6 +27,7 @@ type Status = {
     projectEstimator: boolean;
     rfq: boolean;
     estimatorServices: boolean;
+    productMaster: boolean;
   };
 };
 
@@ -185,6 +186,8 @@ export default function AdminSystemPage() {
                   nist_questions: <strong>{status.tables.nistQuestions ? 'READY' : 'PENDING'}</strong>
                   <br />
                   estimator_services: <strong>{status.tables.estimatorServices ? 'READY' : 'PENDING'}</strong>
+                  <br />
+                  master_produk: <strong>{status.tables.productMaster ? 'READY' : 'PENDING'}</strong>
                   <br />
                   project_estimates: <strong>{status.tables.projectEstimator ? 'READY' : 'PENDING'}</strong>
                   <br />
