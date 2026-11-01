@@ -27,6 +27,7 @@ type Status = {
     projectEstimator: boolean;
     rfq: boolean;
     estimatorServices: boolean;
+    productMaster: boolean;
   };
 };
 
@@ -120,6 +121,10 @@ export default function AdminSystemPage() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          <Link href="/admin/products" className="rounded-2xl border border-line bg-white p-4 shadow-sm hover:border-gold-500">
+            <Database className="h-5 w-5 text-gold-700" />
+            <div className="mt-2 text-sm font-extrabold text-navy-900">Master Produk RTICORE</div>
+          </Link>
           <Link href="/admin/parameters" className="rounded-2xl border border-line bg-white p-4 shadow-sm hover:border-gold-500">
             <Settings2 className="h-5 w-5 text-gold-700" />
             <div className="mt-2 text-sm font-extrabold text-navy-900">Parameter Manager</div>
@@ -181,6 +186,8 @@ export default function AdminSystemPage() {
                   nist_questions: <strong>{status.tables.nistQuestions ? 'READY' : 'PENDING'}</strong>
                   <br />
                   estimator_services: <strong>{status.tables.estimatorServices ? 'READY' : 'PENDING'}</strong>
+                  <br />
+                  master_produk: <strong>{status.tables.productMaster ? 'READY' : 'PENDING'}</strong>
                   <br />
                   project_estimates: <strong>{status.tables.projectEstimator ? 'READY' : 'PENDING'}</strong>
                   <br />

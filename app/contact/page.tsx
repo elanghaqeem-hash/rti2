@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BRAND_CONFIG } from '@/lib/config/contact';
 import {
   MapPin,
@@ -17,6 +17,13 @@ import Link from 'next/link';
 import { TurnstileWidget } from '@/components/security/TurnstileWidget';
 import { useParameterGroups } from '@/components/parameters/useParameterOptions';
 
+type MasterCatalogProduct = {
+  sku:string;category_code:string;name:string;
+  scopes:Array<{id:string;name:string}>;
+  industries?:string[];
+};
+type MasterCatalogCategory = {code:string;name:string};
+
 export default function ContactPage() {
   const [formData, setFormData] = useState({
     name: '',
@@ -26,6 +33,7 @@ export default function ContactPage() {
     email: '',
     whatsapp: '',
     serviceInterest: 'technology-advisory',
+    serviceScope: '',
     needSummary: '',
     consent: false,
   });
@@ -37,6 +45,31 @@ export default function ContactPage() {
   const parameterGroups = useParameterGroups(['contact.sectors', 'services.primary']);
   const sectorOptions = parameterGroups['contact.sectors'] || [];
   const serviceOptions = parameterGroups['services.primary'] || [];
+  const [masterProducts,setMasterProducts] = useState<MasterCatalogProduct[]>([]);
+  const [masterCategories,setMasterCategories] = useState<MasterCatalogCategory[]>([]);
+  useEffect(()=>{
+    let cancelled=false;
+    fetch('/api/products',{cache:'no-store'}).then(async response=>{
+      if(!response.ok) return null;
+      return response.json();
+    }).then(data=>{
+      if(cancelled || !data?.success || !Array.isArray(data.products) || data.products.length===0)return;
+      setMasterProducts(data.products);
+      setMasterCategories(data.categories||[]);
+      setFormData(prev=>({...prev,serviceInterest:data.products[0].sku,serviceScope:''}));
+    }).catch(()=>undefined);
+    return ()=>{cancelled=true;};
+  },[]);
+  const industryCode = ['banking_insurance','fintech_payments'].includes(formData.sector) ? 'FSI'
+    : formData.sector === 'manufacturing_industrial' ? 'Manufacturing'
+    : formData.sector === 'government_bumn' ? 'Government' : 'Other';
+  const eligibleProducts=masterProducts.filter(p=>!p.industries?.length||p.industries.includes(industryCode));
+  const chosenMasterProduct=eligibleProducts.find(p=>p.sku===formData.serviceInterest);
+  useEffect(()=>{
+    if(masterProducts.length && !eligibleProducts.some(p=>p.sku===formData.serviceInterest)){
+      setFormData(current=>({...current,serviceInterest:eligibleProducts[0]?.sku||'',serviceScope:''}));
+    }
+  },[industryCode,masterProducts,formData.serviceInterest]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +98,7 @@ export default function ContactPage() {
           sector: formData.sector,
           email: formData.email,
           whatsapp: formData.whatsapp,
-          needSummary: `[Layanan: ${formData.serviceInterest}] ${formData.needSummary}`,
+          needSummary: `[Layanan: ${chosenMasterProduct?.name||formData.serviceInterest}; SKU: ${chosenMasterProduct?.sku||'-'}; Cakupan: ${formData.serviceScope||'-'}] ${formData.needSummary}`,
           consent: formData.consent,
           turnstileToken,
         }),
@@ -343,13 +376,33 @@ export default function ContactPage() {
                       </label>
                       <select
                         value={formData.serviceInterest}
-                        onChange={(e) => setFormData({ ...formData, serviceInterest: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, serviceInterest: e.target.value,serviceScope:'' })}
                         className="w-full px-3.5 py-2.5 rounded-lg border border-line text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 bg-white"
                       >
-                        {serviceOptions.map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
+                        {masterProducts.length>0
+                          ? masterCategories.map(group=>(
+                              <optgroup key={group.code} label={group.name}>
+                                {eligibleProducts.filter(product=>product.category_code===group.code).map(product=>(
+                                  <option key={product.sku} value={product.sku}>{product.name} ({product.sku})</option>
+                                ))}
+                              </optgroup>
+                            ))
+                          : serviceOptions.map((option) => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
                       </select>
+                      {chosenMasterProduct && chosenMasterProduct.scopes.length>0 && (
+                        <div className="mt-3">
+                          <label className="mb-1 block text-xs font-bold text-navy-900">Detail Cakupan Layanan</label>
+                          <select value={formData.serviceScope} onChange={e=>setFormData({...formData,serviceScope:e.target.value})}
+                            className="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm">
+                            <option value="">Akan dikonfirmasi saat scoping</option>
+                            {chosenMasterProduct.scopes.map(scope=>(
+                              <option key={scope.id} value={scope.name}>{scope.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
 
                     <div>

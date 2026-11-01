@@ -22,6 +22,7 @@ export interface RuntimeMigrationStatus {
     projectEstimator: boolean;
     rfq: boolean;
     estimatorServices: boolean;
+    productMaster: boolean;
   };
 }
 
@@ -73,6 +74,9 @@ export async function getRuntimeMigrationStatus(): Promise<RuntimeMigrationStatu
     rfqVersions,
     services,
     estimatorQuestions,
+    productCategories,
+    productRows,
+    productScopes,
   ] = await Promise.all([
     tableExists(database, 'leads'),
     tableExists(database, 'system_parameters'),
@@ -87,6 +91,9 @@ export async function getRuntimeMigrationStatus(): Promise<RuntimeMigrationStatu
     tableExists(database, 'rfq_versions'),
     tableExists(database, 'services'),
     tableExists(database, 'estimator_questions'),
+    tableExists(database, 'rti_product_categories'),
+    tableExists(database, 'rti_products'),
+    tableExists(database, 'rti_product_scopes'),
   ]);
 
   return {
@@ -107,6 +114,7 @@ export async function getRuntimeMigrationStatus(): Promise<RuntimeMigrationStatu
       projectEstimator: estimatorSessions && projectEstimates,
       rfq: rfqs && rfqVersions,
       estimatorServices: services && estimatorQuestions,
+      productMaster: productCategories && productRows && productScopes,
     },
   };
 }
