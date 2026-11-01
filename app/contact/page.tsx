@@ -20,6 +20,7 @@ import { useParameterGroups } from '@/components/parameters/useParameterOptions'
 type MasterCatalogProduct = {
   sku:string;category_code:string;name:string;
   scopes:Array<{id:string;name:string}>;
+  industries?:string[];
 };
 type MasterCatalogCategory = {code:string;name:string};
 
@@ -59,7 +60,16 @@ export default function ContactPage() {
     }).catch(()=>undefined);
     return ()=>{cancelled=true;};
   },[]);
-  const chosenMasterProduct=masterProducts.find(p=>p.sku===formData.serviceInterest);
+  const industryCode = ['banking_insurance','fintech_payments'].includes(formData.sector) ? 'FSI'
+    : formData.sector === 'manufacturing_industrial' ? 'Manufacturing'
+    : formData.sector === 'government_bumn' ? 'Government' : 'Other';
+  const eligibleProducts=masterProducts.filter(p=>!p.industries?.length||p.industries.includes(industryCode));
+  const chosenMasterProduct=eligibleProducts.find(p=>p.sku===formData.serviceInterest);
+  useEffect(()=>{
+    if(masterProducts.length && !eligibleProducts.some(p=>p.sku===formData.serviceInterest)){
+      setFormData(current=>({...current,serviceInterest:eligibleProducts[0]?.sku||'',serviceScope:''}));
+    }
+  },[industryCode,masterProducts,formData.serviceInterest]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -372,7 +382,7 @@ export default function ContactPage() {
                         {masterProducts.length>0
                           ? masterCategories.map(group=>(
                               <optgroup key={group.code} label={group.name}>
-                                {masterProducts.filter(product=>product.category_code===group.code).map(product=>(
+                                {eligibleProducts.filter(product=>product.category_code===group.code).map(product=>(
                                   <option key={product.sku} value={product.sku}>{product.name} ({product.sku})</option>
                                 ))}
                               </optgroup>
