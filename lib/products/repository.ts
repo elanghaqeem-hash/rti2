@@ -8,6 +8,7 @@ export type MasterProduct = {
   unit: string; price_amount: number | null; currency: string;
   is_active: number; source_ref: string;
   scopes: MasterScope[];
+  industries: string[];
 };
 export type MasterScope = {
   id: string; product_sku: string; name: string; sort_order: number; is_active: number;
@@ -29,13 +30,20 @@ export async function listProductMaster(includeInactive = false): Promise<Produc
     (includeInactive ? '' : 'WHERE is_active = 1 ') +
     'ORDER BY product_sku,sort_order,id',
   );
+  const industryRows = await db.queryAll<{product_sku:string;industry_code:string}>(
+    'SELECT product_sku,industry_code FROM rti_product_industries ORDER BY product_sku,industry_code',
+  );
+  const industriesBySku = new Map<string,string[]>();
+  for(const row of industryRows)industriesBySku.set(row.product_sku,[
+    ...(industriesBySku.get(row.product_sku)||[]),row.industry_code,
+  ]);
   const bySku = new Map<string,MasterScope[]>();
   for (const scope of scopes) bySku.set(scope.product_sku,[...(bySku.get(scope.product_sku)||[]),scope]);
   const activeCategoryCodes = new Set(categories.map(item=>item.code));
   return {
     categories,
     products: products.filter(product=>activeCategoryCodes.has(product.category_code))
-      .map(product=>({...product,scopes:bySku.get(product.sku)||[]})),
+      .map(product=>({...product,scopes:bySku.get(product.sku)||[],industries:industriesBySku.get(product.sku)||[]})),
   };
 }
 
